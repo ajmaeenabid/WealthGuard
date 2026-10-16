@@ -208,7 +208,7 @@ def mock_respond(messages: list, state: dict) -> LLMResponse:
     proposals = [(i, r) for i, (nm, _, r) in enumerate(res) if nm == "propose_allocation"]
     checks = [(i, r) for i, (nm, _, r) in enumerate(res) if nm == "check_compliance"]
     if not proposals:
-        return _call("propose_allocation", {"preferred_ids": ["P13"], "summary": "Draft for the client."}, n)
+        return _call("propose_allocation", {"preferred_ids": ["P13"]}, n)
     if last[0] == "propose_allocation":
         if refused(last[2]):
             return LLMResponse(text=f"I cannot propose a compliant allocation: {last[2].get('error')} {disclaimer}")
@@ -216,8 +216,7 @@ def mock_respond(messages: list, state: dict) -> LLMResponse:
     if last[0] == "check_compliance":
         r = last[2]
         if not r.get("passed"):
-            return _call("propose_allocation", {"exclude_ids": r.get("violating_product_ids", []),
-                                                 "summary": "Revised draft for the client."}, n)
+            return _call("propose_allocation", {"exclude_ids": r.get("violating_product_ids", [])}, n)
         return _call("run_stress_test", {"allocation_id": r["allocation_id"], "scenario": "equity_-20"}, n)
     if last[0] == "run_stress_test":
         return _call("run_goal_projection", {"allocation_id": aid_from(res), "shock_pct": last[2]["loss_pct"]}, n)
