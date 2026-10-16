@@ -144,7 +144,11 @@ def reject(ticket_id: str, req: ApproveReq):
 def get_state(client_id: str):
     d = _client(client_id)
     alloc = store.latest_allocation(client_id)
-    return {"name": d.get("name"), "profile": d.get("profile"), "allocation": alloc,
+    prof = d.get("profile")
+    return {"name": d.get("name"), "profile": prof, "allocation": alloc,
+            "effective_bucket": config.effective_bucket(prof["bucket"], prof["age"], prof["horizon_years"])
+            if prof else None,
+            "attempts_blocked": store.consecutive_blocked(client_id),
             "compliance": store.load_compliance(alloc.id) if alloc else None,
             "tickets": store.list_tickets(client_id),
             "why_not": service.why_not_notes(client_id, alloc) if alloc else {},
