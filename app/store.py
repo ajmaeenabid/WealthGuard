@@ -121,3 +121,8 @@ def list_documents(client_id: str) -> list[dict]:
     rows = c.execute("SELECT filename,text,warnings FROM documents WHERE client_id=?", (client_id,)).fetchall()
     c.close()
     return [{"filename": r["filename"], "text": r["text"], "warnings": json.loads(r["warnings"])} for r in rows]
+
+
+def archive_blocked(client_id: str) -> None:
+    """Start a fresh revision budget (called at the start of each chat turn / new profile)."""
+    _write("UPDATE allocations SET status='blocked_archived' WHERE client_id=? AND status='blocked'", (client_id,))
