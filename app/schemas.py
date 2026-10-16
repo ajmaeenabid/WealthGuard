@@ -1,0 +1,137 @@
+"""All pydantic models. Agreed on Day 1; additions beyond CLAUDE.md are marked (ext)."""
+from __future__ import annotations
+
+from typing import Literal, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
+AssetClass = Literal["cash", "bond", "equity_fund", "balanced_fund", "gold", "structured_note"]
+Bucket = Literal["Conservative", "Moderate", "Balanced", "Growth", "Aggressive"]
+Experience = Literal["none", "basic", "advanced"]
+
+
+class Product(BaseModel):
+    id: str
+    name: str
+    asset_class: AssetClass
+    risk_level: int = Field(ge=1, le=5)
+    expected_return: float  # annual, decimal (0.04 = 4%)
+    volatility: float  # annual, decimal
+    annual_fee_pct: float  # percent, e.g. 0.5 = 0.5%
+    min_invest_cny: float
+    lockup_days: int
+    complex: bool
+    description: str
+
+
+class ClientProfile(BaseModel):
+    id: str
+    name: str = "Client"  # (ext)
+    age: int
+    horizon_years: float
+    goal: str
+    monthly_income_cny: float
+    liquidity_need_pct: float
+    experience: Experience
+    risk_tolerance_score: float = Field(ge=0, le=100)
+    risk_capacity_score: float = Field(ge=0, le=100)
+    bucket: Bucket
+    investable_amount_cny: float = 100000  # (ext)
+    goal_target_cny: Optional[float] = None  # (ext)
+
+
+class AllocationLine(BaseModel):
+    product_id: str
+    weight: float
+    rationale: str
+
+
+class Allocation(BaseModel):
+    id: str = ""  # (ext) needed by /api/stress and tickets
+    client_id: str
+    lines: list[AllocationLine]
+    expected_return: float
+    volatility: float
+    created_at: str
+    summary: str = ""  # (ext) client-facing text, checked by R6/R7
+    client_text: str = ""  # (ext) summary + disclosures actually shown to the client
+
+
+class ComplianceCheck(BaseModel):
+    rule_id: str
+    passed: bool
+    detail: str
+
+
+class ComplianceResult(BaseModel):
+    allocation_id: str
+    passed: bool
+    checks: list[ComplianceCheck]
+    required_disclosures: list[str]
+
+
+class AuditEntry(BaseModel):
+    id: int
+    ts: str
+    actor: Literal["client", "agent", "compliance", "system"]
+    action: str
+    tier: str
+    payload_hash: str
+    prev_hash: str
+    entry_hash: str
+
+
+class OrderTicket(BaseModel):
+    id: str
+    client_id: str
+    allocation_id: str
+    status: Literal["draft", "awaiting_approval", "approved", "rejected"]
+    sandbox: bool = True
+    kind: Literal["order", "report"] = "order"  # (ext)
+    detail: str = ""  # (ext)
+
+
+# ---- API request/response models ------------------------------------------------------------
+class SessionReq(BaseModel):
+    persona_id: Optional[str] = None
+
+
+class ChatReq(BaseModel):
+    client_id: str
+    message: str = Field(max_length=4000)
+
+
+class CompareReq(BaseModel):
+    product_ids: list[str]
+    client_id: Optional[str] = None
+
+
+class ProfileReq(BaseModel):
+    client_id: str
+    answers: dict[str, object]
+
+
+class AllocationReq(BaseModel):
+    client_id: str
+    preferred_ids: list[str] = []
+
+
+class StressReq(BaseModel):
+    allocation_id: str
+    scenario: str
+
+
+class DocumentReq(BaseModel):
+    client_id: str
+    filename: str
+    text: str = Field(max_length=50000)
+
+
+class ApproveReq(BaseModel):
+    client_id: str
+
+
+class StrictArgs(BaseModel):
+    """Base for tool argument models: unknown fields are rejected."""
+
+    model_config = ConfigDict(extra="forbid")

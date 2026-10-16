@@ -1,0 +1,74 @@
+[
+ {
+  "id": "persona_li",
+  "name": "Ms. Li",
+  "age": 45,
+  "horizon_years": 8,
+  "goal": "education",
+  "monthly_income_cny": 15000,
+  "experience": "basic",
+  "investable_amount_cny": 200000,
+  "goal_target_cny": 300000,
+  "story": "Cautious, saving for her child's education in 8 years.",
+  "known": [
+   "age",
+   "horizon_years",
+   "goal",
+   "monthly_income_cny",
+   "experience"
+  ],
+  "demo_answers": {
+   "loss_reaction": "sell_some",
+   "income_stability": "stable",
+   "liquidity_need_pct": 10
+  }
+ },
+ {
+  "id": "persona_chen",
+  "name": "Mr. Chen",
+  "age": 28,
+  "horizon_years": 20,
+  "goal": "growth",
+  "monthly_income_cny": 30000,
+  "experience": "advanced",
+  "investable_amount_cny": 300000,
+  "goal_target_cny": 1200000,
+  "story": "Aggressive saver with a 20-year horizon and advanced experience.",
+  "known": [
+   "age",
+   "horizon_years",
+   "goal",
+   "monthly_income_cny",
+   "experience"
+  ],
+  "demo_answers": {
+   "loss_reaction": "hold",
+   "income_stability": "stable",
+   "liquidity_need_pct": 10
+  }
+ },
+ {
+  "id": "persona_wang",
+  "name": "Mr. Wang",
+  "age": 68,
+  "horizon_years": 10,
+  "goal": "income",
+  "monthly_income_cny": 8000,
+  "experience": "basic",
+  "investable_amount_cny": 500000,
+  "goal_target_cny": 700000,
+  "story": "Retiring, needs steady income; triggers the vulnerable-client cap.",
+  "known": [
+   "age",
+   "horizon_years",
+   "goal",
+   "monthly_income_cny",
+   "experience"
+  ],
+  "demo_answers": {
+   "loss_reaction": "hold",
+   "income_stability": "stable",
+   "liquidity_need_pct": 25
+  }
+ }
+]
