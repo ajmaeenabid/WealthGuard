@@ -2,6 +2,7 @@
 import os
 
 DISCLAIMER = "Educational demo with synthetic products. Not real financial advice."
+DISCLAIMER_ZH = "教育演示，产品均为合成数据，不构成真实的投资建议。"
 
 BUCKET_ORDER = ["Conservative", "Moderate", "Balanced", "Growth", "Aggressive"]
 
@@ -38,11 +39,20 @@ MC_PATHS = 5000
 MC_SEED = 42
 
 # URL allowlist for any outbound call (T3: anything else is refused).
-URL_ALLOWLIST = ["https://api.anthropic.com"]
+URL_ALLOWLIST = ["https://api.anthropic.com", "https://api.groq.com"]
+
+
+def provider() -> str:
+    """LLM_PROVIDER=anthropic|groq. If unset: Anthropic when its key exists, else Groq when its key exists."""
+    p = os.environ.get("LLM_PROVIDER", "").lower()
+    if p in ("anthropic", "groq"):
+        return p
+    return "anthropic" if os.environ.get("ANTHROPIC_API_KEY") or not os.environ.get("GROQ_API_KEY") else "groq"
 
 
 def use_mock_llm() -> bool:
-    return os.environ.get("USE_MOCK_LLM", "0") == "1" or not os.environ.get("ANTHROPIC_API_KEY")
+    key = "GROQ_API_KEY" if provider() == "groq" else "ANTHROPIC_API_KEY"
+    return os.environ.get("USE_MOCK_LLM", "0") == "1" or not os.environ.get(key)
 
 
 def anthropic_key() -> str | None:
@@ -51,6 +61,14 @@ def anthropic_key() -> str | None:
 
 def anthropic_model() -> str:
     return os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-5-5")
+
+
+def groq_key() -> str | None:
+    return os.environ.get("GROQ_API_KEY")
+
+
+def groq_model() -> str:
+    return os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
 
 
 def db_path() -> str:

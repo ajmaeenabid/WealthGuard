@@ -18,3 +18,28 @@ def test_state_endpoint_reports_effective_bucket():
         "loss_reaction": "hold", "income_stability": "stable", "liquidity_need_pct": 25}})
     st = c.get("/api/state", params={"client_id": cid}).json()
     assert st["profile"]["bucket"] == "Balanced" and st["effective_bucket"] == "Moderate"
+
+
+def test_voice_controls_and_script_served():
+    html = c.get("/").text
+    for el in ['id="micBtn"', 'id="speakBtn"', 'id="voiceLang"', '/static/voice.js']:
+        assert el in html
+    js = c.get("/static/voice.js")
+    assert js.status_code == 200
+    # voice only fills the chat box; it must never call the API or auto-send
+    assert "fetch(" not in js.text and "/api/" not in js.text and "onsubmit" not in js.text
+
+
+def test_i18n_keys_in_html_exist_in_dictionary():
+    import re
+    html = c.get("/").text
+    js = c.get("/static/i18n.js").text
+    keys = set(re.findall(r'data-i18n(?:-ph)?="([^"]+)"', html))
+    assert keys and 'id="langBtn"' in html and "/static/i18n.js" in html
+    missing = [k for k in keys if not re.search(r'(^|[\s,{])"?' + re.escape(k) + r'"?\s*:', js)]
+    assert not missing, missing
+
+
+def test_chinese_banner_keeps_disclaimer():
+    js = c.get("/static/i18n.js").text
+    assert js.count("不构成真实的投资建议") >= 2  # banner and footer

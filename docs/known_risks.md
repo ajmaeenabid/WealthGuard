@@ -20,3 +20,7 @@
    audit or business data).
 10. **Prompt-injection through chat.** User messages are flagged but still processed; the user is the principal. Harmful
     requests are stopped by the engines, not by refusing to read.
+11. **Chinese coverage is phrase-based.** R7 and the injection guard cover common Chinese wording, not every paraphrase, dialect or mixed-script trick. The structural defence (compliance + tiers) is language independent.
+12. **Translation quality is unreviewed.** Live translations are not checked by a human or a second model; only unsafe wording is caught. Mock mode has no translator and shows English.
+13. **Voice privacy.** Browser speech recognition may send audio to the browser vendor. The app never receives audio, only the text the user chooses to send.
+14. **Third-party LLM.** With Groq or Anthropic, client facts (synthetic here) and chat text are sent to that provider. A real deployment needs a data-processing agreement and data minimisation.

@@ -48,7 +48,9 @@ engine (what may be done) or the compliance engine (what may be shown).
 | `security/tiers.py` | T0-T3 enforcement, approval endpoint logic, URL allowlist |
 | `security/audit.py` | Append-only SHA-256 hash chain and `verify` |
 | `security/guard.py` | Injection detector, redaction, untrusted wrapper |
-| `agent/*` | Tool definitions, loop, Anthropic wrapper + deterministic mock |
+| `agent/*` | Tool definitions, loop, Anthropic/Groq wrapper + deterministic mock |
+| `translate.py` | EN <-> ZH translation; output re-checked by R7, disclaimers fixed, falls back to English |
+| `static/voice.js`, `static/i18n.js` | Mic and read-aloud (browser API); EN/ZH labels and on-demand text translation |
 | `service.py`, `store.py`, `db.py` | Shared services and SQLite persistence |
 
 ## Additions to the Day-1 schemas
@@ -64,4 +66,8 @@ retry are visible offline and in tests.
 
 ## API
 
-As in CLAUDE.md, plus `GET /api/state`, `GET /api/personas`, `GET /api/health`, `POST /api/reject/{ticket_id}`.
+As in CLAUDE.md, plus `POST /api/translate` (T1, audited), `GET /api/state`, `GET /api/personas`, `GET /api/health`, `POST /api/reject/{ticket_id}`.
+
+## Language handling
+
+The agent, allocation engine and compliance engine work on English. Chinese input is understood directly (answer parsing, R7 phrase list, injection patterns); Chinese output is translated text, which is untrusted: it is re-checked for guaranteed-return wording in both languages and, on any doubt, the English original is shown. Disclaimers are replaced by fixed strings the model never sees. Voice input only fills the chat box.

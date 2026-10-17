@@ -8,95 +8,104 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-<div class="banner" role="note">Educational demo with synthetic products. Not real financial advice.</div>
+<div class="banner" role="note" data-i18n="banner">Educational demo with synthetic products. Not real financial advice.</div>
 <header>
-  <div class="brand"><span class="logo">&#9919;</span> WealthGuard <small>compliant wealth advisory agent</small></div>
+  <div class="brand"><span class="logo">&#9919;</span> WealthGuard <small data-i18n="tagline">compliant wealth advisory agent</small></div>
   <div class="session">
-    <label for="persona">Client</label>
+    <label for="persona" data-i18n="client">Client</label>
     <select id="persona"></select>
-    <button id="start" class="primary">Start session</button>
+    <button id="start" class="primary" data-i18n="start">Start session</button>
+    <button id="langBtn" type="button" aria-pressed="false" title="Switch language">中文</button>
     <span id="llmBadge" class="badge"></span>
   </div>
 </header>
 
 <main>
   <section class="col chat" aria-label="Chat">
-    <h2>Advisor chat</h2>
+    <h2 data-i18n="chatTitle">Advisor chat</h2>
     <div id="story" class="muted"></div>
     <div id="messages" class="messages" aria-live="polite"></div>
     <div id="quick" class="quick"></div>
     <form id="chatForm" autocomplete="off">
-      <input id="chatInput" type="text" maxlength="4000" placeholder="Type a message or answer..." aria-label="Message" disabled>
-      <button class="primary" disabled id="sendBtn">Send</button>
+      <input id="chatInput" type="text" maxlength="4000" placeholder="Type a message or answer..." data-i18n-ph="chatPh" aria-label="Message" disabled>
+      <button class="primary" disabled id="sendBtn" data-i18n="send">Send</button>
     </form>
+    <div class="voice" id="voiceBar">
+      <button type="button" id="micBtn" aria-pressed="false" title="Speak your message">Mic</button>
+      <button type="button" id="speakBtn" aria-pressed="false">Read aloud: off</button>
+      <select id="voiceLang" aria-label="Voice language"><option value="en-US">English</option><option value="zh-CN">Chinese</option></select>
+      <span id="voiceNote" class="muted" aria-live="polite"></span>
+    </div>
     <div class="chips" id="chips"></div>
   </section>
 
   <section class="col panels">
     <div class="card" id="profileCard">
-      <h2>1. Risk profile</h2>
-      <div id="profile" class="muted">Answer the questions in the chat to build the profile.</div>
+      <h2 data-i18n="h1">1. Risk profile</h2>
+      <div id="profile" class="muted" data-i18n="ph_profile">Answer the questions in the chat to build the profile.</div>
     </div>
 
     <div class="card" id="allocCard">
-      <h2>2. Proposed allocation <span class="tag" id="allocTag"></span></h2>
-      <div id="allocation" class="muted">Nothing is shown until the compliance engine approves it.</div>
+      <h2><span data-i18n="h2">2. Proposed allocation</span> <span class="tag" id="allocTag"></span></h2>
+      <div id="allocation" class="muted" data-i18n="ph_alloc">Nothing is shown until the compliance engine approves it.</div>
       <div class="chartwrap"><canvas id="allocChart" height="150"></canvas></div>
-      <h3>Why not that product?</h3>
+      <h3 data-i18n="whyNotTitle">Why not that product?</h3>
       <div id="whyNot" class="muted">-</div>
     </div>
 
     <div class="card" id="compCard">
-      <h2>3. Compliance <span class="tag" id="compTag"></span></h2>
+      <h2><span data-i18n="h3">3. Compliance</span> <span class="tag" id="compTag"></span></h2>
       <div id="attempts"></div>
       <ul id="checks" class="checks"></ul>
       <div id="disclosures" class="muted small"></div>
     </div>
 
     <div class="card" id="stressCard">
-      <h2>4. Stress test &amp; goal probability</h2>
+      <h2 data-i18n="h4">4. Stress test &amp; goal probability</h2>
       <div class="row">
         <select id="scenario">
-          <option value="equity_-20">Equities -20%</option>
-          <option value="rate_+2">Rates +2 points</option>
-          <option value="crash_2008">2008-style crash</option>
-          <option value="inflation_spike">Inflation spike</option>
+          <option value="equity_-20" data-i18n="sc1">Equities -20%</option>
+          <option value="rate_+2" data-i18n="sc2">Rates +2 points</option>
+          <option value="crash_2008" data-i18n="sc3">2008-style crash</option>
+          <option value="inflation_spike" data-i18n="sc4">Inflation spike</option>
         </select>
-        <button id="runStress">Run</button>
+        <button id="runStress" data-i18n="run">Run</button>
       </div>
-      <div id="stressOut" class="muted">Needs a compliant allocation.</div>
+      <div id="stressOut" class="muted" data-i18n="ph_stress">Needs a compliant allocation.</div>
       <div class="chartwrap"><canvas id="stressChart" height="140"></canvas></div>
     </div>
 
     <div class="card" id="approvalCard">
-      <h2>5. Approval queue (T2)</h2>
-      <div id="tickets" class="muted">No pending actions. Ask the agent to "create an order ticket".</div>
+      <h2 data-i18n="h5">5. Approval queue (T2)</h2>
+      <div id="tickets" class="muted" data-i18n="ph_tickets">No pending actions. Ask the agent to "create an order ticket".</div>
     </div>
 
     <div class="card" id="docCard">
-      <h2>6. Upload a document (untrusted)</h2>
+      <h2 data-i18n="h6">6. Upload a document (untrusted)</h2>
       <input id="docName" type="text" value="brochure.txt" aria-label="Filename">
-      <textarea id="docText" rows="4" aria-label="Document text" placeholder="Paste brochure text..."></textarea>
+      <textarea id="docText" rows="4" aria-label="Document text" placeholder="Paste brochure text..." data-i18n-ph="docPh"></textarea>
       <div class="row">
-        <button id="docSend">Upload</button>
-        <button id="docAttack" class="warn">Load attack sample</button>
+        <button id="docSend" data-i18n="upload">Upload</button>
+        <button id="docAttack" class="warn" data-i18n="attack">Load attack sample</button>
       </div>
       <div id="docWarn"></div>
     </div>
 
     <div class="card" id="auditCard">
-      <h2>7. Audit log <span class="tag" id="auditTag"></span></h2>
+      <h2><span data-i18n="h7">7. Audit log</span> <span class="tag" id="auditTag"></span></h2>
       <div class="row">
-        <button id="verify">Verify log</button>
-        <button id="refreshAudit">Refresh</button>
-        <a id="exportAudit" href="/api/audit" download="audit_log.json" target="_blank" rel="noopener">Export JSON</a>
+        <button id="verify" data-i18n="verify">Verify log</button>
+        <button id="refreshAudit" data-i18n="refresh">Refresh</button>
+        <a id="exportAudit" href="/api/audit" download="audit_log.json" target="_blank" rel="noopener" data-i18n="exportJson">Export JSON</a>
       </div>
       <div id="verifyOut" class="small"></div>
-      <div class="auditwrap"><table id="auditTable"><thead><tr><th>#</th><th>Time</th><th>Actor</th><th>Tier</th><th>Action</th><th>Hash</th></tr></thead><tbody></tbody></table></div>
+      <div class="auditwrap"><table id="auditTable"><thead><tr><th>#</th><th data-i18n="thTime">Time</th><th data-i18n="thActor">Actor</th><th data-i18n="thTier">Tier</th><th data-i18n="thAction">Action</th><th data-i18n="thHash">Hash</th></tr></thead><tbody></tbody></table></div>
     </div>
   </section>
 </main>
-<footer>Educational demo with synthetic products. Not real financial advice. All data is synthetic.</footer>
+<footer data-i18n="footer">Educational demo with synthetic products. Not real financial advice. All data is synthetic.</footer>
+<script src="/static/i18n.js"></script>
+<script src="/static/voice.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

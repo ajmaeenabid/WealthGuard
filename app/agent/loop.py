@@ -1,5 +1,6 @@
 """Tool-use loop. The model proposes; the tier engine and compliance engine decide."""
 import json
+import re
 
 from app import config, profiling, service, state, store
 from app.agent import llm, tools
@@ -83,6 +84,8 @@ def run_turn(client_id: str, message: str) -> dict:
         final_text = SAFE_REPLY
     if config.DISCLAIMER not in final_text:
         final_text = f"{final_text}\n\n{config.DISCLAIMER}".strip()
+    if re.search(r"[一-鿿]", final_text) and config.DISCLAIMER_ZH not in final_text:
+        final_text = f"{final_text}\n{config.DISCLAIMER_ZH}"
     if fallback:
         audit.append("system", "llm_fallback_to_mock", "T0", {}, client_id)
 

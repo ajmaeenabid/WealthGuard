@@ -1,5 +1,8 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
+const I = () => window.WGI18n;
+const t = (x) => (I() ? I().t(x) : x);
+const tr = (x) => (I() ? I().tr(x, esc) : esc(x));
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const pct = (x, d = 1) => (x * 100).toFixed(d) + "%";
 const cny = (x) => "CNY " + Math.round(x).toLocaleString("en-US");
@@ -19,20 +22,30 @@ async function api(path, body, method) {
 function addMsg(kind, text) {
   const d = document.createElement("div");
   d.className = "msg " + kind;
-  d.textContent = text;
+  d.textContent = String(text).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#+\s*/gm, "");
   $("messages").appendChild(d);
   $("messages").scrollTop = $("messages").scrollHeight;
 }
 
-function setQuick(question) {
+const ZH_LABELS = {
+  "Stable (salary or pension)": "稳定（工资或养老金）", "Variable": "变动", "Unstable": "不稳定",
+  "None (0%)": "不需要（0%）", "About 10%": "约10%", "About 25%": "约25%", "40% or more": "40%以上",
+  "Preserve capital": "保本", "Steady income": "稳定收入", "Education fund": "教育基金", "Retirement": "退休",
+  "Long-term growth": "长期增长", "Sell everything": "全部卖出", "Sell some": "卖出一部分", "Hold and wait": "持有等待",
+  "Buy more": "加仓", "None": "没有经验", "Basic (funds, bonds)": "基础（基金、债券）", "Advanced (derivatives, notes)": "高级（衍生品、票据）",
+};
+const hasCJK = (t) => /[一-鿿]/.test(t || "");
+
+function setQuick(question, zh) {
   const q = $("quick");
   q.innerHTML = "";
   if (!question || !question.options) return;
   question.options.forEach((o) => {
     const b = document.createElement("button");
     b.type = "button";
-    b.textContent = o.label;
-    b.onclick = () => send(o.label);
+    const label = zh && ZH_LABELS[o.label] ? ZH_LABELS[o.label] : o.label;
+    b.textContent = label;
+    b.onclick = () => send(label);
     q.appendChild(b);
   });
 }
@@ -81,7 +94,8 @@ async function send(text) {
     const r = await api("/api/chat", { client_id: clientId, message: text });
     (r.warnings || []).forEach((w) => addMsg("sys", w));
     addMsg("agent", r.reply);
-    setQuick(r.question);
+    if (window.WGVoice) window.WGVoice.speak(r.reply);
+    setQuick(r.question, hasCJK(r.reply));
     renderAttempts(r.attempts || []);
     if (r.compliance) renderChecks(r.compliance);
     if (r.trace) r.trace.filter((t) => t.ok === false).forEach((t) => addMsg("sys", `Refused: ${t.tool} (${t.tier})`));
@@ -109,16 +123,18 @@ async function refresh() {
   if (st.compliance) renderChecks(st.compliance);
   renderTickets(st.tickets);
   await loadAudit();
+  if (I() && I().lang === "zh") await I().applyDynamic(api, clientId);
 }
 
 function renderProfile(st) {
   const p = st.profile;
   if (!p) return;
   const eff = st.effective_bucket;
+  $("profile").removeAttribute("data-i18n");
   $("profile").innerHTML = `
-    <div>Risk tolerance <b>${p.risk_tolerance_score}</b>/100</div><div class="bar"><span style="width:${p.risk_tolerance_score}%"></span></div>
-    <div>Risk capacity <b>${p.risk_capacity_score}</b>/100</div><div class="bar cap"><span style="width:${p.risk_capacity_score}%"></span></div>
-    <div>Final bucket = the <b>lower</b> of the two: <span class="tag good">${esc(p.bucket)}</span>
+    <div>${t("Risk tolerance")} <b>${p.risk_tolerance_score}</b>/100</div><div class="bar"><span style="width:${p.risk_tolerance_score}%"></span></div>
+    <div>${t("Risk capacity")} <b>${p.risk_capacity_score}</b>/100</div><div class="bar cap"><span style="width:${p.risk_capacity_score}%"></span></div>
+    <div>${t("Final bucket = the lower of the two:")} <span class="tag good">${esc(p.bucket)}</span>
     ${eff !== p.bucket ? `&rarr; capped to <span class="tag bad">${esc(eff)}</span> (vulnerable client, rule R5)` : ""}</div>
     <div class="small muted">Age ${p.age}, horizon ${p.horizon_years} years, goal ${esc(p.goal)}, experience ${esc(p.experience)}, liquidity need ${p.liquidity_need_pct}%.</div>`;
 }
@@ -127,47 +143,49 @@ function renderAllocation(st) {
   const a = st.allocation;
   if (!a) return;
   lastAllocId = a.id;
-  $("allocTag").textContent = "approved by compliance"; $("allocTag").className = "tag good";
+  $("allocation").removeAttribute("data-i18n");
+  $("allocTag").textContent = t("approved by compliance"); $("allocTag").className = "tag good";
   const rows = a.lines.map((l) => {
     const p = products[l.product_id] || { name: l.product_id, risk_level: "?" };
     return `<tr><td><b>${esc(p.name)}</b><div class="small muted">${esc(l.product_id)} &middot; risk ${p.risk_level}${p.complex ? " &middot; complex" : ""}</div></td>
-      <td class="num">${pct(l.weight)}</td><td class="num">${cny(l.weight * ((st.profile || {}).investable_amount_cny || 0))}</td><td class="small">${esc(l.rationale)}</td></tr>`;
+      <td class="num">${pct(l.weight)}</td><td class="num">${cny(l.weight * ((st.profile || {}).investable_amount_cny || 0))}</td><td class="small">${tr(l.rationale)}</td></tr>`;
   }).join("");
-  $("allocation").innerHTML = `<p>${esc(a.summary)}</p>
-    <table><thead><tr><th>Product</th><th class="num">Weight</th><th class="num">Amount</th><th>Why this</th></tr></thead><tbody>${rows}</tbody></table>
-    <p class="small muted">Expected net return ${pct(a.expected_return)} a year, volatility ${pct(a.volatility)}. Past performance is not a reliable indicator of future results.</p>`;
+  $("allocation").innerHTML = `<p>${tr(a.summary)}</p>
+    <table><thead><tr><th>${t("Product")}</th><th class="num">${t("Weight")}</th><th class="num">${t("Amount")}</th><th>${t("Why this")}</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="small muted">${tr(`Expected net return ${pct(a.expected_return)} a year, volatility ${pct(a.volatility)}. Past performance is not a reliable indicator of future results.`)}</p>`;
   drawAlloc(a);
   const wn = Object.entries(st.why_not || {});
-  $("whyNot").innerHTML = wn.length ? wn.map(([id, w]) => `<div class="whynot"><b>${esc(w.name)}</b> (${esc(id)}): ${esc(w.text)}</div>`).join("") : "-";
+  $("whyNot").innerHTML = wn.length ? wn.map(([id, w]) => `<div class="whynot"><b>${esc(w.name)}</b> (${esc(id)}): ${tr(w.text)}</div>`).join("") : "-";
 }
 
 function renderChecks(c) {
-  $("compTag").textContent = c.passed ? "all checks passed" : "BLOCKED";
+  $("compTag").textContent = c.passed ? t("all checks passed") : t("BLOCKED");
   $("compTag").className = "tag " + (c.passed ? "good" : "bad");
   const names = { R1: "Suitability", R2: "Concentration", R3: "Complexity", R4: "Liquidity", R5: "Vulnerable client", R6: "Disclosures", R7: "Language", R8: "Minimums", LLM: "LLM reviewer (second opinion)" };
-  $("checks").innerHTML = c.checks.map((k) => `<li class="${k.passed ? "ok" : "fail"}"><b>${k.passed ? "&#10003;" : "&#10007;"} ${esc(k.rule_id)}</b><span><b>${esc(names[k.rule_id] || "")}</b> - ${esc(k.detail)}</span></li>`).join("");
-  $("disclosures").innerHTML = "<b>Required disclosures:</b><br>" + (c.required_disclosures || []).map(esc).join("<br>");
+  $("checks").innerHTML = c.checks.map((k) => `<li class="${k.passed ? "ok" : "fail"}"><b>${k.passed ? "&#10003;" : "&#10007;"} ${esc(k.rule_id)}</b><span><b>${esc(I() ? I().ruleName(k.rule_id, names[k.rule_id] || "") : (names[k.rule_id] || ""))}</b> - ${tr(k.detail)}</span></li>`).join("");
+  $("disclosures").innerHTML = `<b>${t("Required disclosures:")}</b><br>` + (c.required_disclosures || []).map(tr).join("<br>");
 }
 
 function renderAttempts(att) {
   if (!att.length) return;
-  $("attempts").innerHTML = "<h3>Draft log</h3>" + att.map((a, i) =>
-    `<div class="attempt ${a.passed ? "ok" : "fail"}">Draft ${i + 1}: ${a.passed ? "passed compliance" : "BLOCKED by " + esc((a.failed_rules || []).join(", ")) + " - not shown to the client; agent revised"}</div>`).join("");
+  $("attempts").innerHTML = `<h3>${t("Draft log")}</h3>` + att.map((a, i) =>
+    `<div class="attempt ${a.passed ? "ok" : "fail"}">${tr(`Draft ${i + 1}: ${a.passed ? "passed compliance" : "BLOCKED by " + (a.failed_rules || []).join(", ") + " - not shown to the client; agent revised"}`)}</div>`).join("");
 }
 
 function renderTickets(ts) {
   const open = (ts || []);
+  $("tickets").removeAttribute("data-i18n");
   if (!open.length) { $("tickets").innerHTML = '<span class="muted">No pending actions. Ask the agent to "create an order ticket".</span>'; return; }
   $("tickets").innerHTML = "";
-  open.forEach((t) => {
+  open.forEach((tk) => {
     const d = document.createElement("div");
     d.className = "ticket";
-    d.innerHTML = `<div><b>${esc(t.kind)} ${esc(t.id)}</b> <span class="tag ${t.status === "approved" ? "good" : t.status === "rejected" ? "bad" : ""}">${esc(t.status)}</span> <span class="tag">sandbox</span><div class="small muted">${esc(t.detail)}</div></div>`;
-    if (t.status === "awaiting_approval") {
-      const ok = document.createElement("button"); ok.className = "approve"; ok.textContent = "Approve";
-      ok.onclick = () => act("approve", t.id);
-      const no = document.createElement("button"); no.textContent = "Reject";
-      no.onclick = () => act("reject", t.id);
+    d.innerHTML = `<div><b>${esc(tk.kind)} ${esc(tk.id)}</b> <span class="tag ${tk.status === "approved" ? "good" : tk.status === "rejected" ? "bad" : ""}">${esc(tk.status)}</span> <span class="tag">${t("sandbox")}</span><div class="small muted">${tr(tk.detail)}</div></div>`;
+    if (tk.status === "awaiting_approval") {
+      const ok = document.createElement("button"); ok.className = "approve"; ok.textContent = t("Approve");
+      ok.onclick = () => act("approve", tk.id);
+      const no = document.createElement("button"); no.textContent = t("Reject");
+      no.onclick = () => act("reject", tk.id);
       const w = document.createElement("div"); w.className = "row"; w.append(ok, no); d.appendChild(w);
     }
     $("tickets").appendChild(d);
@@ -209,9 +227,9 @@ async function runStress(scenario, quiet) {
   try {
     const s = await api("/api/stress", { allocation_id: lastAllocId, scenario: scenario || $("scenario").value });
     const g = s.goal;
-    $("stressOut").innerHTML = `<b>${esc(s.label)}</b>: portfolio change <b>${s.loss_pct.toFixed(2)}%</b>.
-      Chance of reaching the goal (${cny(g.target_cny)} in ${g.years} years): <b>${pct(g.base_probability, 0)}</b> normally,
-      <b>${pct(g.probability, 0)}</b> if the shock hits today (${g.paths.toLocaleString("en-US")} Monte Carlo paths).`;
+    $("stressOut").removeAttribute("data-i18n");
+    $("stressOut").innerHTML = tr(`${s.label}: portfolio change ${s.loss_pct.toFixed(2)}%. Chance of reaching the goal (${cny(g.target_cny)} in ${g.years} years): ${pct(g.base_probability, 0)} normally, ${pct(g.probability, 0)} if the shock hits today (${g.paths.toLocaleString("en-US")} Monte Carlo paths).`);
+    if (I() && I().lang === "zh") await I().applyDynamic(api, clientId);
     drawStress(s);
   } catch (e) { $("stressOut").textContent = "Error: " + e.message; }
 }
@@ -224,7 +242,7 @@ async function loadAudit() {
 
 async function verify() {
   const v = await api("/api/audit/verify");
-  $("auditTag").textContent = v.valid ? "chain valid" : "CHAIN BROKEN";
+  $("auditTag").textContent = v.valid ? t("chain valid") : t("CHAIN BROKEN");
   $("auditTag").className = "tag " + (v.valid ? "good" : "bad");
   $("verifyOut").textContent = v.valid ? `Verified ${v.checked} entries; head ${v.head.slice(0, 16)}...` : `Tampering detected: chain breaks at entry #${v.broken_at}.`;
 }
@@ -249,6 +267,7 @@ async function init() {
   $("llmBadge").textContent = h.mock_llm ? "mock LLM" : "live LLM";
   $("start").onclick = () => startSession().catch((e) => addMsg("sys", "Error: " + e.message));
   $("chatForm").onsubmit = (ev) => { ev.preventDefault(); send($("chatInput").value); };
+  $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null);
   $("runStress").onclick = () => runStress();
   $("verify").onclick = verify;
   $("refreshAudit").onclick = loadAudit;

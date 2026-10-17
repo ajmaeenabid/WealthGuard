@@ -67,6 +67,40 @@ def missing(answers: dict) -> list[str]:
     return [q["id"] for q in QUESTIONS if q["id"] not in known]
 
 
+# Chinese keywords per choice question, checked in order (negated or longer phrases first, e.g. 不稳定 before 稳定).
+ZH_ALIASES = {
+    "income_stability": [("unstable", ["不稳定", "不太稳定", "不固定", "无保障", "没保障"]),
+                         ("variable", ["变动", "浮动", "自由职业", "项目", "不一定"]),
+                         ("stable", ["稳定", "固定", "工资", "养老金", "退休金"])],
+    "goal": [("preservation", ["保本", "保值", "保全", "保住本金", "资本保全"]),
+             ("education", ["教育", "子女", "孩子", "学费", "留学"]),
+             ("retirement", ["退休", "养老"]),
+             ("growth", ["增长", "增值", "长期增长", "资产增值"]),
+             ("income", ["收入", "现金流", "分红", "利息"])],
+    "loss_reaction": [("sell_some", ["卖出一部分", "卖一部分", "部分卖出", "卖掉一些", "卖一些", "减仓"]),
+                      ("sell_all", ["全部卖出", "全卖", "清仓", "全部抛售", "都卖"]),
+                      ("buy_more", ["加仓", "买入更多", "再买", "多买", "补仓"]),
+                      ("hold", ["持有", "等待", "不动", "拿着", "观望", "继续"])],
+    "experience": [("none", ["没有经验", "无经验", "没经验", "新手", "零基础", "没有"]),
+                   ("advanced", ["高级", "丰富", "专业", "衍生品", "结构性"]),
+                   ("basic", ["基础", "基本", "一些", "有一点", "基金", "债券"])],
+}
+ZH_ZERO = ["不需要", "无需", "没有", "不用", "零"]
+
+
+def _parse_zh(q: dict, text: str):
+    if q["id"] == "liquidity_need_pct":
+        m = re.search(r"\d+(\.\d+)?", text)
+        if m:
+            n = float(m.group())
+            return min(q["options"], key=lambda v: abs(v - n))
+        return 0 if any(w in text for w in ZH_ZERO) else None
+    for value, words in ZH_ALIASES.get(q["id"], []):
+        if any(w in text for w in words):
+            return value
+    return None
+
+
 def parse_answer(qid: str, text: str):
     """Deterministic mapping of free text / clicked option to a canonical answer; None if unclear."""
     q = QBY.get(qid)
@@ -79,10 +113,14 @@ def parse_answer(qid: str, text: str):
     for v, (lab, _) in q["options"].items():
         if t == str(v).lower() or t == lab.lower():
             return v
+    if q["id"] == "liquidity_need_pct":  # numeric first: "0" must not match inside "10%" or "30"
+        m = re.search(r"\d+(\.\d+)?", t)
+        if m:
+            return min(q["options"], key=lambda v: abs(v - float(m.group())))
     for v, (lab, _) in q["options"].items():
         if str(v).lower() in t.replace(" ", "_") or lab.lower().split(" (")[0] in t:
             return v
-    return None
+    return _parse_zh(q, t)
 
 
 def _score(q: dict, value) -> float:

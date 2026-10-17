@@ -17,9 +17,16 @@ BANNED = [
     r"\bguarantee[sd]?\b", r"\brisk[- ]?free\b", r"\bcan(?:'|’)?t lose\b", r"\bcannot lose\b", r"\bcan not lose\b",
     r"\bno risk\b", r"\bzero risk\b", r"\bwithout risk\b", r"\b100% safe\b", r"\bsure (profit|thing|win)\b",
     r"\bnever lose\b", r"\bcertain (return|profit)s?\b", r"\bassured returns?\b",
+    # Chinese equivalents (no \b: CJK has no word boundaries). 保证金 (margin deposit) is not a promise.
+    r"保证(?!金)", r"保本", r"保收益", r"稳赚", r"包赚", r"必赚", r"一定赚", r"零风险", r"无风险", r"没有风险",
+    r"不会亏", r"绝不亏", r"绝对安全", r"百分之百安全", r"100%安全", r"稳赢", r"确定的?收益",
 ]
 NEGATION = re.compile(r"\b(not|no|never|without|isn't|is not|cannot|can't)\s+(a\s+|an\s+|any\s+|the\s+)?"
                       r"guarantee[sd]?\b", re.IGNORECASE)
+
+
+ZH_NEGATION = re.compile(r"(不|无法|不能|不会|并不|并非|没有|不可能|不予|不敢|绝不)(能)?(做出|作出|提供|承诺)?"
+                         r"(任何)?(保证|保本|保收益|承诺保证)|(不是|并非|没有|不存在|不可能有|不等于)(任何)?(零风险|无风险|没有风险)")
 
 
 def _chk(rule_id: str, passed: bool, detail: str) -> ComplianceCheck:
@@ -27,7 +34,7 @@ def _chk(rule_id: str, passed: bool, detail: str) -> ComplianceCheck:
 
 
 def banned_phrases(text: str) -> list[str]:
-    cleaned = NEGATION.sub(" ", text)
+    cleaned = ZH_NEGATION.sub(" ", NEGATION.sub(" ", text))
     hits = []
     for pat in BANNED:
         m = re.search(pat, cleaned, re.IGNORECASE)
