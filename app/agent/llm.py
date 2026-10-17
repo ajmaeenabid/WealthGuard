@@ -211,6 +211,20 @@ def mock_respond(messages: list, state: dict) -> LLMResponse:
             return LLMResponse(text=f"I can't do that: it is a forbidden action and it has been logged. "
                                     f"I can help with profiling, allocation, comparisons and stress tests. {disclaimer}")
 
+    if any(w in text for w in ["spending", "my spend", "habit", "purchase history", "buying pattern", "behaviour",
+                               "behavior", "my purchases", "支出", "消费", "购买记录", "花销", "习惯"]):
+        if not res:
+            return _call("get_behaviour_insights", {}, n)
+        b = last[2]
+        if not b.get("entries"):
+            return LLMResponse(text="I do not have a purchase history for you yet. Add items in the Purchase history "
+                                    f"panel by typing or by voice, and I will summarise it. {disclaimer}")
+        cats = ", ".join(f"{k} CNY {v:,.0f}" for k, v in list(b["by_category"].items())[:3]) or "none yet"
+        tips = " ".join(f["text"] for f in b["flags"][:3])
+        return LLMResponse(text=(f"Your recorded purchases total CNY {b['bought_total']:,.0f} across {b['bought_count']} "
+                                 f"items (top categories: {cats}). {b['planned_count']} planned and "
+                                 f"{b['cancelled_count']} cancelled items are not counted. {tips} {b['note']} {disclaimer}"))
+
     if "list" in text and "product" in text:
         if not res:
             return _call("list_products", {}, n)

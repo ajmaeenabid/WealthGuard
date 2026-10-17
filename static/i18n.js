@@ -21,6 +21,14 @@
     "Required disclosures:": "必须披露：", "Draft log": "草稿记录",
     "Risk tolerance": "风险承受意愿", "Risk capacity": "风险承受能力",
     "Final bucket = the lower of the two:": "最终风险档位 = 两者中较低者：",
+    hL: "购买记录与行为分析", ledgerHint: "说出或输入你买了什么、计划买什么或没买什么。确认之前不会有任何改动。",
+    ledgerPh: "例如：买了耳机花了300元 / 取消笔记本", interpret: "解析", itemPh: "物品", impulse: "冲动消费", add: "添加",
+    sampleBalanced: "加载示例记录", sampleHeavy: "加载高消费示例", thDate: "日期", thItem: "物品", thAmt: "金额", thStatus: "状态",
+    "Confirm": "确认", "Discard": "放弃", "Cancel item": "标为没买", "Mark bought": "标为已买", "Delete": "删除",
+    "bought": "已买", "planned": "计划中", "cancelled": "已取消", "Bought": "已买", "Planned": "计划中", "Cancelled": "已取消",
+    "Pending change:": "待确认的更改：", "Bought total": "已买合计", "Planned (not counted)": "计划中（不计入）",
+    "Cancelled (not counted)": "已取消（不计入）", "No entries yet.": "暂无记录。", "Start a session first.": "请先开始会话。", "Enter an item and an amount.": "请输入物品和金额。",
+    "Review the change below, then confirm.": "请查看下方的更改，然后确认。",
   };
   const ZH_RULES = { R1: "适当性", R2: "集中度", R3: "复杂性", R4: "流动性", R5: "脆弱客户", R6: "披露", R7: "用语", R8: "最低金额" };
   let lang = "en";

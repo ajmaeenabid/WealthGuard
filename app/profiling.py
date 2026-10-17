@@ -156,8 +156,10 @@ def build_profile(client_id: str, answers: dict, name: str = "Client", extra: Op
         raise ValueError(f"missing answers: {miss}")
     a = infer(answers)
     tol, cap = compute_scores(answers)
-    bucket = lower_bucket(score_to_bucket(tol), score_to_bucket(cap))
     extra = extra or {}
+    # Behaviour data can only make the profile more cautious: a non-negative penalty on capacity, never a bonus.
+    cap = round(max(0.0, cap - max(0.0, float(extra.get("behaviour_penalty", 0) or 0))), 1)
+    bucket = lower_bucket(score_to_bucket(tol), score_to_bucket(cap))
     return ClientProfile(
         id=client_id, name=name, age=int(float(a["age"])), horizon_years=float(a["horizon_years"]),
         goal=str(a["goal"]), monthly_income_cny=float(a["monthly_income_cny"]),

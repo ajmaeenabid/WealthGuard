@@ -122,6 +122,7 @@ async function refresh() {
   renderAllocation(st);
   if (st.compliance) renderChecks(st.compliance);
   renderTickets(st.tickets);
+  await loadLedger();
   await loadAudit();
   if (I() && I().lang === "zh") await I().applyDynamic(api, clientId);
 }
@@ -259,6 +260,83 @@ async function uploadDoc() {
   } catch (e) { $("docWarn").textContent = "Error: " + e.message; }
 }
 
+
+// ---- purchase history and behaviour -----------------------------------------------------------------------------
+async function showLedger(data) {
+  const entries = data.entries || [], b = data.insights || {};
+  const tb = $("ledgerTable").querySelector("tbody");
+  tb.innerHTML = "";
+  entries.forEach((e) => {
+    const tr_ = document.createElement("tr");
+    const tag = e.status === "bought" ? "good" : e.status === "cancelled" ? "bad" : "";
+    tr_.innerHTML = `<td class="small">${esc(e.ts)}</td><td>${esc(e.item)}<div class="small muted">${esc(e.category)}${e.impulse ? " &middot; impulse" : ""}</div></td>
+      <td class="num">${cny(e.amount_cny)}</td><td><span class="tag ${tag}">${esc(t(e.status))}</span></td><td></td>`;
+    const cell = tr_.lastElementChild;
+    const mk = (label, fn) => { const x = document.createElement("button"); x.type = "button"; x.className = "small"; x.textContent = t(label); x.onclick = fn; cell.appendChild(x); };
+    if (e.status !== "bought") mk("Mark bought", () => ledgerPatch(e.id, { status: "bought" }));
+    if (e.status !== "cancelled") mk("Cancel item", () => ledgerPatch(e.id, { status: "cancelled" }));
+    mk("Delete", () => ledgerDelete(e.id));
+    tb.appendChild(tr_);
+  });
+  if (!entries.length) tb.innerHTML = `<tr><td colspan="5" class="muted">${esc(t("No entries yet."))}</td></tr>`;
+  $("ledgerSummary").innerHTML = entries.length
+    ? `<b>${esc(t("Bought total"))}: ${cny(b.bought_total || 0)}</b> &middot; ${esc(t("Planned (not counted)"))}: ${cny(b.planned_total || 0)} &middot; ${esc(t("Cancelled (not counted)"))}: ${cny(b.cancelled_total || 0)}` : "";
+  const flags = (b.flags || []).map((f) => `<div class="insight ${esc(f.severity)}">${tr(f.text)}</div>`).join("");
+  const pen = b.capacity_penalty ? `<div class="insight high">${tr(`Applied to risk capacity: -${b.capacity_penalty} points. Behaviour data can only make the profile more cautious, never riskier.`)}</div>` : "";
+  $("ledgerInsights").innerHTML = flags + pen + (entries.length ? `<div class="small muted">${tr(b.note || "")}</div>` : "");
+  $("ledgerProposal").innerHTML = "";
+  (data.pending || []).forEach((p) => {
+    const d = document.createElement("div");
+    d.className = "proposal";
+    d.innerHTML = `<b>${esc(t("Pending change:"))}</b> ${tr(p.summary)}`;
+    const ok = document.createElement("button"); ok.type = "button"; ok.className = "approve"; ok.textContent = t("Confirm");
+    ok.onclick = () => ledgerAct(`/api/ledger/confirm/${p.id}`);
+    const no = document.createElement("button"); no.type = "button"; no.textContent = t("Discard");
+    no.onclick = () => ledgerAct(`/api/ledger/reject/${p.id}`);
+    const row = document.createElement("div"); row.className = "row"; row.append(ok, no); d.appendChild(row);
+    $("ledgerProposal").appendChild(d);
+  });
+  $("ledgerTag").textContent = entries.length ? `${entries.length}` : "";
+  if (I() && I().lang === "zh") await I().applyDynamic(api, clientId);
+}
+
+async function loadLedger() {
+  if (!clientId) return;
+  await showLedger(await api(`/api/ledger?client_id=${encodeURIComponent(clientId)}`));
+}
+
+async function ledgerCall(path, body) {
+  if (!clientId) { $("ledgerNote").textContent = t("Start a session first."); return; }
+  try {
+    await showLedger(await api(path, { client_id: clientId, ...body }));
+    await refresh();
+  } catch (e) { $("ledgerNote").textContent = "Error: " + e.message; }
+}
+const ledgerAct = (path) => ledgerCall(path, {});
+const ledgerPatch = (id, body) => ledgerCall(`/api/ledger/${id}/update`, body);
+const ledgerDelete = (id) => ledgerCall(`/api/ledger/${id}/delete`, {});
+
+async function ledgerInterpret() {
+  const input = $("ledgerCmd"), text = input.value.trim();
+  if (!clientId) { $("ledgerNote").textContent = t("Start a session first."); return; }
+  if (!text) return;
+  const source = input.dataset.voice ? "voice" : "typed";
+  try {
+    const r = await api("/api/ledger/command", { client_id: clientId, text, source });
+    input.value = ""; delete input.dataset.voice;
+    $("ledgerNote").textContent = r.ok ? "Review the change below, then confirm." : r.message;
+    (r.warnings || []).forEach((w) => addMsg("sys", w));
+    await loadLedger();
+  } catch (e) { $("ledgerNote").textContent = "Error: " + e.message; }
+}
+
+async function ledgerAdd() {
+  const item = $("lgItem").value.trim(), amount = parseFloat($("lgAmount").value);
+  if (!item || !(amount > 0)) { $("ledgerNote").textContent = t("Enter an item and an amount."); return; }
+  await ledgerCall("/api/ledger", { item, amount_cny: amount, category: $("lgCat").value, status: $("lgStatus").value, impulse: $("lgImpulse").checked });
+  $("lgItem").value = ""; $("lgAmount").value = ""; $("lgImpulse").checked = false;
+}
+
 async function init() {
   setChips();
   const [ps, pr, h] = await Promise.all([api("/api/personas", undefined, "GET"), api("/api/products", undefined, "GET"), api("/api/health", undefined, "GET")]);
@@ -268,6 +346,11 @@ async function init() {
   $("start").onclick = () => startSession().catch((e) => addMsg("sys", "Error: " + e.message));
   $("chatForm").onsubmit = (ev) => { ev.preventDefault(); send($("chatInput").value); };
   $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null);
+  $("ledgerGo").onclick = ledgerInterpret;
+  $("ledgerCmd").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); ledgerInterpret(); } });
+  $("lgAdd").onclick = ledgerAdd;
+  $("lgSample").onclick = () => ledgerCall("/api/ledger/sample", { kind: "balanced" });
+  $("lgHeavy").onclick = () => ledgerCall("/api/ledger/sample", { kind: "heavy" });
   $("runStress").onclick = () => runStress();
   $("verify").onclick = verify;
   $("refreshAudit").onclick = loadAudit;

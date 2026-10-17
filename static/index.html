@@ -80,6 +80,33 @@
       <div id="tickets" class="muted" data-i18n="ph_tickets">No pending actions. Ask the agent to "create an order ticket".</div>
     </div>
 
+    <div class="card" id="ledgerCard">
+      <h2><span data-i18n="hL">Purchase history &amp; behaviour</span> <span class="tag" id="ledgerTag"></span></h2>
+      <div class="small muted" data-i18n="ledgerHint">Say or type what you bought, planned or did not buy. Nothing changes until you confirm.</div>
+      <div class="row">
+        <input id="ledgerCmd" type="text" maxlength="300" placeholder="e.g. I bought headphones for 300 / cancel the laptop" data-i18n-ph="ledgerPh" aria-label="Purchase command">
+        <button type="button" id="ledgerMic" aria-pressed="false" title="Speak a purchase">Mic</button>
+        <button type="button" id="ledgerGo" class="primary" data-i18n="interpret">Interpret</button>
+      </div>
+      <span id="ledgerNote" class="muted small" aria-live="polite"></span>
+      <div id="ledgerProposal"></div>
+      <div class="row">
+        <input id="lgItem" type="text" maxlength="80" placeholder="Item" data-i18n-ph="itemPh" aria-label="Item" style="width:28%">
+        <input id="lgAmount" type="number" min="1" step="1" placeholder="CNY" aria-label="Amount in CNY" style="width:18%">
+        <select id="lgCat" aria-label="Category"><option>food</option><option>transport</option><option selected>shopping</option><option>entertainment</option><option>health</option><option>housing</option><option>education</option><option>other</option></select>
+        <select id="lgStatus" aria-label="Status"><option value="bought">bought</option><option value="planned">planned</option><option value="cancelled">cancelled</option></select>
+        <label class="small"><input id="lgImpulse" type="checkbox"> <span data-i18n="impulse">impulse</span></label>
+        <button type="button" id="lgAdd" data-i18n="add">Add</button>
+      </div>
+      <div class="row">
+        <button type="button" id="lgSample" data-i18n="sampleBalanced">Load sample history</button>
+        <button type="button" id="lgHeavy" class="warn" data-i18n="sampleHeavy">Load heavy-spender sample</button>
+      </div>
+      <div id="ledgerSummary" class="small"></div>
+      <div id="ledgerInsights"></div>
+      <div class="auditwrap"><table id="ledgerTable"><thead><tr><th data-i18n="thDate">Date</th><th data-i18n="thItem">Item</th><th class="num" data-i18n="thAmt">Amount</th><th data-i18n="thStatus">Status</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+
     <div class="card" id="docCard">
       <h2 data-i18n="h6">6. Upload a document (untrusted)</h2>
       <input id="docName" type="text" value="brochure.txt" aria-label="Filename">
