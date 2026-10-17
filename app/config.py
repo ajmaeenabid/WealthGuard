@@ -2,6 +2,7 @@
 import os
 
 DISCLAIMER = "Educational demo with synthetic products. Not real financial advice."
+DISCLAIMER_ZH = "教育演示，产品均为合成数据，不构成真实的投资建议。"
 
 BUCKET_ORDER = ["Conservative", "Moderate", "Balanced", "Growth", "Aggressive"]
 

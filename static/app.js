@@ -19,20 +19,30 @@ async function api(path, body, method) {
 function addMsg(kind, text) {
   const d = document.createElement("div");
   d.className = "msg " + kind;
-  d.textContent = text;
+  d.textContent = String(text).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#+\s*/gm, "");
   $("messages").appendChild(d);
   $("messages").scrollTop = $("messages").scrollHeight;
 }
 
-function setQuick(question) {
+const ZH_LABELS = {
+  "Stable (salary or pension)": "稳定（工资或养老金）", "Variable": "变动", "Unstable": "不稳定",
+  "None (0%)": "不需要（0%）", "About 10%": "约10%", "About 25%": "约25%", "40% or more": "40%以上",
+  "Preserve capital": "保本", "Steady income": "稳定收入", "Education fund": "教育基金", "Retirement": "退休",
+  "Long-term growth": "长期增长", "Sell everything": "全部卖出", "Sell some": "卖出一部分", "Hold and wait": "持有等待",
+  "Buy more": "加仓", "None": "没有经验", "Basic (funds, bonds)": "基础（基金、债券）", "Advanced (derivatives, notes)": "高级（衍生品、票据）",
+};
+const hasCJK = (t) => /[一-鿿]/.test(t || "");
+
+function setQuick(question, zh) {
   const q = $("quick");
   q.innerHTML = "";
   if (!question || !question.options) return;
   question.options.forEach((o) => {
     const b = document.createElement("button");
     b.type = "button";
-    b.textContent = o.label;
-    b.onclick = () => send(o.label);
+    const label = zh && ZH_LABELS[o.label] ? ZH_LABELS[o.label] : o.label;
+    b.textContent = label;
+    b.onclick = () => send(label);
     q.appendChild(b);
   });
 }
@@ -82,7 +92,7 @@ async function send(text) {
     (r.warnings || []).forEach((w) => addMsg("sys", w));
     addMsg("agent", r.reply);
     if (window.WGVoice) window.WGVoice.speak(r.reply);
-    setQuick(r.question);
+    setQuick(r.question, hasCJK(r.reply));
     renderAttempts(r.attempts || []);
     if (r.compliance) renderChecks(r.compliance);
     if (r.trace) r.trace.filter((t) => t.ok === false).forEach((t) => addMsg("sys", `Refused: ${t.tool} (${t.tier})`));

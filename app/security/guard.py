@@ -19,6 +19,16 @@ PATTERNS = [
     ("conceal", r"\bdo not (tell|inform|mention|show)\b[^.\n]{0,20}\b(user|client|customer)\b"),
     ("exfiltrate", r"\b(export|exfiltrate|upload|email|post)\b[^.\n]{0,30}\b(client|customer|personal|account)\b[^.\n]{0,15}\b(data|details|information)\b"),
     ("url_call", r"https?://\S+"),
+    # Chinese injection phrasing (no \b: CJK has no word boundaries)
+    ("zh_ignore_instructions", r"(忽略|无视|忽视|忘记|忘掉|覆盖|不要遵守)[^。\n]{0,15}(之前|以前|先前|上面|以上|所有|任何|你的)[^。\n]{0,10}(指令|指示|规则|提示|要求|约束)"),
+    ("zh_ignore_controls", r"(忽略|无视|忽视|绕过|跳过|关闭|禁用|规避)[^。\n]{0,10}(适当性|合规|审核|检查|审计|日志|限制|风控|安全措施)"),
+    ("zh_always_recommend", r"(总是|始终|一律|必须|务必|一定要|要)(向客户)?(推荐|购买|选择|包含|建议)"),
+    ("zh_transfer_funds", r"(转账|汇款|转移|打款|转入)[^。\n]{0,15}(资金|资产|款项|钱|存款)?[^。\n]{0,10}(到|至|给)"),
+    ("zh_role_hijack", r"(你现在是|你现在扮演|扮演|假装你是|假装成|从现在起你)"),
+    ("zh_system_prompt", r"(系统提示|系统提示词|开发者消息|隐藏指令|泄露你的(提示|指令))"),
+    ("zh_new_instructions", r"(新的?指令|更新的?指令|秘密指令)"),
+    ("zh_conceal", r"不要(告诉|通知|透露|向)[^。\n]{0,10}(用户|客户)"),
+    ("zh_exfiltrate", r"(导出|外传|上传|发送|发邮件)[^。\n]{0,15}(客户|个人|账户)[^。\n]{0,10}(数据|信息|资料|详情)"),
     ("chat_markup", r"(<\|im_start\|>|<\|system\|>|\[/?INST\]|###\s*system)"),
 ]
 COMPILED = [(n, re.compile(p, re.IGNORECASE)) for n, p in PATTERNS]
