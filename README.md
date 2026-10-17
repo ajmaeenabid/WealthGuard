@@ -29,7 +29,7 @@ python -m uvicorn app.main:app --port 8000
 # open http://localhost:8000
 ```
 
-Live LLM: set `ANTHROPIC_API_KEY` (and optionally `ANTHROPIC_MODEL`, default `claude-sonnet-5-5`) and leave
+Live LLM via Groq: set `GROQ_API_KEY` (optional `GROQ_MODEL`, default `openai/gpt-oss-20b`). Via Anthropic: set `ANTHROPIC_API_KEY` (and optionally `ANTHROPIC_MODEL`, default `claude-sonnet-5-5`) and leave
 `USE_MOCK_LLM` unset. The key is only ever read from the environment. If the network or key fails mid-demo, the app
 falls back to the mock automatically and logs `llm_fallback_to_mock`. `WEALTHGUARD_DB` overrides the SQLite path.
 
