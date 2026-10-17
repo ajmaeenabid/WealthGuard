@@ -24,3 +24,6 @@
 12. **Translation quality is unreviewed.** Live translations are not checked by a human or a second model; only unsafe wording is caught. Mock mode has no translator and shows English.
 13. **Voice privacy.** Browser speech recognition may send audio to the browser vendor. The app never receives audio, only the text the user chooses to send.
 14. **Third-party LLM.** With Groq or Anthropic, client facts (synthetic here) and chat text are sent to that provider. A real deployment needs a data-processing agreement and data minimisation.
+15. **Ledger is self-reported.** Behaviour insights use only what the client enters (or sample data) and the stated income; they are guidance, not a credit or spending assessment. Impulse is a client-set tag.
+16. **Command parser is rule-based.** Unusual phrasings are refused with an example rather than guessed; Chinese numerals (e.g. 三百) are not parsed, digits are.
+17. **Behaviour data is sensitive.** A real system would need explicit consent, retention limits and access control; the demo uses synthetic entries only.

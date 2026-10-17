@@ -5,7 +5,7 @@ from typing import Callable, Optional
 from pydantic import Field
 
 from app import allocation as al
-from app import comparison, compliance, config, profiling, simulator, state, store
+from app import behaviour, comparison, compliance, config, profiling, simulator, state, store
 from app.products import load_products
 from app.schemas import ClientProfile, OrderTicket, StrictArgs
 from app.security import audit
@@ -94,20 +94,29 @@ def compute_risk_profile(a: NoArgs, ctx: Ctx) -> dict:
     d = store.load_client(ctx.client_id)
     if not d:
         return _fail("unknown client")
+    penalty = behaviour.capacity_penalty(ctx.client_id)
     try:
-        prof = profiling.build_profile(ctx.client_id, d["facts"], d.get("name", "Client"), d.get("extra"))
+        prof = profiling.build_profile(ctx.client_id, d["facts"], d.get("name", "Client"),
+                                       {**(d.get("extra") or {}), "behaviour_penalty": penalty})
     except ValueError as e:
         return _fail(str(e))
     d["profile"] = prof.model_dump()
+    d.setdefault("extra", {})["behaviour_penalty_applied"] = penalty
     store.save_client(ctx.client_id, d)
     store.archive_blocked(ctx.client_id)
     eff = config.effective_bucket(prof.bucket, prof.age, prof.horizon_years)
     return {"profile": prof.model_dump(), "tolerance_bucket": profiling.score_to_bucket(prof.risk_tolerance_score),
             "capacity_bucket": profiling.score_to_bucket(prof.risk_capacity_score), "final_bucket": prof.bucket,
             "effective_bucket": eff,
-            "explanation": f"Tolerance {prof.risk_tolerance_score:g} and capacity {prof.risk_capacity_score:g}; "
-                           f"final bucket is the lower of the two: {prof.bucket}"
+            "behaviour_penalty": penalty,
+            "explanation": f"Tolerance {prof.risk_tolerance_score:g} and capacity {prof.risk_capacity_score:g}"
+                           + (f" (lowered by {penalty:g} for spending behaviour)" if penalty else "")
+                           + f"; final bucket is the lower of the two: {prof.bucket}"
                            + (f", capped to {eff} (vulnerable client, R5)." if eff != prof.bucket else ".")}
+
+
+def get_behaviour_insights(a: NoArgs, ctx: Ctx) -> dict:
+    return behaviour.insights(ctx.client_id)
 
 
 def compare_products(a: CompareArgs, ctx: Ctx) -> dict:
@@ -203,6 +212,8 @@ TOOLS: dict[str, Tool] = {t.name: t for t in [
          "Get the next unanswered profiling question (adaptive: answered or implied ones are skipped)."),
     Tool("compute_risk_profile", "T1", NoArgs, compute_risk_profile,
          "Score risk tolerance and capacity from the answers; final bucket is the lower of the two."),
+    Tool("get_behaviour_insights", "T1", NoArgs, get_behaviour_insights,
+         "Summarise the client's purchase history (totals, categories, impulse share) with plain-language guidance."),
     Tool("compare_products", "T1", CompareArgs, compare_products,
          "Compare products side by side with 'why not' notes for this client."),
     Tool("propose_allocation", "T1", ProposeArgs, propose_allocation,

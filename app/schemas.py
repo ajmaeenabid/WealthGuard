@@ -141,3 +141,51 @@ class StrictArgs(BaseModel):
     """Base for tool argument models: unknown fields are rejected."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+# ---- purchase ledger and behaviour (ext) ------------------------------------------------------------------
+LedgerStatus = Literal["planned", "bought", "cancelled"]
+LedgerCategory = Literal["food", "transport", "shopping", "entertainment", "health", "housing", "education", "other"]
+
+
+class LedgerEntry(BaseModel):
+    id: str
+    client_id: str
+    ts: str  # ISO date the purchase happened or is planned for
+    item: str = Field(min_length=1, max_length=80)
+    category: LedgerCategory = "other"
+    amount_cny: float = Field(gt=0, le=10_000_000)
+    status: LedgerStatus = "bought"
+    impulse: bool = False
+    source: Literal["typed", "voice", "sample"] = "typed"
+    updated: str = ""
+
+
+class LedgerIn(BaseModel):
+    client_id: str
+    item: str = Field(min_length=1, max_length=80)
+    category: LedgerCategory = "other"
+    amount_cny: float = Field(gt=0, le=10_000_000)
+    status: LedgerStatus = "bought"
+    impulse: bool = False
+    ts: Optional[str] = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+
+
+class LedgerPatch(BaseModel):
+    client_id: str
+    item: Optional[str] = Field(default=None, min_length=1, max_length=80)
+    category: Optional[LedgerCategory] = None
+    amount_cny: Optional[float] = Field(default=None, gt=0, le=10_000_000)
+    status: Optional[LedgerStatus] = None
+    impulse: Optional[bool] = None
+
+
+class LedgerCommandReq(BaseModel):
+    client_id: str
+    text: str = Field(min_length=1, max_length=300)
+    source: Literal["typed", "voice"] = "typed"
+
+
+class LedgerSampleReq(BaseModel):
+    client_id: str
+    kind: Literal["balanced", "heavy"] = "balanced"

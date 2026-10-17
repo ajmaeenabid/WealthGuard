@@ -44,6 +44,10 @@ falls back to the mock automatically and logs `llm_fallback_to_mock`. `WEALTHGUA
 - **Mic** fills the chat box from speech (browser Web Speech API, Chrome or Edge); you press Send, so spoken and typed text take the same guarded path. **Read aloud** speaks replies. Some browsers send audio to their vendor for recognition; typing always works.
 - **EN / 中文** toggle: fixed UI labels come from a dictionary; engine text (rationales, compliance details) is translated by `/api/translate`. Chinese is also accepted in chat (answers, injection and R7 checks). With `USE_MOCK_LLM=1` there is no translator, so dynamic text stays English (never a guess); use a live LLM to demo it.
 
+## Purchase history and behaviour
+
+A ledger of planned, bought and cancelled purchases. Type or speak a command (English or Chinese): "I bought headphones for 300", "plan to buy a laptop 6000", "I didn't buy the laptop", "change headphones to 250", "delete lunch", 买了耳机花了300元, 取消耳机. A command only creates a **proposal**; nothing changes until you click Confirm (voice can never confirm). The form buttons (Mark bought, Cancel item, Delete) are your own clicks. Totals, category/month sums and the guidance are computed by code from your entries, never by the model. Heavy or impulse-driven spending lowers risk *capacity* by at most 10 points; it can never raise risk. Ask the chat "How is my spending?" for a summary. "Load sample history" fills synthetic data for the demo.
+
 ## Deploy to Vercel (frontend and backend together)
 
 `api/index.py` serves the FastAPI app and the static UI as one serverless function; `vercel.json` routes every path to it.
@@ -83,7 +87,8 @@ tamper detection, 12 injection strings, attack tests, Chinese R7/guard/answer pa
 7. Tamper: `python scripts/tamper_demo.py` edits one audit row in SQLite; click Verify log: it fails at that row.
    Also try "Try a forbidden action" (T3 refusal, logged).
 
-8. Language: click **中文**, or answer in Chinese (e.g. 稳定, 大约10%, 卖出一部分); use Mic for speech.
+8. Purchase history: click **Load heavy-spender sample**, read the insights, say "cancel the new phone" (Mic or type), then **Confirm**; ask the chat "How is my spending?".
+9. Language: click **中文**, or answer in Chinese (e.g. 稳定, 大约10%, 卖出一部分); use Mic for speech.
 
 Other personas: **Mr. Chen** (Growth allocation passes), **Mr. Wang** (68, capped to Moderate by R5).
 

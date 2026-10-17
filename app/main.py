@@ -6,12 +6,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import comparison, config, profiling, service, state, store, translate
+from app import behaviour, comparison, config, ledger, profiling, service, state, store, translate
 from app.agent import loop
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
-from app.schemas import (AllocationReq, ApproveReq, ChatReq, ClientProfile, CompareReq, DocumentReq, ProfileReq,
-                         SessionReq, StressReq, TranslateReq)
+from app.schemas import (AllocationReq, ApproveReq, ChatReq, ClientProfile, CompareReq, DocumentReq, LedgerCommandReq,
+                         LedgerIn, LedgerPatch, LedgerSampleReq, ProfileReq, SessionReq, StressReq, TranslateReq)
 from app.security import audit, guard, tiers
 
 app = FastAPI(title="WealthGuard", description=config.DISCLAIMER)
@@ -54,6 +54,94 @@ def translate_texts(req: TranslateReq):
     if req.client_id:
         _client(req.client_id)
     return translate.translate_many(req.texts, req.target, req.client_id)
+
+
+def _ledger_view(client_id: str) -> dict:
+    return {"entries": ledger.list_entries(client_id), "insights": behaviour.insights(client_id),
+            "pending": ledger.pending_changes(client_id)}
+
+
+@app.get("/api/ledger")
+def get_ledger(client_id: str):
+    _client(client_id)
+    return _ledger_view(client_id)
+
+
+@app.post("/api/ledger")
+def add_ledger(req: LedgerIn):
+    _client(req.client_id)
+    try:
+        ledger.add_entry(req.client_id, req.item, req.amount_cny, req.category, req.status, req.impulse, req.ts)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    service.sync_profile_with_behaviour(req.client_id)
+    return _ledger_view(req.client_id)
+
+
+@app.post("/api/ledger/{entry_id}/update")
+def update_ledger(entry_id: str, req: LedgerPatch):
+    _client(req.client_id)
+    try:
+        ledger.update_entry(entry_id, req.client_id, item=req.item, category=req.category,
+                            amount_cny=req.amount_cny, status=req.status, impulse=req.impulse)
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+    service.sync_profile_with_behaviour(req.client_id)
+    return _ledger_view(req.client_id)
+
+
+@app.post("/api/ledger/{entry_id}/delete")
+def delete_ledger(entry_id: str, req: ApproveReq):
+    _client(req.client_id)
+    try:
+        ledger.delete_entry(entry_id, req.client_id)
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+    service.sync_profile_with_behaviour(req.client_id)
+    return _ledger_view(req.client_id)
+
+
+@app.post("/api/ledger/command")
+def ledger_command(req: LedgerCommandReq):
+    """Parse a typed or spoken command into a proposal. Nothing changes until /confirm (an explicit click)."""
+    _client(req.client_id)
+    findings = guard.scan(req.text)
+    if findings:
+        audit.append("system", "injection_flagged", "T1", {"source": "ledger_command", "findings": findings},
+                     req.client_id)
+    res = ledger.parse_command(req.client_id, req.text)
+    audit.append("client", "ledger_command", "T1", {"source": req.source, "ok": res["ok"],
+                                                   "action": res.get("proposal", {}).get("action")}, req.client_id)
+    return res | {"warnings": guard.warnings_for(req.text, "ledger command") if findings else []}
+
+
+@app.post("/api/ledger/confirm/{change_id}")
+def ledger_confirm(change_id: str, req: ApproveReq):
+    _client(req.client_id)
+    try:
+        ledger.confirm(change_id, req.client_id)
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+    service.sync_profile_with_behaviour(req.client_id)
+    return _ledger_view(req.client_id)
+
+
+@app.post("/api/ledger/reject/{change_id}")
+def ledger_reject(change_id: str, req: ApproveReq):
+    _client(req.client_id)
+    try:
+        ledger.reject(change_id, req.client_id)
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+    return _ledger_view(req.client_id)
+
+
+@app.post("/api/ledger/sample")
+def ledger_sample(req: LedgerSampleReq):
+    _client(req.client_id)
+    ledger.load_sample(req.client_id, req.kind)
+    service.sync_profile_with_behaviour(req.client_id)
+    return _ledger_view(req.client_id)
 
 
 @app.get("/api/products")

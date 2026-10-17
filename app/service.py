@@ -1,7 +1,7 @@
 """Shared application services used by both the REST routes and the agent loop."""
 from typing import Optional
 
-from app import comparison, config, profiling, state, store
+from app import behaviour, comparison, config, profiling, state, store
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
 from app.security import audit, tiers
@@ -66,3 +66,17 @@ def run_pipeline(client_id: str, preferred_ids: list[str]) -> dict:
         out["error"] = ("I could not produce an allocation that passes compliance after "
                         f"{config.MAX_REVISIONS} revisions (failed: {', '.join(last_res['failed_rules'])}).")
     return out
+
+
+def sync_profile_with_behaviour(client_id: str) -> bool:
+    """If the ledger changed the behaviour penalty, drop the stale profile so it is recomputed (more cautious only)."""
+    d = store.load_client(client_id)
+    if not d or not d.get("profile"):
+        return False
+    applied = float((d.get("extra") or {}).get("behaviour_penalty_applied", 0) or 0)
+    if behaviour.capacity_penalty(client_id) == applied:
+        return False
+    d["profile"] = None
+    store.save_client(client_id, d)
+    audit.append("system", "profile_invalidated_by_behaviour", "T1", {"previous_penalty": applied}, client_id)
+    return True

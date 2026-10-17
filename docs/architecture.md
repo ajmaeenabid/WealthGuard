@@ -49,6 +49,8 @@ engine (what may be done) or the compliance engine (what may be shown).
 | `security/audit.py` | Append-only SHA-256 hash chain and `verify` |
 | `security/guard.py` | Injection detector, redaction, untrusted wrapper |
 | `agent/*` | Tool definitions, loop, Anthropic/Groq wrapper + deterministic mock |
+| `ledger.py` | Purchase ledger storage; EN/ZH command parser that only creates proposals; confirm/reject endpoints |
+| `behaviour.py` | Deterministic totals, category/month sums, flags and guidance; capped one-way capacity penalty |
 | `translate.py` | EN <-> ZH translation; output re-checked by R7, disclaimers fixed, falls back to English |
 | `static/voice.js`, `static/i18n.js` | Mic and read-aloud (browser API); EN/ZH labels and on-demand text translation |
 | `service.py`, `store.py`, `db.py` | Shared services and SQLite persistence |
@@ -71,3 +73,7 @@ As in CLAUDE.md, plus `POST /api/translate` (T1, audited), `GET /api/state`, `GE
 ## Language handling
 
 The agent, allocation engine and compliance engine work on English. Chinese input is understood directly (answer parsing, R7 phrase list, injection patterns); Chinese output is translated text, which is untrusted: it is re-checked for guaranteed-return wording in both languages and, on any doubt, the English original is shown. Disclaimers are replaced by fixed strings the model never sees. Voice input only fills the chat box.
+
+## Purchase ledger and behaviour
+
+Entries are `planned`, `bought` or `cancelled`; only `bought` counts as spending. Spoken or typed commands are parsed by fixed rules (no model) into a proposal row; `POST /api/ledger/confirm/{id}` applies it (T2-style explicit click, audited, single use, owner-checked). `behaviour.insights` derives every number and sentence from the entries and the client's stated income. `compute_risk_profile` subtracts the capped penalty from risk capacity, so the final bucket (the lower of tolerance and capacity) can only become more cautious. A ledger change that alters the penalty invalidates the stored profile so it is recomputed.
