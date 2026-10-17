@@ -29,6 +29,12 @@
       <input id="chatInput" type="text" maxlength="4000" placeholder="Type a message or answer..." aria-label="Message" disabled>
       <button class="primary" disabled id="sendBtn">Send</button>
     </form>
+    <div class="voice" id="voiceBar">
+      <button type="button" id="micBtn" aria-pressed="false" title="Speak your message">Mic</button>
+      <button type="button" id="speakBtn" aria-pressed="false">Read aloud: off</button>
+      <select id="voiceLang" aria-label="Voice language"><option value="en-US">English</option><option value="zh-CN">Chinese</option></select>
+      <span id="voiceNote" class="muted" aria-live="polite"></span>
+    </div>
     <div class="chips" id="chips"></div>
   </section>
 
@@ -97,6 +103,7 @@
   </section>
 </main>
 <footer>Educational demo with synthetic products. Not real financial advice. All data is synthetic.</footer>
+<script src="/static/voice.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

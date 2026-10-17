@@ -81,6 +81,7 @@ async function send(text) {
     const r = await api("/api/chat", { client_id: clientId, message: text });
     (r.warnings || []).forEach((w) => addMsg("sys", w));
     addMsg("agent", r.reply);
+    if (window.WGVoice) window.WGVoice.speak(r.reply);
     setQuick(r.question);
     renderAttempts(r.attempts || []);
     if (r.compliance) renderChecks(r.compliance);
