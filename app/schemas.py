@@ -1,7 +1,7 @@
 """All pydantic models. Agreed on Day 1; additions beyond CLAUDE.md are marked (ext)."""
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -99,6 +99,12 @@ class SessionReq(BaseModel):
 class ChatReq(BaseModel):
     client_id: str
     message: str = Field(max_length=4000)
+
+
+class TranslateReq(BaseModel):  # (ext) EN <-> ZH translation
+    client_id: Optional[str] = None
+    target: Literal["en", "zh"]
+    texts: list[Annotated[str, Field(max_length=2000)]] = Field(max_length=40)
 
 
 class CompareReq(BaseModel):

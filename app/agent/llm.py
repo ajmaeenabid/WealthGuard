@@ -303,3 +303,14 @@ def aid_from(res):
 
 def last_of(res, name):
     return [r for nm, _, r in res if nm == name][-1]
+
+
+# ---------------------------------------------------------------------------------------------- plain completion
+def complete(system: str, prompt: str, max_tokens: int = 1500) -> str:
+    """One plain text completion (no tools) on the active provider. Callers handle mock mode and failures."""
+    if config.provider() == "groq":
+        return _groq_chat([{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+                          max_tokens=max_tokens).get("content") or ""
+    r = _client().messages.create(model=config.anthropic_model(), max_tokens=max_tokens, system=system,
+                                  messages=[{"role": "user", "content": prompt}])
+    return "".join(b.text for b in r.content if b.type == "text")

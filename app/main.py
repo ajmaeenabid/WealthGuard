@@ -6,12 +6,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import comparison, config, profiling, service, state, store
+from app import comparison, config, profiling, service, state, store, translate
 from app.agent import loop
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
 from app.schemas import (AllocationReq, ApproveReq, ChatReq, ClientProfile, CompareReq, DocumentReq, ProfileReq,
-                         SessionReq, StressReq)
+                         SessionReq, StressReq, TranslateReq)
 from app.security import audit, guard, tiers
 
 app = FastAPI(title="WealthGuard", description=config.DISCLAIMER)
@@ -47,6 +47,13 @@ def session(req: SessionReq):
 def chat(req: ChatReq):
     _client(req.client_id)
     return loop.run_turn(req.client_id, req.message)
+
+
+@app.post("/api/translate")
+def translate_texts(req: TranslateReq):
+    if req.client_id:
+        _client(req.client_id)
+    return translate.translate_many(req.texts, req.target, req.client_id)
 
 
 @app.get("/api/products")
