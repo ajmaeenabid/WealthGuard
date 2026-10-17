@@ -44,6 +44,22 @@ falls back to the mock automatically and logs `llm_fallback_to_mock`. `WEALTHGUA
 - **Mic** fills the chat box from speech (browser Web Speech API, Chrome or Edge); you press Send, so spoken and typed text take the same guarded path. **Read aloud** speaks replies. Some browsers send audio to their vendor for recognition; typing always works.
 - **EN / 中文** toggle: fixed UI labels come from a dictionary; engine text (rationales, compliance details) is translated by `/api/translate`. Chinese is also accepted in chat (answers, injection and R7 checks). With `USE_MOCK_LLM=1` there is no translator, so dynamic text stays English (never a guess); use a live LLM to demo it.
 
+## Deploy to Vercel (frontend and backend together)
+
+`api/index.py` serves the FastAPI app and the static UI as one serverless function; `vercel.json` routes every path to it.
+
+```bash
+npm i -g vercel
+vercel login
+vercel            # preview deploy
+vercel --prod     # production deploy
+```
+
+In the Vercel project settings add environment variables as needed: `LLM_PROVIDER`, `GROQ_API_KEY` or `ANTHROPIC_API_KEY`
+(and optionally `GROQ_MODEL` / `ANTHROPIC_MODEL`). With no key the hosted app runs on the deterministic mock LLM.
+Vercel's disk is read-only except `/tmp`, so SQLite (and the audit chain) lives there per instance and resets on a cold
+start; the tamper demo (`scripts/tamper_demo.py`) is a local-only step. Never commit keys; set them only in Vercel.
+
 ## Test
 
 ```bash
