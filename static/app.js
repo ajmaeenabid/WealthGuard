@@ -161,7 +161,7 @@ function renderAllocation(st) {
     <p class="small muted">${tr(`Expected net return ${pct(a.expected_return)} a year, volatility ${pct(a.volatility)}. Past performance is not a reliable indicator of future results.`)}</p>`;
   drawAlloc(a);
   const wn = Object.entries(st.why_not || {});
-  $("whyNot").innerHTML = wn.length ? wn.map(([id, w]) => `<div class="whynot"><b>${esc(w.name)}</b> (${esc(id)}): ${tr(w.text)}</div>`).join("") : "-";
+  $("whyNot").innerHTML = wn.length ? wn.map(([id, w]) => `<div class="whynot"><b>${esc(w.name)}</b> (${esc(id)}): ${tr(w.text)} <button type="button" class="small" onclick="cfShow('${esc(id)}', this)">${esc(t("What would it take?"))}</button><div class="cf"></div></div>`).join("") : "-";
 }
 
 function basisHtml(ruleId) {
@@ -274,6 +274,23 @@ async function uploadDoc() {
   } catch (e) { $("docWarn").textContent = "Error: " + e.message; }
 }
 
+
+// ---- counterfactuals: what would it take? ----------------------------------------------------------------------------
+async function cfShow(pid, btn) {
+  const box = btn.parentElement.querySelector(".cf");
+  box.innerHTML = '<div class="muted small">...</div>';
+  try {
+    const r = await api(`/api/counterfactual?client_id=${encodeURIComponent(clientId)}&product_id=${encodeURIComponent(pid)}`);
+    const rules = r.rules.map((x) => `<div class="small">${x.passed ? "&#10003;" : "&#10007;"} <b>${esc(x.rule)}</b> ${tr(x.detail)}${x.needs ? " &mdash; " + tr("needs " + x.needs) : ""}${x.article ? ` <a href="${esc(x.article.url)}" target="_blank" rel="noopener">${esc(x.article.ref)}</a>` : ""}</div>`).join("");
+    let verdict;
+    if (r.allowed_now) verdict = `<div class="insight ok"><b>${esc(t("Allowed now"))}</b></div>`;
+    else if (r.paths.length) verdict = `<div class="insight info"><b>${esc(t("Only if"))}</b>${r.paths.map((p) => `<div class="small">${p.changes.map((c) => tr(`${c.fact.replace(/_/g, " ")}: '${c.to_label}' (now '${c.from_label}')`)).join(" + ")} &rarr; ${esc(t("bucket"))} ${esc(p.bucket)} (${p.tolerance}/${p.capacity})</div>`).join("")}</div>`;
+    else verdict = `<div class="insight high"><b>${esc(t("Impossible"))}</b> ${tr(r.impossible_because || "")}</div>`;
+    box.innerHTML = `<div class="small muted">${esc(t("Rule check"))} &middot; ${r.combinations_checked}</div>${rules}${verdict}<div class="small muted">${tr(r.note)}</div>`;
+    if (I() && I().lang === "zh") await I().applyDynamic(api, clientId);
+    await loadAudit();
+  } catch (e) { box.textContent = "Error: " + e.message; }
+}
 
 // ---- red-team arena -------------------------------------------------------------------------------------------------
 let lastRedteam = null;

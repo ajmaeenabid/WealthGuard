@@ -44,3 +44,6 @@
     demo any user can read those aggregates. It is generated on demand, not on a half-yearly schedule, and is not filed anywhere.
 31. **The arena is our own attacks.** It demonstrates that the defences hold against this battery, not against an independent penetration test or
     novel attacks. It leaves probe clients and audit entries in the database (labelled "Red-team probe").
+32. **Counterfactuals could be misused to game suitability.** The output lists what would have to be true and says it is not advice to change
+    answers; it still shows which answers would matter. A real deployment would withhold it from the client or require adviser review.
+33. **Single-product view.** The explanation is per product (R1, R3, R4, R5); portfolio-level limits (equity share, concentration) are not part of it.

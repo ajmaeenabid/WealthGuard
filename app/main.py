@@ -179,6 +179,16 @@ def knowledge_search(q: str = Query(min_length=2, max_length=300), k: int = Quer
     return {"query": q, "results": hits, "backend": backend}
 
 
+@app.get("/api/counterfactual")
+def counterfactual_route(client_id: str, product_id: str = Query(min_length=2, max_length=20)):
+    """What would have to be true for this product to be allowed (T1, audited through the tier engine)."""
+    _client(client_id)
+    out = tiers.execute("explain_counterfactual", {"product_id": product_id}, Ctx(client_id))
+    if out.get("ok") is False:
+        raise HTTPException(404 if "unknown product" in out.get("error", "") else 409, out.get("error", "cannot explain"))
+    return out
+
+
 @app.post("/api/redteam/run")
 def redteam_run():
     """Run the attack battery against the live engines (deterministic, no model call) on throw-away probe clients."""

@@ -5,7 +5,7 @@ from typing import Callable, Literal, Optional
 from pydantic import Field
 
 from app import allocation as al
-from app import behaviour, comparison, compliance, config, knowledge, profiling, simulator, state, store
+from app import behaviour, comparison, compliance, config, counterfactual, knowledge, profiling, simulator, state, store
 from app.products import load_products
 from app.schemas import ClientProfile, OrderTicket, StrictArgs
 from app.security import audit
@@ -32,6 +32,10 @@ class SearchKnowledgeArgs(StrictArgs):
     query: str = Field(min_length=2, max_length=300)
     k: int = Field(default=3, ge=1, le=5)
     source: Optional[Literal["csrc_suitability", "data_sources", "market_episodes", "wealthguard_rules", "history_cards"]] = None
+
+
+class ProductIdArgs(StrictArgs):
+    product_id: str = Field(min_length=2, max_length=20)
 
 
 class ProposeArgs(StrictArgs):
@@ -129,6 +133,10 @@ def compute_risk_profile(a: NoArgs, ctx: Ctx) -> dict:
 
 def get_behaviour_insights(a: NoArgs, ctx: Ctx) -> dict:
     return behaviour.insights(ctx.client_id)
+
+
+def explain_counterfactual(a: ProductIdArgs, ctx: Ctx) -> dict:
+    return counterfactual.explain(ctx.client_id, a.product_id)
 
 
 def compare_products(a: CompareArgs, ctx: Ctx) -> dict:
@@ -231,6 +239,9 @@ TOOLS: dict[str, Tool] = {t.name: t for t in [
          "Score risk tolerance and capacity from the answers; final bucket is the lower of the two."),
     Tool("get_behaviour_insights", "T1", NoArgs, get_behaviour_insights,
          "Summarise the client's purchase history (totals, categories, impulse share) with plain-language guidance."),
+    Tool("explain_counterfactual", "T1", ProductIdArgs, explain_counterfactual,
+         "Explain what would have to be true for a blocked product to be allowed for this client (rule by rule, with the "
+         "smallest set of different answers, or why it is impossible). Never suggest changing truthful answers."),
     Tool("compare_products", "T1", CompareArgs, compare_products,
          "Compare products side by side with 'why not' notes for this client."),
     Tool("propose_allocation", "T1", ProposeArgs, propose_allocation,

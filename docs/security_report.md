@@ -56,3 +56,6 @@ high-severity finding, and refused approvals or LLM fallbacks are flagged for re
 **Red-team arena** (`test_redteam.py`): 54 attacks, all defended, grouped by layer (guard 20, tier 12, compliance 9, audit 5,
 isolation 3, allowlist 2, confirm-first 2, translation-check 1). The test suite also proves the arena can fail: with the injection detector
 disabled it reports the attacks as undefended while the benign controls still pass.
+
+`explain_counterfactual` is T1 with strict arguments (`test_counterfactual.py`); the tests check that every returned path is eligible in the real
+engine, that paths are minimal (brute force), that only changeable answers appear, and that explaining never modifies the client record.
