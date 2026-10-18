@@ -90,6 +90,13 @@ the key is wrong or the URL is not https, the app silently uses the local index 
 depends on it. On Vercel, set the same two variables in the project settings. The key is sent only as an `api-key` header.
  Lexical retrieval is not deep semantic search; see known risks.
 
+## Self-inspection report (Art. 30)
+
+The **Self-inspection report** card generates, from the hash-chained audit log, a report modelled on Article 30 of the CSRC
+Measures (a periodic self-check): per regulatory duty (Art. 6, 18, 20, 21, 22, 23, 24, 32) how the system addresses it and the
+evidence count, findings (drafts blocked before display and by which rule, injections flagged, forbidden actions refused,
+approvals, chain validity) and an honest list of duties the demo does not implement. English or Chinese, downloadable as Markdown.
+
 ## Deploy to Vercel (frontend and backend together)
 
 `api/index.py` serves the FastAPI app and the static UI as one serverless function; `vercel.json` routes every path to it.

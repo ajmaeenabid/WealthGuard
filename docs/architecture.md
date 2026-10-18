@@ -109,3 +109,10 @@ years carry no invented figure, and a few Chinese keywords let Chinese questions
 rule: average sentence length at most 24 words and no sentence over 40 (Chinese: 60 and 120 characters), Flesch reading
 ease at least 40 for English text of 40+ words, and no jargon term (alpha, Sharpe, convexity, autocall, 久期, 敲入...) unless
 a bracketed plain explanation follows it. A failure blocks the allocation like any other rule.
+
+## Self-inspection report
+
+`selfinspection.build` counts the audit log (compliance checks and failed rules, blocked reply wording, injections by source,
+T3/invalid refusals, approvals, refused approvals, ledger confirmations, LLM fallbacks) and re-verifies the chain, then renders
+duties, findings and gaps from fixed English/Chinese templates (no model). The report is audited after it is computed, so it
+never counts itself; a broken chain becomes a high-severity finding.

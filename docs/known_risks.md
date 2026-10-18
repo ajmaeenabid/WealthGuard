@@ -40,3 +40,5 @@
 28. **Free cluster limits.** Free tiers are small and may pause or change; the local index is the real fallback. Chunk text (public regulation, our notes) is stored in Qdrant, never client data or ledger entries.
 29. **Readability is a heuristic.** R9 uses sentence length, a Flesch score and a short jargon list; it cannot judge whether a
     particular client understood. The jargon list is hand-written and the Chinese check is character-count based.
+30. **Report scope.** The default report covers all sessions in the deployment (aggregate counts, no client identifiers); in the public
+    demo any user can read those aggregates. It is generated on demand, not on a half-yearly schedule, and is not filed anywhere.
