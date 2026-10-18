@@ -121,6 +121,17 @@
       <div id="kbResults"></div>
     </div>
 
+    <div class="card" id="siCard">
+      <h2><span data-i18n="hS">Self-inspection report (Art. 30)</span> <span class="tag" id="siTag"></span></h2>
+      <div class="small muted" data-i18n="siHint">Counted from the audit log: what was blocked, refused and approved, per regulatory duty, with honest gaps.</div>
+      <div class="row">
+        <button type="button" id="siGo" class="primary" data-i18n="siGen">Generate report</button>
+        <button type="button" id="siDl" data-i18n="siDl">Download Markdown</button>
+        <label class="small"><input id="siScope" type="checkbox"> <span data-i18n="siClientOnly">this client only</span></label>
+      </div>
+      <div id="siOut"></div>
+    </div>
+
     <div class="card" id="docCard">
       <h2 data-i18n="h6">6. Upload a document (untrusted)</h2>
       <input id="docName" type="text" value="brochure.txt" aria-label="Filename">

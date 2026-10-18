@@ -49,3 +49,6 @@ anchor (see `known_risks.md`). Authentication is out of scope for the demo: poss
 
 R9 (plain language, Art. 24) is enforced in code like R1-R8 (`test_r9.py`): jargon-heavy or hard-to-read client text blocks the
 allocation, so a model cannot obscure risk behind complicated wording.
+
+The self-inspection report (`test_selfinspection.py`) turns the audit chain into a reviewable control: a tampered log produces a
+high-severity finding, and refused approvals or LLM fallbacks are flagged for review.

@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import behaviour, comparison, config, knowledge, ledger, profiling, service, state, store, translate
+from app import behaviour, comparison, config, knowledge, ledger, profiling, selfinspection, service, state, store, translate
 from app.agent import loop
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
@@ -177,6 +177,19 @@ def knowledge_search(q: str = Query(min_length=2, max_length=300), k: int = Quer
     audit.append("client", "knowledge_search", "T0", {"chars": len(q), "source": source, "k": k, "hits": len(hits),
                                                       "backend": backend}, client_id)
     return {"query": q, "results": hits, "backend": backend}
+
+
+@app.get("/api/selfinspection")
+def self_inspection(lang: str = "en", client_id: Optional[str] = None):
+    """Article 30 style self-inspection report counted from the audit log (T1 read, audited after it is computed)."""
+    if lang not in ("en", "zh"):
+        raise HTTPException(422, "lang must be en or zh")
+    if client_id:
+        _client(client_id)
+    r = selfinspection.build(client_id, lang)
+    audit.append("client", "selfinspection_report", "T1", {"lang": lang, "scope": "client" if client_id else "all"},
+                 client_id)
+    return r | {"markdown": selfinspection.to_markdown(r)}
 
 
 @app.get("/api/products")

@@ -22,6 +22,8 @@
     "Required disclosures:": "必须披露：", "Draft log": "草稿记录",
     "Risk tolerance": "风险承受意愿", "Risk capacity": "风险承受能力",
     "Final bucket = the lower of the two:": "最终风险档位 = 两者中较低者：",
+    hS: "自查报告（第三十条）", siHint: "根据审计日志统计：被拦截、被拒绝和已批准的事项，按监管职责列出，并如实说明未覆盖事项。",
+    siGen: "生成报告", siDl: "下载 Markdown", siClientOnly: "仅限当前客户", "Duties": "法定职责", "Findings": "发现", "Not covered": "未覆盖事项",
     hK: "法规与数据检索（向量库）", kbHint: "检索真实的证监会适当性管理办法（中文原文）、数据来源、历史情景和我们的规则。",
     kbPh: "例如：普通投资者可以购买复杂产品吗？", search: "搜索", kbAll: "全部来源", kbCsrc: "证监会法规", kbData: "数据来源",
     kbEp: "压力情景", kbRules: "我们的规则", kbHist: "真实历史卡片", "Regulatory basis": "监管依据", "Chinese original": "中文原文", "No results.": "没有结果。", "score": "相关度",

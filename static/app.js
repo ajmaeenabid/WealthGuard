@@ -275,6 +275,34 @@ async function uploadDoc() {
 }
 
 
+// ---- self-inspection report (Art. 30) ------------------------------------------------------------------------------
+let lastReport = null;
+async function siGenerate() {
+  const lang = I() && I().lang === "zh" ? "zh" : "en";
+  const scoped = $("siScope").checked && clientId;
+  try {
+    const r = await api(`/api/selfinspection?lang=${lang}${scoped ? "&client_id=" + encodeURIComponent(clientId) : ""}`);
+    lastReport = r;
+    $("siTag").textContent = r.chain.valid ? t("chain valid") : t("CHAIN BROKEN");
+    $("siTag").className = "tag " + (r.chain.valid ? "good" : "bad");
+    const rows = r.obligations.map((o) => `<tr><td>${esc(o.article)}</td><td>${esc(o.requirement)}<div class="small muted">${esc(o.how)}</div></td><td class="num">${o.evidence_count ?? "-"}</td></tr>`).join("");
+    $("siOut").innerHTML = `<div class="small muted">${esc(r.scope)} &middot; ${esc((r.period.from || "-").slice(0, 19))} &rarr; ${esc((r.period.to || "-").slice(0, 19))}</div>
+      <h3>${esc(t("Findings"))}</h3>${r.findings.map((f) => `<div class="insight ${f.severity === "high" ? "high" : f.severity === "review" ? "info" : "ok"}">${esc(f.text)}${f.article ? ` <span class="small muted">(${esc(f.article)})</span>` : ""}</div>`).join("")}
+      <h3>${esc(t("Duties"))}</h3><table><thead><tr><th>Art.</th><th></th><th class="num">#</th></tr></thead><tbody>${rows}</tbody></table>
+      <h3>${esc(t("Not covered"))}</h3>${r.gaps.map((g) => `<div class="insight info"><b>${esc(g.article)}</b> ${esc(g.text)}</div>`).join("")}`;
+    await loadAudit();
+  } catch (e) { $("siOut").textContent = "Error: " + e.message; }
+}
+
+function siDownload() {
+  if (!lastReport) return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([lastReport.markdown], { type: "text/markdown" }));
+  a.download = `self_inspection_${lastReport.lang}.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // ---- knowledge search (vector DB) ---------------------------------------------------------------------------------
 async function kbSearch() {
   const q = $("kbQuery").value.trim();
@@ -376,6 +404,8 @@ async function init() {
   $("start").onclick = () => startSession().catch((e) => addMsg("sys", "Error: " + e.message));
   $("chatForm").onsubmit = (ev) => { ev.preventDefault(); send($("chatInput").value); };
   $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null);
+  $("siGo").onclick = siGenerate;
+  $("siDl").onclick = siDownload;
   $("kbGo").onclick = kbSearch;
   $("kbQuery").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); kbSearch(); } });
   $("ledgerGo").onclick = ledgerInterpret;
