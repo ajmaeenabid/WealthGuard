@@ -16,7 +16,7 @@
 | Tamper-evident audit log | SHA-256 hash chain, id continuity, payload hash; `/api/audit/verify` | code | `test_audit_guard.py` |
 | Prompt-injection guard | detector, redaction, untrusted wrapper; documents never in the system prompt | code | 12 flagged strings, 4 benign |
 | Output language filter | R7 on the final reply as well as allocation text | code | `test_reply_with_guarantee_language_is_replaced` |
-| Secrets | API key only from `GROQ_API_KEY` or `ANTHROPIC_API_KEY` (env); never logged or stored | config | review |
+| Secrets | API key only from `GROQ_API_KEY` or `ANTHROPIC_API_KEY` (env or git-ignored `.env`); never logged, stored or returned by `/api/health`; `.env` excluded from git and Vercel; tests never read it | config | `test_dotenv.py` |
 | Outbound URL allowlist | `tiers.is_url_allowed`; allowlist: `api.anthropic.com`, `api.groq.com`; no tool makes outbound calls except the LLM client | code | `test_url_allowlist` |
 | Chinese language coverage | R7 phrase list, injection patterns and answer parsing include Chinese; negations (不保证, 并非零风险) and 保证金 are not flagged | code | `test_chinese.py` |
 | Translation is untrusted | `translate.py`: text wrapped as data, output re-checked by R7 (EN and ZH), disclaimers swapped for fixed strings, English fallback, audited | code | `test_translate.py` |

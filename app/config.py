@@ -1,6 +1,34 @@
 """Environment variables, risk-bucket tables and limits."""
 import os
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def load_dotenv(path: str | None = None) -> int:
+    """Minimal .env loader: KEY=VALUE lines, # comment lines, optional quotes. Variables already set in the real
+    environment win over the file, and empty values are skipped. Returns how many variables were loaded."""
+    path = path or os.path.join(ROOT, ".env")
+    if not os.path.isfile(path):
+        return 0
+    n = 0
+    with open(path, encoding="utf-8-sig") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k, v = k.strip(), v.strip()
+            if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+                v = v[1:-1]
+            if k and v and k not in os.environ:
+                os.environ[k] = v
+                n += 1
+    return n
+
+
+if os.environ.get("WEALTHGUARD_NO_DOTENV") != "1":  # tests set this so a real key in .env is never used
+    load_dotenv()
+
 DISCLAIMER = "Educational demo with synthetic products. Not real financial advice."
 DISCLAIMER_ZH = "教育演示，产品均为合成数据，不构成真实的投资建议。"
 
@@ -53,6 +81,15 @@ def provider() -> str:
 def use_mock_llm() -> bool:
     key = "GROQ_API_KEY" if provider() == "groq" else "ANTHROPIC_API_KEY"
     return os.environ.get("USE_MOCK_LLM", "0") == "1" or not os.environ.get(key)
+
+
+def describe_llm() -> str:
+    """Which model answers, for the startup log and /api/health. Never includes a key."""
+    if not use_mock_llm():
+        return f"{provider()} (live), model {groq_model() if provider() == 'groq' else anthropic_model()}"
+    if os.environ.get("USE_MOCK_LLM", "0") == "1":
+        return "mock (USE_MOCK_LLM=1)"
+    return f"mock (no {'GROQ' if provider() == 'groq' else 'ANTHROPIC'}_API_KEY found)"
 
 
 def anthropic_key() -> str | None:
