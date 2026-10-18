@@ -123,3 +123,12 @@ never counts itself; a broken chain becomes a high-severity finding.
 `ledger`, `translate`, `audit`) on throw-away probe clients; none calls a language model, so results are reproducible. A result is
 `defended` only if the intended layer stopped the attack; a crashing runner counts as a failure. Audit tampering works on an in-memory
 copy of the rows via `audit.verify_rows`, never on the live log.
+
+## Counterfactual compliance
+
+`counterfactual.explain(client_id, product_id)` evaluates R1, R3, R4 and R5 for one product against the stored answers (each row cites the
+CSRC article from `knowledge.basis_for_rule`), then enumerates every combination of the five changeable answers (loss reaction, income
+stability, liquidity need, goal, experience), scoring each with `profiling.compute_scores` (minus any behaviour penalty) and testing
+eligibility with the same logic as `allocation.eligible` (including the R5 cap). Paths are ordered by number of changed answers, then score
+movement; if none exist, the reasons (vulnerable-client cap, lock-up longer than the horizon, best reachable bucket) are stated. It is a T1 tool
+(`explain_counterfactual`) and an audited endpoint; it never writes to the profile.

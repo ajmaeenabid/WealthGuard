@@ -90,6 +90,15 @@ the key is wrong or the URL is not https, the app silently uses the local index 
 depends on it. On Vercel, set the same two variables in the project settings. The key is sent only as an `api-key` header.
  Lexical retrieval is not deep semantic search; see known risks.
 
+## Counterfactuals: "What would it take?"
+
+Under each "why not" note, **What would it take?** shows, rule by rule (with the CSRC article), whether the product passes today, and
+searches all 720 combinations of the five changeable questionnaire answers for the smallest set of *different answers* under which the
+product would be eligible, using the real scoring and eligibility code. Facts that cannot change (age, horizon, income) are respected, so
+an impossible case says so and why (for example Ms. Li and NovaYield: "even with the most favourable truthful answers your best bucket is
+Growth, below the Aggressive this product needs"). It is an explanation, never advice to change an answer, and it changes nothing. The chat
+answers the same question ("What would it take for NovaYield to be allowed?").
+
 ## Red-team arena
 
 The **Red-team arena** card runs 54 deterministic attacks (about a second) against the live defences and shows which layer stopped each:

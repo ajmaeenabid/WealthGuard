@@ -270,6 +270,28 @@ def mock_respond(messages: list, state: dict) -> LLMResponse:
             return _call("list_products", {}, n)
         return LLMResponse(text=f"There are {len(last[2].get('products', []))} synthetic products; see the table. {disclaimer}")
 
+    if any(w in text for w in ["what would it take", "what would need", "what would have to", "make it allowed",
+                               "what needs to change", "how could i get", "how can i get"]):
+        from app.products import load_products
+        pid = next((m.upper() for m in re.findall(r"p\d{2}", text)), None) or next(
+            (p.id for p in load_products().values() if p.name.lower() in text or p.name.lower().split()[0] in text), "P13")
+        if not res:
+            return _call("explain_counterfactual", {"product_id": pid}, n)
+        r = last[2]
+        if r.get("ok") is False:
+            return LLMResponse(text=f"I cannot explain that yet: {r.get('error')}. {disclaimer}")
+        p = r["product"]
+        if r["allowed_now"]:
+            body = f"{p['name']} is already allowed for you."
+        elif r["reachable_by_answers"] and r["paths"]:
+            ch = "; ".join(f"{c['fact'].replace('_', ' ')} would have to be '{c['to_label']}' (it is '{c['from_label']}')"
+                           for c in r["paths"][0]["changes"])
+            body = (f"{p['name']} is blocked today. It would be allowed only if {ch or 'other facts changed'}, which would put you "
+                    f"in the {r['paths'][0]['bucket']} bucket. {r['note']}")
+        else:
+            body = f"{p['name']} cannot be allowed for you: {r['impossible_because']}. {r['note']}"
+        return LLMResponse(text=f"{body} {disclaimer}")
+
     if "compare" in text:
         ids = re.findall(r"p\d{2}", text) or ["p13", "p03"]
         if not res:

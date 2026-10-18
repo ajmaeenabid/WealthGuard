@@ -22,6 +22,8 @@
     "Required disclosures:": "必须披露：", "Draft log": "草稿记录",
     "Risk tolerance": "风险承受意愿", "Risk capacity": "风险承受能力",
     "Final bucket = the lower of the two:": "最终风险档位 = 两者中较低者：",
+    "What would it take?": "需要满足什么条件？", "Allowed now": "目前允许", "Blocked now": "目前被拦截", "Only if": "只有在以下情况下才允许",
+    "Impossible": "无法通过回答改变", "Rule check": "规则检查", "answer": "回答", "would be": "将是", "bucket": "风险档位",
     hR: "红队攻击演示", rtHint: "对真实防线运行一批中英文攻击，显示每次攻击由哪一层拦截。不调用语言模型。",
     rtRun: "运行攻击", rtDl: "导出 JSON", "Defended": "已防御", "attacks": "次攻击",
     hS: "自查报告（第三十条）", siHint: "根据审计日志统计：被拦截、被拒绝和已批准的事项，按监管职责列出，并如实说明未覆盖事项。",
