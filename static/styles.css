@@ -443,3 +443,41 @@ body.locked { overflow: hidden; }
 .vrow { display: flex; align-items: center; gap: 8px; margin-top: 2px; color: var(--ink-2); }
 .vrow .ic { width: 16px; height: 16px; color: var(--accent); }
 .vrow label { margin: 0; }
+
+/* ---------- welcome page greeting, memory panel, administration ---------- */
+.nav[hidden], .is-admin [data-for="user"], .is-admin .flow, .is-admin .chat { display: none !important; }
+.hero-hello { margin: 0 0 6px; font: italic 500 clamp(30px, 4.4vw, 44px)/1.1 var(--font-display); letter-spacing: -.015em; animation: rise .7s var(--ease) both; }
+.hero-hello b { font-weight: 500; background: linear-gradient(100deg, var(--accent-2), var(--brass)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+html:lang(zh) .hero-hello { font-style: normal; font-weight: 600; letter-spacing: 0; }
+.hero-memory { display: inline-block; margin: 14px 0 0; padding: 8px 14px; border-radius: 999px; font-size: 13px; color: var(--ink-2); background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+.hero-memory[hidden] { display: none; }
+
+.mem-list { display: grid; gap: 6px; }
+.mem-row { display: grid; grid-template-columns: minmax(120px, 42%) 1fr auto; align-items: center; gap: 8px; padding: 6px 6px 6px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.mem-row.note { grid-template-columns: 1fr auto; padding: 8px 6px 8px 12px; }
+.mem-k { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.mem-t { font-size: 13.5px; line-height: 1.45; }
+.mem-v { width: 100%; padding: 6px 10px; }
+.mem-x { width: 28px; height: 28px; color: var(--muted); }
+.mem-x:hover:not(:disabled) { color: var(--warn); }
+#memMsg, #adminMsg { min-height: 20px; margin-top: 10px; }
+.small.bad, .bad { color: var(--warn); }
+.tag.bad { color: var(--warn); background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+
+.admin { flex: 1; min-height: 0; overflow-y: auto; width: 100%; max-width: 920px; margin: 0 auto; padding: 8px 24px 40px; }
+.admin[hidden] { display: none; }
+.admin-head { padding: 26px 0 18px; }
+.admin-head .hero-title { margin: 0 0 8px; font-size: clamp(30px, 4vw, 40px); }
+.admin-head .hero-sub { margin: 0; max-width: 62ch; }
+.admin-users { display: grid; gap: 14px; }
+.u-card { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+.u-card.banned { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: linear-gradient(0deg, var(--warn-bg), var(--warn-bg)), var(--surface); }
+.u-head { display: flex; align-items: center; gap: 12px; }
+.u-head .who b { font-size: 15px; }
+.u-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.u-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.u-controls select { width: auto; min-width: 150px; }
+.u-perms { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.perm { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 13.5px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ink-2); cursor: pointer; }
+.perm input { width: 17px; height: 17px; accent-color: var(--accent); }
+@media (max-width: 900px) { .admin { padding: 8px 14px 40px; } .mem-row { grid-template-columns: 1fr auto; } .mem-k { grid-column: 1 / -1; } }

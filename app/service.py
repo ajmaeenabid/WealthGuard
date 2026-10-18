@@ -7,9 +7,11 @@ from app.products import load_personas, load_products
 from app.security import audit, tiers
 
 
-def create_session(persona_id: Optional[str]) -> dict:
+def create_session(persona_id: Optional[str], facts: Optional[dict] = None, extra: Optional[dict] = None,
+                   name: Optional[str] = None) -> dict:
+    """A session starts blank (or from facts the account already remembers); a persona is only a demo shortcut."""
     cid = store.new_id("client")
-    facts, extra, name = {}, {}, "Client"
+    facts, extra, name = dict(facts or {}), dict(extra or {}), name or "Client"
     if persona_id:
         per = load_personas().get(persona_id)
         if not per:

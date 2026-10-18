@@ -115,26 +115,6 @@
   vbtn.onclick = (ev) => { ev.stopPropagation(); vpop.hidden = !vpop.hidden; vbtn.setAttribute("aria-expanded", String(!vpop.hidden)); };
   document.addEventListener("click", (ev) => { if (!vpop.hidden && !vpop.contains(ev.target) && ev.target !== vbtn) { vpop.hidden = true; vbtn.setAttribute("aria-expanded", "false"); } });
 
-  // ------------------------------------------------------------------ hero: pick a client
-  async function buildHero() {
-    try {
-      const people = await (await fetch("/api/personas")).json();
-      const box = $("heroCards");
-      box.innerHTML = "";
-      people.forEach((p) => {
-        const b = document.createElement("button");
-        b.type = "button"; b.className = "persona-card"; b.setAttribute("role", "listitem");
-        b.innerHTML = `<span class="pc-name"></span><span class="pc-story"></span><span class="pc-go"></span>`;
-        q(".pc-name", b).textContent = p.name;
-        q(".pc-story", b).textContent = p.story;
-        q(".pc-go", b).textContent = T("Start with") + " " + p.name.split(" ").pop();
-        b.onclick = () => { $("persona").value = p.id; $("start").click(); };
-        box.appendChild(b);
-      });
-    } catch (e) { /* the sidebar selector still works */ }
-  }
-  if (window.WGAuth) window.WGAuth.onReady((u) => { if (u.can_pick_persona) buildHero(); });
-
   // ------------------------------------------------------------------ model badge
   const badge = $("llmBadge");
   function paintBadge() {

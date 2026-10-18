@@ -49,6 +49,9 @@ def execute(tool: str, args, ctx, actor: str = "agent") -> dict:
         audit.append(actor, f"refused_forbidden:{tool}", "T3", {"tool": tool, "args": args}, cid)
         return {"ok": False, "refused": True, "tier": "T3",
                 "error": f"'{tool}' is a forbidden (T3) action. It is always refused and has been logged."}
+    if tool in getattr(ctx, "denied", ()):
+        audit.append(actor, f"refused_no_permission:{tool}", tier, {"tool": tool}, cid)
+        return {"ok": False, "refused": True, "error": f"Your account is not allowed to use '{tool}'. Ask an administrator."}
     spec = tools.TOOLS[tool]
     try:
         parsed = spec.args.model_validate(args if args is not None else {})

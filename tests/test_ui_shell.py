@@ -14,7 +14,7 @@ CSS = c.get("/static/styles.css").text
 UI = c.get("/static/ui.js").text
 APP = c.get("/static/app.js").text
 CARDS = ["profileCard", "allocCard", "compCard", "stressCard", "approvalCard", "ledgerCard", "rpCard", "kbCard",
-         "rcCard", "rtCard", "siCard", "docCard", "auditCard"]
+         "rcCard", "rtCard", "siCard", "docCard", "auditCard", "memCard"]
 
 
 def block(open_tag_regex: str) -> str:
@@ -31,7 +31,7 @@ def block(open_tag_regex: str) -> str:
 
 def test_every_feature_has_one_sidebar_button_and_one_card_in_the_drawer():
     navs = re.findall(r'<button[^>]*class="nav"[^>]*data-panel="(\w+)"', HTML)
-    assert sorted(navs) == sorted(CARDS) and len(set(navs)) == 13
+    assert sorted(navs) == sorted(CARDS) and len(set(navs)) == 14
     drawer = block(r'<aside class="drawer"')
     for cid in CARDS:
         assert drawer.count(f'<div class="card" id="{cid}"') == 1, cid
@@ -108,9 +108,12 @@ def test_the_screen_has_no_disclaimer_lines_and_chat_replies_hide_the_api_discla
     assert "d.textContent = m && m[1].trim() ? m[1] : body" in APP     # the API reply keeps it; the bubble drops it
 
 
-def test_the_start_flow_has_a_hero_with_client_cards_and_keeps_the_classic_selector():
-    assert 'id="heroCards"' in HTML and 'id="persona"' in HTML and 'id="start"' in HTML
-    assert "persona-card" in UI and "/api/personas" in UI
+def test_the_welcome_page_greets_the_user_by_name_and_there_is_no_client_list_or_client_cards():
+    assert 'id="heroName"' in HTML and 'id="heroMemory"' in HTML and 'id="start"' in HTML
+    assert 'id="heroCards"' not in HTML and 'id="personaRow"' not in HTML and "persona-card" not in UI
+    assert HTML.count('id="persona"') == 1 and HTML.index('id="persona"') > HTML.index('id="memCard"')   # only the demo-profile loader
+    assert "function newChatView" in APP and "paintHero" in APP
+    assert re.search(r"async function startSession\(\) \{\s*const s = await api\(\"/api/conversations\", \{\}\);", APP)
 
 
 def test_navigation_labels_and_hero_copy_have_chinese_translations():
@@ -189,3 +192,16 @@ def test_new_interface_words_have_chinese_translations():
         assert re.search(rf'(^|[\s,{{])"?{k}"?\s*:', I18N), k
     for phrase in ["Delete this chat?", "The two passwords do not match.", "Password changed. Other devices were signed out."]:
         assert f'"{phrase}"' in I18N, phrase
+
+
+def test_memory_panel_and_admin_console_exist_and_admins_do_not_see_the_client_screens():
+    for el in ['id="memCard"', 'id="memFacts"', 'id="memNotes"', 'id="memSums"', 'id="memNoteAdd"', 'id="memDemo"', 'id="memClear"',
+               'id="adminView"', 'id="adminUsers"']:
+        assert HTML.count(el) == 1, el
+    for token in ["/api/memory", "/api/admin/users", "applyAccess", "adminRender", "memRender", "FEATURE_PANELS"]:
+        assert token in APP, token
+    assert '.is-admin [data-for="user"]' in CSS and ".is-admin .chat" in CSS and ".nav[hidden]" in CSS
+    for pid in ["profileCard", "allocCard", "ledgerCard", "memCard", "docCard"]:
+        assert re.search(rf'data-panel="{pid}" data-for="user"', HTML), pid
+    for pid in ["auditCard", "rtCard", "siCard"]:                                     # what an administrator keeps: oversight
+        assert f'data-panel="{pid}" data-for="user"' not in HTML, pid

@@ -14,6 +14,7 @@ from app.security import audit
 @dataclass
 class Ctx:
     client_id: str
+    denied: frozenset = frozenset()   # tools this account may not use (set by an administrator)
 
 
 class NoArgs(StrictArgs):

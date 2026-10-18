@@ -1,30 +1,20 @@
 """Saved chats. One conversation = one advisory session (client_id) owned by an account; messages are kept in order."""
 from typing import Optional
 
-from app import db, profiling, service, state, store
+from app import db, memory, profiling, service, state, store
 from app.agent import llm
-from app.products import load_personas
 
 HISTORY_TURNS = 12
 
 
-def _greeting(s: dict) -> str:
-    who = f", {s['name']}" if s.get("persona_id") else ""
-    tail = " - I'll only ask what I don't already know." if s.get("next_question") else "."
-    return (f"Hello{who}! I'm WealthGuard. Nothing I propose is shown to you until an independent compliance check "
-            f"approves it. Say hi to begin{tail}")
-
-
-def create(user: dict, persona_id: Optional[str]) -> dict:
-    """New chat. Accounts locked to a persona always use it; others may pick any persona or a blank client."""
-    persona = user["persona_id"] or persona_id or None
-    s = service.create_session(persona)
+def create(user: dict) -> dict:
+    """New chat. It starts blank, with whatever this account already remembers (profile answers), never a preset persona."""
+    facts, extra = memory.seed(user["username"])
+    s = service.create_session(None, facts=facts, extra=extra, name=user["display_name"])
     now = store.now()
     store._write("INSERT INTO conversations VALUES (?,?,?,?,?,?,?,?)",
-                 (s["client_id"], user["username"], "New chat", persona, s["name"],
+                 (s["client_id"], user["username"], "New chat", None, s["name"],
                   state.PENDING_QUESTION.get(s["client_id"]), now, now))
-    s["greeting"] = _greeting(s)
-    add_message(s["client_id"], "agent", s["greeting"])
     return s
 
 
@@ -33,11 +23,12 @@ def get(client_id: str):
 
 
 def can_access(user: Optional[dict], client_id: str) -> bool:
-    """True for the owner, for admins, and for sessions that predate accounts (no saved conversation)."""
+    """True for the owner and for sessions that predate accounts (no saved conversation). Administrators manage
+    accounts; they cannot read other people's chats."""
     conv = get(client_id)
     if conv is None:
         return True
-    return bool(user) and (user["role"] == "admin" or conv["username"] == user["username"])
+    return bool(user) and conv["username"] == user["username"]
 
 
 def add_message(client_id: str, role: str, text: str) -> None:
@@ -55,18 +46,21 @@ def record_turn(client_id: str, message: str, reply: str) -> None:
     if title == "New chat" and len(text) >= 15 and not llm.SMALL_TALK.match(text):   # short replies are questionnaire answers
         title = text[:42]
     elif title == "New chat" and store.latest_allocation(client_id):
-        title = f"Advice for {conv['name']}" if conv["persona_id"] else "Allocation advice"
+        title = f"Advice for {conv['name']}"
     store._write("UPDATE conversations SET title=?, updated=?, pending_question=? WHERE client_id=?",
                  (title, store.now(), state.PENDING_QUESTION.get(client_id), client_id))
+    # remember: profile answers, things the user said about themselves, and a one-line summary of this chat
+    user = conv["username"]
+    memory.sync_from_client(user, client_id)
+    for note in memory.extract_notes(message):
+        memory.add_note(user, note)
+    memory.update_summary(user, client_id, title)
 
 
 def listing(user: dict) -> list[dict]:
     c = db.connect()
-    if user["role"] == "admin":
-        rows = c.execute("SELECT * FROM conversations ORDER BY updated DESC, rowid DESC LIMIT 100").fetchall()
-    else:
-        rows = c.execute("SELECT * FROM conversations WHERE username=? ORDER BY updated DESC, rowid DESC LIMIT 100",
-                         (user["username"],)).fetchall()
+    rows = c.execute("SELECT * FROM conversations WHERE username=? ORDER BY updated DESC, rowid DESC LIMIT 100",
+                     (user["username"],)).fetchall()
     c.close()
     return [{"id": r["client_id"], "title": r["title"], "name": r["name"], "persona_id": r["persona_id"],
              "owner": r["username"], "updated": r["updated"]} for r in rows]
@@ -86,12 +80,12 @@ def open_chat(client_id: str) -> dict:
         state.PENDING_QUESTION[client_id] = conv["pending_question"]
     d = store.load_client(client_id) or {"facts": {}}
     q = profiling.next_question(d["facts"]) if state.PENDING_QUESTION.get(client_id) else None
-    per = load_personas().get(conv["persona_id"] or "") or {}
-    return {"client_id": client_id, "title": conv["title"], "name": conv["name"], "persona_id": conv["persona_id"],
-            "story": per.get("story"), "messages": msgs, "next_question": q}
+    return {"client_id": client_id, "title": conv["title"], "name": conv["name"], "persona_id": None,
+            "story": None, "messages": msgs, "next_question": q}
 
 
 def delete(client_id: str) -> None:
     store._write("DELETE FROM messages WHERE client_id=?", (client_id,))
     store._write("DELETE FROM conversations WHERE client_id=?", (client_id,))
+    memory.delete_summary(client_id)
     state.HISTORY.pop(client_id, None)

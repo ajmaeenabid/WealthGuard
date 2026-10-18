@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 from fastapi.staticfiles import StaticFiles
 
-from app import accounts, behaviour, comparison, conversations, config, knowledge, ledger, profiling, provenance, receipt, redteam, replay, selfinspection, service, state, store, transcribe, translate
+from app import accounts, behaviour, comparison, conversations, config, knowledge, ledger, memory, profiling, provenance, receipt, redteam, replay, selfinspection, service, state, store, transcribe, translate
 from app.agent import loop
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
@@ -51,6 +51,14 @@ async def auth_gate(request: Request, call_next):
             request.state.user = await run_in_threadpool(accounts.user_for_token, request.state.token)
         if accounts.auth_required() and path not in OPEN_API and request.state.user is None:
             return JSONResponse({"detail": "Sign in required."}, status_code=401)
+        me = request.state.user
+        if me and accounts.auth_required():
+            if path.startswith("/api/admin/") and me["role"] != "admin":
+                return JSONResponse({"detail": "Administrators only."}, status_code=403)
+            feat = accounts.feature_for(path, request.method)
+            if feat and not me["permissions"].get(feat, True):
+                return JSONResponse({"detail": f"Your account does not have access to {accounts.FEATURES[feat].lower()}. "
+                                               "Ask an administrator."}, status_code=403)
     return await call_next(request)
 
 
@@ -77,8 +85,33 @@ class PasswordChange(BaseModel):
     new_password: str = Field(max_length=200)
 
 
-class NewChat(BaseModel):
-    persona_id: Optional[str] = None
+class BanReq(BaseModel):
+    banned: bool
+
+
+class RoleReq(BaseModel):
+    role: str = Field(max_length=10)
+
+
+class PermsReq(BaseModel):
+    permissions: dict[str, bool]
+
+
+class NewPassword(BaseModel):
+    new_password: str = Field(max_length=200)
+
+
+class FactReq(BaseModel):
+    key: str = Field(max_length=40)
+    value: str = Field(max_length=80)
+
+
+class NoteReq(BaseModel):
+    text: str = Field(max_length=200)
+
+
+class DemoReq(BaseModel):
+    persona_id: str = Field(max_length=40)
 
 
 def _auth_call(fn, *a):
@@ -127,12 +160,123 @@ def list_conversations(request: Request):
 
 
 @app.post("/api/conversations")
-def new_conversation(req: NewChat, request: Request):
+def new_conversation(request: Request):
     me = _me(request)
+    if me["role"] == "admin":
+        raise HTTPException(403, "Administrators manage accounts; they do not have advice chats.")
+    return conversations.create(me)
+
+
+# ---- administration: accounts, roles, per-account feature access (never chat contents)
+def _admin(request: Request) -> dict:
+    me = _me(request)
+    if me["role"] != "admin":
+        raise HTTPException(403, "Administrators only.")
+    return me
+
+
+@app.get("/api/admin/users")
+def admin_users(request: Request):
+    _admin(request)
+    return {"users": accounts.list_users(), "features": accounts.FEATURES}
+
+
+@app.post("/api/admin/users/{username}/ban")
+def admin_ban(username: str, req: BanReq, request: Request):
+    me = _admin(request)
+    out = _auth_call(accounts.set_banned, me["username"], username, req.banned)
+    audit.append("system", "admin_suspend" if req.banned else "admin_restore", "T2", {"admin": me["username"], "target": out["username"]})
+    return out
+
+
+@app.post("/api/admin/users/{username}/role")
+def admin_role(username: str, req: RoleReq, request: Request):
+    me = _admin(request)
+    out = _auth_call(accounts.set_role, me["username"], username, req.role)
+    audit.append("system", "admin_role", "T2", {"admin": me["username"], "target": out["username"], "role": out["role"]})
+    return out
+
+
+@app.post("/api/admin/users/{username}/permissions")
+def admin_permissions(username: str, req: PermsReq, request: Request):
+    me = _admin(request)
+    out = _auth_call(accounts.set_permissions, username, req.permissions)
+    audit.append("system", "admin_permissions", "T2", {"admin": me["username"], "target": out["username"],
+                                                       "denied": sorted(k for k, v in out["permissions"].items() if not v)})
+    return out
+
+
+@app.post("/api/admin/users/{username}/password")
+def admin_password(username: str, req: NewPassword, request: Request):
+    me = _admin(request)
+    _auth_call(accounts.admin_reset_password, username, req.new_password)
+    audit.append("system", "admin_password_reset", "T2", {"admin": me["username"], "target": username.strip().lower()})
+    return {"ok": True}
+
+
+# ---- memory: what the assistant remembers about the signed-in account
+def _memory_user(request: Request) -> str:
+    me = _me(request)
+    if me["role"] == "admin":
+        raise HTTPException(403, "Administrators do not have a client memory.")
+    return me["username"]
+
+
+def _memory_call(fn, *a):
     try:
-        return conversations.create(me, req.persona_id)
-    except KeyError:
-        raise HTTPException(404, "unknown persona")
+        return fn(*a)
+    except memory.MemoryInputError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/memory")
+def memory_overview(request: Request):
+    return memory.overview(_memory_user(request))
+
+
+@app.post("/api/memory/fact")
+def memory_set_fact(req: FactReq, request: Request):
+    user = _memory_user(request)
+    _memory_call(memory.set_fact, user, req.key, req.value)
+    audit.append("client", "memory_fact_saved", "T1", {"key": req.key})
+    return memory.overview(user)
+
+
+@app.post("/api/memory/fact/{key}/delete")
+def memory_delete_fact(key: str, request: Request):
+    user = _memory_user(request)
+    memory.delete_fact(user, key)
+    return memory.overview(user)
+
+
+@app.post("/api/memory/notes")
+def memory_add_note(req: NoteReq, request: Request):
+    user = _memory_user(request)
+    _memory_call(memory.add_note, user, req.text)
+    return memory.overview(user)
+
+
+@app.post("/api/memory/item/{item_id}/delete")
+def memory_delete_item(item_id: int, request: Request):
+    user = _memory_user(request)
+    memory.delete_item(user, item_id)
+    return memory.overview(user)
+
+
+@app.post("/api/memory/clear")
+def memory_clear(request: Request):
+    user = _memory_user(request)
+    memory.clear(user)
+    audit.append("client", "memory_cleared", "T1", {})
+    return memory.overview(user)
+
+
+@app.post("/api/memory/demo")
+def memory_demo(req: DemoReq, request: Request):
+    user = _memory_user(request)
+    _memory_call(memory.load_demo, user, req.persona_id)
+    audit.append("client", "memory_demo_loaded", "T1", {"persona_id": req.persona_id})
+    return memory.overview(user)
 
 
 @app.get("/api/conversations/{client_id}")
@@ -544,7 +688,11 @@ def get_state(client_id: str, request: Request):
 
 
 @app.get("/api/audit")
-def get_audit(client_id: Optional[str] = None):
+def get_audit(request: Request, client_id: Optional[str] = None):
+    if accounts.auth_required() and request.state.user and request.state.user["role"] != "admin":
+        if not client_id:
+            return []              # members only ever see the log of their own chat
+        _owns(request, client_id)
     return audit.list_entries(client_id)
 
 
