@@ -22,6 +22,7 @@
 | Translation is untrusted | `translate.py`: text wrapped as data, output re-checked by R7 (EN and ZH), disclaimers swapped for fixed strings, English fallback, audited | code | `test_translate.py` |
 | Ledger edits need confirmation | spoken/typed commands only create proposals; apply needs an explicit confirm click; single use, owner-checked, audited (`ledger_command`, `ledger_confirm`) | code | `test_ledger.py` |
 | Behaviour can only reduce risk | capped (10 points) one-way penalty on capacity; negative penalties ignored | code | `test_behaviour_only_ever_lowers_capacity` |
+| Knowledge search is read-only | `search_knowledge` is T0 with strict args (length, k, source allowlist); the endpoint validates input and is audited | code | `test_knowledge.py` |
 | Voice input | fills the chat box only; no auto-send, no API calls from `voice.js` | code | `test_voice_controls_and_script_served` |
 | Safe failure | LLM errors fall back to the mock, logged | code | manual |
 

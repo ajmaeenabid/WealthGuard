@@ -49,6 +49,8 @@ engine (what may be done) or the compliance engine (what may be shown).
 | `security/audit.py` | Append-only SHA-256 hash chain and `verify` |
 | `security/guard.py` | Injection detector, redaction, untrusted wrapper |
 | `agent/*` | Tool definitions, loop, Anthropic/Groq wrapper + deterministic mock |
+| `vectorstore.py` | Vector DB: SQLite tables `kb_chunks`/`kb_meta`, hashing TF-IDF embedder (1024 dims), cosine search |
+| `knowledge.py` | Builds the index from the CSRC text, MANIFEST, stress episodes and rules; EN->ZH glossary; `basis_for_rule` |
 | `ledger.py` | Purchase ledger storage; EN/ZH command parser that only creates proposals; confirm/reject endpoints |
 | `behaviour.py` | Deterministic totals, category/month sums, flags and guidance; capped one-way capacity penalty |
 | `translate.py` | EN <-> ZH translation; output re-checked by R7, disclaimers fixed, falls back to English |
@@ -77,3 +79,13 @@ The agent, allocation engine and compliance engine work on English. Chinese inpu
 ## Purchase ledger and behaviour
 
 Entries are `planned`, `bought` or `cancelled`; only `bought` counts as spending. Spoken or typed commands are parsed by fixed rules (no model) into a proposal row; `POST /api/ledger/confirm/{id}` applies it (T2-style explicit click, audited, single use, owner-checked). `behaviour.insights` derives every number and sentence from the entries and the client's stated income. `compute_risk_profile` subtracts the capped penalty from risk capacity, so the final bucket (the lower of tolerance and capacity) can only become more cautious. A ledger change that alters the penalty invalidates the stored profile so it is recomputed.
+
+## Knowledge base and regulatory basis
+
+`knowledge.ensure_index()` builds 61 chunks (43 CSRC articles, 4 data sources, 6 stress episodes, 8 rules) and records a
+fingerprint of the content; any change to the data or code rebuilds the index, an unchanged index is reused. Each rule
+R1/R3-R7 has a fixed Chinese retrieval query; the best-matching CSRC article above a score threshold is returned by
+`/api/state` as `regulatory_basis` and shown under the rule in the compliance panel (R2 and R8 have no matching article, so
+nothing is shown). `search_knowledge` is a T0 tool and `/api/knowledge/search` is audited as a T0 read. The regulation text
+is public data, so retrieved passages are not treated as untrusted instructions, but tool results never change tiers.
+Quoting Article 4 (which denies that advice is a guarantee) passes R7 through a Chinese denial pattern.
