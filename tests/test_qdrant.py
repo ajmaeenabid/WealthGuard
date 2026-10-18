@@ -11,6 +11,7 @@ from app.main import app
 from app.security import tiers
 
 c = TestClient(app)
+N_CHUNKS = len(knowledge.items())
 URL = "https://demo-cluster.qdrant.example:6333"
 KEY = "super-secret-key-123"
 
@@ -118,9 +119,9 @@ def test_url_without_key_is_not_configured(monkeypatch):
 
 # ------------------------------------------------------------------------------------------ sync and search
 def test_index_is_mirrored_to_qdrant_with_one_point_per_chunk(qd):
-    assert knowledge.ensure_index() == 61
+    assert knowledge.ensure_index() == N_CHUNKS
     (name, col), = qd.cols.items()
-    assert name.startswith("wealthguard_kb_") and len(col["points"]) == 61
+    assert name.startswith("wealthguard_kb_") and len(col["points"]) == N_CHUNKS
     p = next(iter(col["points"].values()))
     assert set(p["payload"]) == {"id", "source", "ref", "lang", "title", "text", "url"}
     assert vectorstore.backend_status()["backend"] == "qdrant"
@@ -258,4 +259,4 @@ def test_an_existing_collection_without_the_index_gets_it_on_the_next_start(qd):
     col["indexes"].clear()                                   # a collection uploaded before the index existed
     vectorstore.REMOTE.update(state="off", synced_fp=None)   # new process
     knowledge.ensure_index()
-    assert col["indexes"] == {"source"} and len(col["points"]) == 61
+    assert col["indexes"] == {"source"} and len(col["points"]) == N_CHUNKS

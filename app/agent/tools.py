@@ -31,7 +31,7 @@ class CompareArgs(StrictArgs):
 class SearchKnowledgeArgs(StrictArgs):
     query: str = Field(min_length=2, max_length=300)
     k: int = Field(default=3, ge=1, le=5)
-    source: Optional[Literal["csrc_suitability", "data_sources", "market_episodes", "wealthguard_rules"]] = None
+    source: Optional[Literal["csrc_suitability", "data_sources", "market_episodes", "wealthguard_rules", "history_cards"]] = None
 
 
 class ProposeArgs(StrictArgs):
@@ -222,7 +222,8 @@ TOOLS: dict[str, Tool] = {t.name: t for t in [
     Tool("list_products", "T0", ListProductsArgs, list_products, "List the synthetic product universe."),
     Tool("search_knowledge", "T0", SearchKnowledgeArgs, search_knowledge,
          "Search the knowledge base: the real CSRC suitability regulation (Chinese original), real data sources, "
-         "historical stress episodes and our compliance rules. Cite the article or source you use."),
+         "historical stress episodes, our compliance rules and real yearly history cards (US returns, China macro). "
+         "Cite the article or source you use."),
     Tool("get_client_profile", "T0", NoArgs, get_client_profile, "Read the current client's profile and answers."),
     Tool("ask_profile_question", "T0", NoArgs, ask_profile_question,
          "Get the next unanswered profiling question (adaptive: answered or implied ones are skipped)."),

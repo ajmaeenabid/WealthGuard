@@ -5,6 +5,7 @@ Sources (all indexed in app/vectorstore.py):
   data_sources      where each real dataset comes from, its license and what it is used for (MANIFEST.json)
   market_episodes   the real historical episodes behind the stress scenarios
   wealthguard_rules our compliance rules R1-R8 in plain English, with the regulatory articles they relate to
+  history_cards     real yearly US returns, China macro data and decade averages, as short text cards
 """
 import hashlib
 import json
@@ -44,7 +45,7 @@ GLOSSARY = {
 }
 
 RULE_QUERIES = {  # fixed Chinese retrieval queries; the best-matching article is shown as the regulatory basis
-    "R1": "根据产品风险等级和投资者风险承受能力作出适当性匹配 不适合购买的产品",
+    "R1": "根据产品或者服务的不同风险等级 对其适合销售产品的投资者类型作出判断 适当性匹配",
     "R3": "划分产品或者服务风险等级时应当综合考虑 结构复杂性 杠杆情况",
     "R4": "产品风险等级 流动性 到期时限 投资期限",
     "R5": "普通投资者 特别保护 年龄 风险承受能力 高风险产品 特别的注意义务",
@@ -78,6 +79,67 @@ def expand(query: str) -> str:
     return query + (" " + " ".join(extra) if extra else "")
 
 
+SERIES = [("sp500", "S&P 500 (with dividends)"), ("small_cap", "US small caps"), ("tbill_3m", "3-month T-bills"),
+          ("tbond_10y", "10-year T-bonds"), ("baa_corp", "Baa corporate bonds"), ("real_estate", "US real estate"),
+          ("gold", "gold")]
+US_KEYWORDS = "美国 标普500 小盘股 国库券 国债 公司债 房地产 黄金 通胀 利率 历史 年度回报"
+CN_KEYWORDS = "中国 通货膨胀 通胀 存款利率 贷款利率 GDP 经济增长 实际存款回报 历史"
+DAMODARAN_PAGE = "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/histretSP.html"
+WORLD_BANK_PAGE = "https://data.worldbank.org/country/china"
+
+
+def _p(x: float) -> str:
+    return f"{x * 100:+.1f}%"
+
+
+def history_items() -> list[dict]:
+    """Short text cards generated from the real CSVs: one per US year, one per China year, one per decade."""
+    out = []
+    rets = realdata.annual_returns()
+    for y in realdata.years():
+        r = rets[y]
+        parts = ", ".join(f"{label} {_p(r[k])}" for k, label in SERIES)
+        best = max(SERIES, key=lambda kv: r[kv[0]])[1]
+        worst = min(SERIES, key=lambda kv: r[kv[0]])[1]
+        infl, rate = realdata.inflation_pct(y), realdata.year_end_rate(y)
+        extra = (f" US CPI inflation (Dec to Dec) was {infl:.1f}%." if infl is not None else "") + \
+                (f" The 10-year rate ended the year at {rate:.2f}%." if rate is not None else "")
+        out.append({"id": f"history:US-{y}", "source": "history_cards", "ref": f"US-{y}", "lang": "en",
+                    "title": f"{y} US market returns", "url": DAMODARAN_PAGE,
+                    "text": f"In {y} (US) annual returns were: {parts}. Best: {best}. Worst: {worst}.{extra} {US_KEYWORDS}"})
+    for y, m in sorted(realdata.china_macro().items()):
+        bits = []
+        if m["cpi_inflation_pct"] is not None:
+            bits.append(f"CPI inflation {m['cpi_inflation_pct']:.1f}%")
+        if m["deposit_rate_pct"] is not None:
+            bits.append(f"deposit rate {m['deposit_rate_pct']:.2f}%")
+        if m["lending_rate_pct"] is not None:
+            bits.append(f"lending rate {m['lending_rate_pct']:.2f}%")
+        if m["gdp_growth_pct"] is not None:
+            bits.append(f"GDP growth {m['gdp_growth_pct']:.1f}%")
+        real = ""
+        if m["deposit_rate_pct"] is not None and m["cpi_inflation_pct"] is not None:
+            d = m["deposit_rate_pct"] - m["cpi_inflation_pct"]
+            real = f" Real deposit return (deposit rate minus inflation) was about {d:+.1f} points."
+        out.append({"id": f"history:CN-{y}", "source": "history_cards", "ref": f"CN-{y}", "lang": "en",
+                    "title": f"{y} China macro data", "url": WORLD_BANK_PAGE,
+                    "text": f"In {y} (China): {', '.join(bits)}.{real} {CN_KEYWORDS}"})
+    decades = sorted({y // 10 * 10 for y in realdata.years()})
+    for d in decades:
+        ys = [y for y in realdata.years() if d <= y < d + 10]
+        avg = lambda k: sum(rets[y][k] for y in ys) / len(ys)
+        worst_y = min(ys, key=lambda y: rets[y]["sp500"])
+        infls = [x for x in (realdata.inflation_pct(y) for y in ys) if x is not None]
+        inf = f" Average US CPI inflation {sum(infls) / len(infls):.1f}% a year." if infls else ""
+        span = f"{ys[0]}-{ys[-1]}"
+        parts = ", ".join(f"{label} {_p(avg(k))}" for k, label in SERIES)
+        out.append({"id": f"history:DECADE-{d}s", "source": "history_cards", "ref": f"DECADE-{d}s", "lang": "en",
+                    "title": f"{d}s US market averages", "url": DAMODARAN_PAGE,
+                    "text": f"The {d}s decade ({span}, US) average annual returns: {parts}. The worst S&P 500 year was {worst_y} "
+                            f"({_p(rets[worst_y]['sp500'])}).{inf} {US_KEYWORDS}"})
+    return out
+
+
 def _read(name: str):
     with open(os.path.join(REAL, name), encoding="utf-8") as f:
         return json.load(f)
@@ -103,7 +165,7 @@ def items() -> list[dict]:
         basis = f" Related regulation: {', '.join(arts)} of the CSRC Suitability Measures." if arts else ""
         out.append({"id": f"rule:{rid}", "source": "wealthguard_rules", "ref": rid, "lang": "en",
                     "title": f"{rid} {name}", "text": text + basis, "url": ""})
-    return out
+    return out + history_items()
 
 
 def _fingerprint(its: list[dict]) -> str:

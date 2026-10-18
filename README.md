@@ -67,7 +67,8 @@ Clients and products stay synthetic. Real public data calibrates and grounds the
 ## Knowledge base (vector database)
 
 The real CSRC *Suitability Management Measures* (43 articles, Chinese original), our data sources, the historical stress
-episodes and our compliance rules are indexed in a small vector database on SQLite + numpy (`app/vectorstore.py`,
+episodes, our compliance rules and 150 real **history cards** (one per US year 1928-2025 with returns and inflation, one per
+China year 1985-2025 with inflation, deposit/lending rates and GDP growth, and decade averages, generated from the real CSVs) are indexed in a small vector database on SQLite + numpy (`app/vectorstore.py`,
 `app/knowledge.py`): hashing TF-IDF vectors (Chinese character n-grams, English words), cosine search, no network or
 model download, so mock mode, tests and Vercel behave the same. English questions reach the Chinese text through a small
 EN->ZH glossary. Use the **Regulation & data search** card, or ask the chat ("What does the CSRC regulation say about
@@ -82,7 +83,7 @@ QDRANT_URL=https://xxxx.region.cloud.qdrant.io:6333
 QDRANT_API_KEY=your_key_here
 ```
 
-On start the app mirrors the 61 chunks to a collection named `wealthguard_kb_<index version>` and answers searches through
+On start the app mirrors the 211 chunks to a collection named `wealthguard_kb_<index version>` and answers searches through
 Qdrant; the terminal prints `WealthGuard vector DB: qdrant`, `/api/health` shows `vector_db.backend`, and each search
 response says which backend answered. `python scripts/check_qdrant.py` verifies the setup (verified on a real Qdrant Cloud free cluster). If the service is unreachable,
 the key is wrong or the URL is not https, the app silently uses the local index (and retries after 60 s), so the demo never

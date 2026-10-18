@@ -83,7 +83,7 @@ Entries are `planned`, `bought` or `cancelled`; only `bought` counts as spending
 
 ## Knowledge base and regulatory basis
 
-`knowledge.ensure_index()` builds 61 chunks (43 CSRC articles, 4 data sources, 6 stress episodes, 8 rules) and records a
+`knowledge.ensure_index()` builds 211 chunks (43 CSRC articles, 4 data sources, 6 stress episodes, 8 rules, 150 history cards) and records a
 fingerprint of the content; any change to the data or code rebuilds the index, an unchanged index is reused. Each rule
 R1/R3-R7 has a fixed Chinese retrieval query; the best-matching CSRC article above a score threshold is returned by
 `/api/state` as `regulatory_basis` and shown under the rule in the compliance panel (R2 and R8 have no matching article, so
@@ -98,3 +98,7 @@ The local SQLite index is always built first (it holds the IDF weights and is th
 it already holds every chunk, older versions deleted) and `search_ex` queries Qdrant with the locally computed query vector.
 Any error (network, 4xx/5xx, bad shape, URL not allowlisted) falls back to the local index and starts a 60-second
 cooldown, so a failing service is not hammered. The Qdrant origin joins the URL allowlist only while it is configured.
+
+History cards (`knowledge.history_items`) are short English texts generated from `returns_annual.csv`, `shiller_monthly.csv` and
+`china_macro.csv`: every figure is computed from the data (including Dec-to-Dec inflation and the real deposit return), missing
+years carry no invented figure, and a few Chinese keywords let Chinese questions reach them.
