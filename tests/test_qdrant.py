@@ -249,3 +249,13 @@ def test_server_reason_is_reported_without_secrets(qd):
     knowledge.search_ex("risk", k=1)
     err = vectorstore.backend_status()["qdrant_error"]
     assert err.startswith("HTTP 500") and KEY not in err and URL not in err
+
+
+def test_an_existing_collection_without_the_index_gets_it_on_the_next_start(qd):
+    qd.strict = True
+    knowledge.ensure_index()
+    (name, col), = qd.cols.items()
+    col["indexes"].clear()                                   # a collection uploaded before the index existed
+    vectorstore.REMOTE.update(state="off", synced_fp=None)   # new process
+    knowledge.ensure_index()
+    assert col["indexes"] == {"source"} and len(col["points"]) == 61

@@ -83,11 +83,6 @@ def sync(rows, mat, fp: str) -> dict:
         if have is not None:
             _call("DELETE", f"/collections/{name}")
         _call("PUT", f"/collections/{name}", json={"vectors": {"size": int(mat.shape[1]), "distance": "Cosine"}})
-        try:  # Qdrant Cloud's strict mode refuses filters on unindexed fields, so index the one we filter on
-            _call("PUT", f"/collections/{name}/index", json={"field_name": "source", "field_schema": "keyword"},
-                  params={"wait": "true"})
-        except QdrantError:
-            pass  # search() then filters client-side
         for i in range(0, len(rows), BATCH):
             pts = [{"id": point_id(r["id"]), "vector": [float(x) for x in mat[j]],
                     "payload": {"id": r["id"], "source": r["source"], "ref": r["ref"], "lang": r["lang"],
@@ -95,6 +90,11 @@ def sync(rows, mat, fp: str) -> dict:
                    for j, r in enumerate(rows[i:i + BATCH], start=i)]
             _call("PUT", f"/collections/{name}/points", json={"points": pts}, params={"wait": "true"})
         state = "uploaded"
+    try:  # Qdrant Cloud's strict mode refuses filters on unindexed fields: index the one we filter on (idempotent)
+        _call("PUT", f"/collections/{name}/index", json={"field_name": "source", "field_schema": "keyword"},
+              params={"wait": "true"})
+    except QdrantError:
+        pass  # search() then filters client-side
     try:  # tidy: drop collections of older index versions (free clusters are small)
         for c in (_call("GET", "/collections").get("result") or {}).get("collections", []):
             n = c.get("name", "")
