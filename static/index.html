@@ -122,6 +122,26 @@
       <div id="kbResults"></div>
     </div>
 
+    <div class="card" id="rpCard">
+      <h2><span data-i18n="hP">Replay history with your money</span> <span class="tag" id="rpTag"></span></h2>
+      <div class="small muted" data-i18n="rpHint">Live through a real market episode with your approved allocation and decide when it hurts. We compare what you do with what you said.</div>
+      <div class="row">
+        <select id="rpEpisode" aria-label="Episode">
+          <option value="crash_2008" data-i18n="sc3">2008 financial crisis (real)</option>
+          <option value="dotcom_bust" data-i18n="sc5">Dot-com bust (real 2000-02)</option>
+          <option value="rate_+2" data-i18n="sc2">Rate shock (real 2022)</option>
+          <option value="inflation_spike" data-i18n="sc4">Inflation spike (real 1974)</option>
+          <option value="great_depression" data-i18n="sc6">Great Depression (real 1929-32)</option>
+        </select>
+        <select id="rpPortfolio" aria-label="Portfolio"><option value="equity" data-i18n="rpEquity">Stock market only (tests your nerves)</option><option value="mine" data-i18n="rpMine">My allocation</option></select>
+        <button type="button" id="rpGo" class="primary" data-i18n="rpStart">Start replay</button>
+      </div>
+      <div id="rpStatus" class="small"></div>
+      <div id="rpChoices" class="row"></div>
+      <div class="chartwrap"><canvas id="rpChart" height="140"></canvas></div>
+      <div id="rpResult"></div>
+    </div>
+
     <div class="card" id="rcCard">
       <h2><span data-i18n="hC">Advice receipt</span> <span class="tag" id="rcTag"></span></h2>
       <div class="small muted" data-i18n="rcHint">A sealed record of the approved advice: rules, regulation articles, data hashes and audit anchors. Anyone can verify it.</div>

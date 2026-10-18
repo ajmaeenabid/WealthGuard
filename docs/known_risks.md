@@ -54,3 +54,7 @@
     timestamp.
 36. **Recomputation shares code.** Except for historical stress scenarios (independent re-read of the CSV), the recomputation calls the same engine function
     as the displayed value, so it detects stale or tampered stored values, not a logic error inside that function (the unit tests cover those).
+37. **Replay is a simplification.** Equity months use Shiller's monthly *average* price index (dividends omitted), other classes use annual returns spread
+    evenly, so intra-year dynamics are smoothed and drawdowns are slightly milder than daily closes. A game decision is not a real-money decision.
+38. **Replay sessions are in memory** (lost on restart or between serverless instances). The inference uses one episode and one reaction; it is a nudge for
+    the client, not a psychometric test.

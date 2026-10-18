@@ -189,3 +189,14 @@ class LedgerCommandReq(BaseModel):
 class LedgerSampleReq(BaseModel):
     client_id: str
     kind: Literal["balanced", "heavy"] = "balanced"
+
+
+class ReplayStartReq(BaseModel):  # (ext) revealed-risk replay
+    client_id: str
+    episode: str = Field(max_length=40)
+    portfolio: Literal["mine", "equity"] = "mine"
+
+
+class ReplayStepReq(BaseModel):
+    client_id: str
+    choice: Optional[str] = Field(default=None, max_length=20)

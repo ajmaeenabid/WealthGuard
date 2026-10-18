@@ -90,6 +90,15 @@ the key is wrong or the URL is not https, the app silently uses the local index 
 depends on it. On Vercel, set the same two variables in the project settings. The key is sent only as an `api-key` header.
  Lexical retrieval is not deep semantic search; see known risks.
 
+## Replay history with your money (revealed risk)
+
+The **Replay** card lives through a real episode (2008, dot-com, 2022, the 1970s, the Great Depression) month by month with your approved
+allocation, or with a stock-market-only portfolio that tests your nerves, using the real S&P 500 monthly series and real annual bond, cash and
+gold returns. When the portfolio first falls 10%, 20% and 30% from its peak you choose to hold, sell some, sell everything or buy more. At the
+end you see what acting cost or saved against holding, and whether what you did at -20% was more cautious than the answer you gave in the
+questionnaire. If it was, **Apply to my profile** (an explicit click) replaces the answer with the more cautious one; a bolder reaction never
+changes anything, so behaviour can only make the profile *more* cautious (stated vs revealed risk, combined with the lower-of rule).
+
 ## Click any number
 
 Dotted-underlined numbers (risk tolerance, capacity, bucket, expected return, volatility, the stress-test change, the goal probability, the

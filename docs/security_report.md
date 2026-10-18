@@ -67,3 +67,7 @@ for every receipt a client holds.
 
 Provenance (`test_provenance.py`) is a transparency control: a stored value that no longer recomputes (for example a forged profile score)
 is shown as a mismatch, and every opened explanation is audited.
+
+Revealed-risk replay (`test_replay.py`): the path is checked against an independent computation from the raw CSV; a property test over every
+stated x revealed reaction proves `apply` can never make the profile less cautious; ownership is enforced on step and apply; apply is an explicit,
+single-use, audited click.
