@@ -3,6 +3,7 @@ import sqlite3
 import threading
 
 from app import config
+from app.finance.schema import SQL as FINANCE_SQL
 
 LOCK = threading.RLock()
 
@@ -40,6 +41,8 @@ CREATE TABLE IF NOT EXISTS messages (
   id INTEGER PRIMARY KEY AUTOINCREMENT, client_id TEXT NOT NULL, role TEXT NOT NULL, text TEXT NOT NULL, ts TEXT NOT NULL);
 """
 
+SCHEMA += FINANCE_SQL
+
 
 _MIGRATED: set = set()
 
@@ -61,6 +64,7 @@ def _migrate(conn: sqlite3.Connection) -> None:
 def connect() -> sqlite3.Connection:
     conn = sqlite3.connect(config.db_path(), timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(SCHEMA)
     _migrate(conn)
     return conn
