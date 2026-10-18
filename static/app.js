@@ -275,6 +275,38 @@ async function uploadDoc() {
 }
 
 
+// ---- advice receipt ---------------------------------------------------------------------------------------------------
+function rcShow(res) {
+  $("rcTag").textContent = res.valid ? t("Receipt is valid") : t("Receipt is NOT valid");
+  $("rcTag").className = "tag " + (res.valid ? "good" : "bad");
+  $("rcOut").innerHTML = res.checks.map((c) => `<div class="insight ${c.ok ? "ok" : "high"}">${c.ok ? "&#10003;" : "&#10007;"} <b>${esc(c.name)}</b> ${tr(c.detail)}</div>`).join("");
+  if (I() && I().lang === "zh") I().applyDynamic(api, clientId);
+}
+
+async function rcDownload() {
+  if (!clientId) { $("rcOut").textContent = t("Start a session first."); return; }
+  try {
+    const r = await api(`/api/receipt?client_id=${encodeURIComponent(clientId)}`);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(r, null, 2)], { type: "application/json" }));
+    a.download = `advice_receipt_${r.content_hash.slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    rcShow(await api("/api/receipt/verify", { receipt: r }));
+    await loadAudit();
+  } catch (e) { $("rcOut").textContent = "Error: " + e.message; }
+}
+
+async function rcVerifyFile(ev) {
+  const f = ev.target.files[0];
+  if (!f) return;
+  try {
+    rcShow(await api("/api/receipt/verify", { receipt: JSON.parse(await f.text()) }));
+    await loadAudit();
+  } catch (e) { $("rcOut").textContent = "Error: " + e.message; }
+  ev.target.value = "";
+}
+
 // ---- counterfactuals: what would it take? ----------------------------------------------------------------------------
 async function cfShow(pid, btn) {
   const box = btn.parentElement.querySelector(".cf");
@@ -453,6 +485,8 @@ async function init() {
   $("start").onclick = () => startSession().catch((e) => addMsg("sys", "Error: " + e.message));
   $("chatForm").onsubmit = (ev) => { ev.preventDefault(); send($("chatInput").value); };
   $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null);
+  $("rcDl").onclick = rcDownload;
+  $("rcFile").addEventListener("change", rcVerifyFile);
   $("rtGo").onclick = rtRun;
   $("rtDl").onclick = rtDownload;
   $("siGo").onclick = siGenerate;

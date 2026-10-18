@@ -132,3 +132,11 @@ stability, liquidity need, goal, experience), scoring each with `profiling.compu
 eligibility with the same logic as `allocation.eligible` (including the R5 cap). Paths are ordered by number of changed answers, then score
 movement; if none exist, the reasons (vulnerable-client cap, lock-up longer than the horizon, best reachable bucket) are stated. It is a T1 tool
 (`explain_counterfactual`) and an audited endpoint; it never writes to the profile.
+
+## Advice receipt
+
+`receipt.build` bundles the latest compliance-approved allocation with its compliance result, rule->article basis, dataset hashes (from
+`MANIFEST.json`) and this client's audit entries (hashes only, no payloads), records the global chain head (`id`, `entry_hash`), and seals
+the whole with `content_hash` = SHA-256 of the canonical JSON and `checkpoint.mac` = HMAC-SHA256(key, content_hash | head). `receipt.verify`
+runs eight checks: content_hash, entry_hashes, membership, anchor (head still where it was and the chain up to it verifies), checkpoint,
+data_hashes, compliance, same_allocation. The key is `RECEIPT_KEY` or a random value stored in `app_meta` with the database.

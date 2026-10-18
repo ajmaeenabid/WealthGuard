@@ -24,6 +24,8 @@
     "Final bucket = the lower of the two:": "最终风险档位 = 两者中较低者：",
     "What would it take?": "需要满足什么条件？", "Allowed now": "目前允许", "Blocked now": "目前被拦截", "Only if": "只有在以下情况下才允许",
     "Impossible": "无法通过回答改变", "Rule check": "规则检查", "answer": "回答", "would be": "将是", "bucket": "风险档位",
+    hC: "建议回执", rcHint: "已批准建议的封存记录：规则、法规条文、数据哈希和审计锚点。任何人都可以验证。", rcDownload: "下载回执",
+    rcVerify: "验证回执文件", "Receipt is valid": "回执有效", "Receipt is NOT valid": "回执无效",
     hR: "红队攻击演示", rtHint: "对真实防线运行一批中英文攻击，显示每次攻击由哪一层拦截。不调用语言模型。",
     rtRun: "运行攻击", rtDl: "导出 JSON", "Defended": "已防御", "attacks": "次攻击",
     hS: "自查报告（第三十条）", siHint: "根据审计日志统计：被拦截、被拒绝和已批准的事项，按监管职责列出，并如实说明未覆盖事项。",
