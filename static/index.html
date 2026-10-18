@@ -22,13 +22,19 @@
       <span class="seal" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
       <span class="wordmark">WealthGuard</span>
     </div>
-    <p class="tagline" data-i18n="tagline">compliant wealth advisory agent</p>
+    <div class="tagline"><span class="tg-main" data-i18n="tagline">Compliance-first wealth advice</span><span class="tg-sub" data-i18n="tagline2">Every recommendation checked. Every step on record.</span></div>
 
     <div class="session">
-      <label for="persona" data-i18n="client">Client</label>
-      <div class="select-wrap"><select id="persona"></select></div>
-      <button id="start" class="primary wide" data-i18n="start">Start session</button>
+      <div id="personaRow" class="persona-row">
+        <label for="persona" data-i18n="client">Client</label>
+        <div class="select-wrap"><select id="persona"></select></div>
+      </div>
+      <div id="whoRow" class="who-row" hidden><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.6 3-6 7-6s7 2.4 7 6"/></svg><span id="whoName"></span></div>
+      <button id="start" class="primary wide" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="newChat">New chat</span></button>
     </div>
+
+    <div class="group-label chats-label" data-i18n="navChats">Chats</div>
+    <div id="chatList" class="chat-list" role="list" aria-label="Saved chats"><p class="chat-empty muted" data-i18n="noChats">No chats yet.</p></div>
 
     <nav class="navlist" aria-label="Features">
       <div class="group-label" data-i18n="navFlow">Advice flow</div>
@@ -50,6 +56,13 @@
           <button type="button" class="nav" data-panel="docCard" aria-controls="docCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><span class="lbl" data-i18n="nDocs">Upload a document</span><span class="dot" aria-hidden="true"></span></button>
           <button type="button" class="nav" data-panel="auditCard" aria-controls="auditCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg><span class="lbl" data-i18n="nAudit">Audit log</span><span class="dot" aria-hidden="true"></span></button>
     </nav>
+
+    <div class="userbox" id="userBox" hidden>
+      <span class="avatar" id="avatar" aria-hidden="true"></span>
+      <span class="who"><b id="userName"></b><i id="userRole"></i></span>
+      <button type="button" id="settingsBtn" class="ghost icon" aria-label="Settings" title="Settings"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.7-1.3-1.7-3-2 .7a7.6 7.6 0 0 0-2.6-1.5L14.4 3h-3.4l-.4 2.4a7.6 7.6 0 0 0-2.6 1.5l-2-.7-1.7 3 1.7 1.3a7.6 7.6 0 0 0 0 3l-1.7 1.3 1.7 3 2-.7a7.6 7.6 0 0 0 2.6 1.5l.4 2.4h3.4l.4-2.4a7.6 7.6 0 0 0 2.6-1.5l2 .7 1.7-3z"/></svg></button>
+      <button type="button" id="logoutBtn" class="ghost icon" aria-label="Sign out" title="Sign out"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/><path d="M16 8l4 4-4 4M20 12H9"/></svg></button>
+    </div>
 
   </aside>
   <div class="scrim" id="scrim" hidden></div>
@@ -84,11 +97,11 @@
               <span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
               <button type="button" id="speakBtn" class="vbtn" aria-pressed="false" title="Read replies aloud" aria-label="Read replies aloud"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg></button>
               <div class="vset">
-                <button type="button" id="vsetBtn" class="vbtn" aria-expanded="false" aria-controls="vsetPop" title="Voice settings" aria-label="Voice settings"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M4.4 4.4l2.1 2.1M17.5 17.5l2.1 2.1M2.5 12h3M18.5 12h3M4.4 19.6l2.1-2.1M17.5 6.5l2.1-2.1"/></svg></button>
+                <button type="button" id="vsetBtn" class="vbtn" aria-expanded="false" aria-controls="vsetPop" title="Voice settings" aria-label="Voice settings"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
                 <div class="vpop" id="vsetPop" hidden>
-                  <label class="small muted" for="voiceEngine" data-i18n="veLabel">Engine</label>
+                  <div class="vrow"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><label class="small muted" for="voiceEngine" data-i18n="veLabel">Engine</label></div>
                   <select id="voiceEngine" aria-label="Voice engine"><option value="auto" data-i18n="veAuto">Voice: auto</option><option value="whisper">Whisper</option><option value="browser" data-i18n="veBrowser">Browser</option></select>
-                  <label class="small muted" for="voiceLang" data-i18n="vlLabel">Language</label>
+                  <div class="vrow"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/></svg><label class="small muted" for="voiceLang" data-i18n="vlLabel">Language</label></div>
                   <select id="voiceLang" aria-label="Voice language"><option value="en-US">English</option><option value="zh-CN">Chinese</option></select>
                 </div>
               </div>
@@ -267,6 +280,49 @@
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <div id="provBox" class="prov-box" hidden role="dialog" aria-label="Number provenance"></div>
+
+<div class="auth" id="auth" hidden>
+  <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="auth-brand"><span class="seal" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span><span class="wordmark">WealthGuard</span></div>
+    <p class="auth-lead" id="authTitle" data-i18n="authLead">Sign in to continue your advice.</p>
+    <div class="auth-tabs" role="tablist">
+      <button type="button" role="tab" id="tabLogin" aria-selected="true" data-i18n="signIn">Sign in</button>
+      <button type="button" role="tab" id="tabSignup" aria-selected="false" data-i18n="signUp">Create account</button>
+    </div>
+    <form id="authForm" autocomplete="on">
+      <label for="authUser" data-i18n="username">Username</label>
+      <input id="authUser" name="username" autocomplete="username" required maxlength="32" spellcheck="false" autocapitalize="none">
+      <label for="authPass" data-i18n="password">Password</label>
+      <input id="authPass" name="password" type="password" autocomplete="current-password" required maxlength="200">
+      <div id="authConfirmRow" hidden>
+        <label for="authPass2" data-i18n="confirmPassword">Confirm password</label>
+        <input id="authPass2" type="password" autocomplete="new-password" maxlength="200">
+      </div>
+      <p id="authErr" class="auth-err" role="alert" hidden></p>
+      <button type="submit" id="authGo" class="primary wide" data-i18n="signIn">Sign in</button>
+    </form>
+    <p class="auth-hint muted" data-i18n="authHint">Demo accounts: admin, li, chen, wang. Password 123 (change it in Settings).</p>
+  </div>
+</div>
+
+<div class="auth" id="settings" hidden>
+  <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <div class="set-head"><h2 id="setTitle" data-i18n="settings">Settings</h2><button type="button" id="setClose" class="ghost icon" aria-label="Close"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <p class="muted" id="setWho"></p>
+    <h3 data-i18n="changePassword">Change password</h3>
+    <form id="pwForm" autocomplete="off">
+      <label for="pwOld" data-i18n="currentPassword">Current password</label>
+      <input id="pwOld" type="password" autocomplete="current-password" required maxlength="200">
+      <label for="pwNew" data-i18n="newPassword">New password</label>
+      <input id="pwNew" type="password" autocomplete="new-password" required maxlength="200">
+      <label for="pwNew2" data-i18n="confirmPassword">Confirm password</label>
+      <input id="pwNew2" type="password" autocomplete="new-password" required maxlength="200">
+      <p id="pwMsg" class="auth-err" role="status" hidden></p>
+      <button type="submit" class="primary wide" data-i18n="savePassword">Save password</button>
+    </form>
+  </div>
+</div>
+<script src="/static/auth.js"></script>
 <script src="/static/i18n.js"></script>
 <script src="/static/voice.js"></script>
 <script src="/static/app.js"></script>

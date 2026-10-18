@@ -133,7 +133,7 @@
       });
     } catch (e) { /* the sidebar selector still works */ }
   }
-  buildHero();
+  if (window.WGAuth) window.WGAuth.onReady((u) => { if (u.can_pick_persona) buildHero(); });
 
   // ------------------------------------------------------------------ model badge
   const badge = $("llmBadge");

@@ -24,6 +24,16 @@ CREATE TABLE IF NOT EXISTS ledger (
   updated TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS ledger_changes (
   id TEXT PRIMARY KEY, client_id TEXT NOT NULL, data TEXT NOT NULL, status TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS users (
+  username TEXT PRIMARY KEY, display_name TEXT NOT NULL, role TEXT NOT NULL, persona_id TEXT,
+  salt TEXT NOT NULL, pw_hash TEXT NOT NULL, created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS auth_tokens (
+  token_hash TEXT PRIMARY KEY, username TEXT NOT NULL, created TEXT NOT NULL, expires REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS conversations (
+  client_id TEXT PRIMARY KEY, username TEXT NOT NULL, title TEXT NOT NULL, persona_id TEXT, name TEXT NOT NULL,
+  pending_question TEXT, created TEXT NOT NULL, updated TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, client_id TEXT NOT NULL, role TEXT NOT NULL, text TEXT NOT NULL, ts TEXT NOT NULL);
 """
 
 
@@ -37,7 +47,7 @@ def connect() -> sqlite3.Connection:
 def reset() -> None:
     with LOCK:
         conn = connect()
-        for t in ["clients", "allocations", "tickets", "documents", "audit", "ledger", "ledger_changes"]:
+        for t in ["clients", "allocations", "tickets", "documents", "audit", "ledger", "ledger_changes", "conversations", "messages"]:
             conn.execute(f"DELETE FROM {t}")
         conn.execute("DELETE FROM sqlite_sequence")
         conn.commit()
