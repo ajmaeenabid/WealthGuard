@@ -2,6 +2,7 @@ import os
 
 import pytest
 
+os.environ["WEALTHGUARD_NO_DOTENV"] = "1"  # never read a real key from .env during tests
 os.environ["USE_MOCK_LLM"] = "1"
 
 

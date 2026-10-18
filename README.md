@@ -29,14 +29,19 @@ python -m uvicorn app.main:app --port 8000
 # open http://localhost:8000
 ```
 
-Live LLM, PowerShell (use one provider):
+Live LLM: copy `.env.example` to `.env`, put your key in it, save, and start the server. `.env` is read every
+time the app starts, so it is permanent; it is git-ignored and excluded from Vercel uploads, so the key never leaves
+your machine. Real environment variables, if set, override the file.
 
-```powershell
-$env:LLM_PROVIDER="groq"; $env:GROQ_API_KEY="..."        # optional GROQ_MODEL, default openai/gpt-oss-20b
-$env:LLM_PROVIDER="anthropic"; $env:ANTHROPIC_API_KEY="..."  # optional ANTHROPIC_MODEL, default claude-sonnet-5-5
+```
+LLM_PROVIDER=groq
+GROQ_API_KEY=your_key_here
+GROQ_MODEL=openai/gpt-oss-20b
 ```
 
-Leave `USE_MOCK_LLM` unset. If `LLM_PROVIDER` is unset, Anthropic is used when its key exists, else Groq. The key is only ever read from the environment. If the network or key fails mid-demo, the app
+(or `LLM_PROVIDER=anthropic` with `ANTHROPIC_API_KEY` and optional `ANTHROPIC_MODEL`, default `claude-sonnet-5-5`).
+The terminal prints `WealthGuard LLM: groq (live), model ...` at startup, and the page badge shows "live LLM"; if it
+says mock, the key was not found or `USE_MOCK_LLM=1` is set. Leave `USE_MOCK_LLM` unset. If `LLM_PROVIDER` is unset, Anthropic is used when its key exists, else Groq. Tests ignore `.env` and always use the mock. The key is only ever read from the environment. If the network or key fails mid-demo, the app
 falls back to the mock automatically and logs `llm_fallback_to_mock`. `WEALTHGUARD_DB` overrides the SQLite path.
 
 ## Voice and language

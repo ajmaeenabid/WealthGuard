@@ -1,5 +1,6 @@
 """FastAPI app: JSON API (contract in CLAUDE.md) plus the static single-page UI."""
 import os
+from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
@@ -14,7 +15,13 @@ from app.schemas import (AllocationReq, ApproveReq, ChatReq, ClientProfile, Comp
                          LedgerIn, LedgerPatch, LedgerSampleReq, ProfileReq, SessionReq, StressReq, TranslateReq)
 from app.security import audit, guard, tiers
 
-app = FastAPI(title="WealthGuard", description=config.DISCLAIMER)
+@asynccontextmanager
+async def lifespan(_app):
+    print(f"WealthGuard LLM: {config.describe_llm()}", flush=True)
+    yield
+
+
+app = FastAPI(title="WealthGuard", description=config.DISCLAIMER, lifespan=lifespan)
 STATIC = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
 
 
@@ -27,7 +34,8 @@ def _client(client_id: str) -> dict:
 
 @app.get("/api/health")
 def health():
-    return {"ok": True, "mock_llm": config.use_mock_llm(), "disclaimer": config.DISCLAIMER}
+    return {"ok": True, "mock_llm": config.use_mock_llm(), "llm": config.describe_llm(),
+            "disclaimer": config.DISCLAIMER}
 
 
 @app.get("/api/personas")
