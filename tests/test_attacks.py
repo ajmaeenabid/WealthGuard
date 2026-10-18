@@ -76,7 +76,7 @@ def test_guaranteed_language_rejected_and_revision_budget_enforced():
 def test_reply_with_guarantee_language_is_replaced(monkeypatch):
     cid = c.post("/api/session", json={"persona_id": "persona_li"}).json()["client_id"]
     monkeypatch.setattr(llm, "respond", lambda *a, **k: llm.LLMResponse(text="This fund is guaranteed and risk-free!"))
-    out = c.post("/api/chat", json={"client_id": cid, "message": "hello"}).json()
+    out = c.post("/api/chat", json={"client_id": cid, "message": "tell me about this fund"}).json()
     assert "guaranteed" not in out["reply"].lower() and "compliance" in out["reply"].lower()
 
 

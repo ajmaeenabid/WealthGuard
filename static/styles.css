@@ -29,7 +29,7 @@
   --shadow: 0 24px 60px -24px rgba(0, 0, 0, .65);
   --ease: cubic-bezier(.2, .8, .2, 1);
   --drawer-w: 560px;
-  --banner-h: 30px;
+  --banner-h: 0px;
   color-scheme: dark;
 }
 :root[data-theme="light"] {

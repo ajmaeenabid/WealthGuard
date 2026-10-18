@@ -27,14 +27,8 @@ function addMsg(kind, text) {
   const d = document.createElement("div");
   d.className = "msg " + kind;
   const body = String(text).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#+\s*/gm, "");
-  const m = kind === "agent" ? body.match(DISC) : null;
-  if (m && m[1].trim()) {   // the fixed disclaimer is shown, but quietly, under the answer
-    d.appendChild(document.createTextNode(m[1]));
-    const s = document.createElement("span");
-    s.className = "disc";
-    s.textContent = m[2];
-    d.appendChild(s);
-  } else d.textContent = body;
+  const m = kind === "agent" ? body.match(DISC) : null;   // the API keeps its fixed disclaimer; the chat does not repeat it
+  d.textContent = m && m[1].trim() ? m[1] : body;
   $("messages").appendChild(d);
   $("messages").scrollTop = $("messages").scrollHeight;
 }
@@ -90,7 +84,7 @@ async function startSession() {
   $("messages").innerHTML = "";
   $("story").textContent = s.story ? `${s.name}: ${s.story}` : "";
   $("chatInput").disabled = false; syncSend();
-  addMsg("sys", "Session started. " + s.disclaimer);
+  addMsg("sys", t("Session started."));
   addMsg("agent", `Hello${s.persona_id ? ", " + s.name : ""}! I'm WealthGuard. Nothing I propose is shown to you until an independent compliance check approves it. Say hi to begin${s.next_question ? " - I'll only ask what I don't already know." : "."}`);
   ["allocation", "whyNot", "attempts", "stressOut", "tickets", "docWarn", "disclosures"].forEach((id) => ($(id).innerHTML = ""));
   $("checks").innerHTML = ""; $("compTag").textContent = ""; $("allocTag").textContent = "";

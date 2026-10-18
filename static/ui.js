@@ -194,7 +194,7 @@
     lastAlloc = t;
   }).observe($("allocTag"), { childList: true, characterData: true, subtree: true });
 
-  // ------------------------------------------------------------------ chart look and banner height
+  // ------------------------------------------------------------------ chart look
   const cv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   function styleCharts() {
     if (!window.Chart) return;
@@ -207,10 +207,9 @@
     Chart.defaults.plugins.tooltip.borderColor = cv("--line-strong");
     Chart.defaults.plugins.tooltip.borderWidth = 1;
   }
-  function syncBanner() { document.documentElement.style.setProperty("--banner-h", ($("shell").previousElementSibling.offsetHeight || 30) + "px"); }
+
   styleCharts();
-  syncBanner();
-  window.addEventListener("resize", syncBanner);
+
   themeBtn.addEventListener("click", () => setTimeout(() => { styleCharts(); if (window.WGApp) window.WGApp.redraw(); }, 30));
 
   window.WGUI = { openPanel, closePanel, progress, toast };

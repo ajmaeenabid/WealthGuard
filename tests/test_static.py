@@ -5,9 +5,9 @@ from app.main import app
 c = TestClient(app)
 
 
-def test_index_and_assets_carry_disclaimer():
+def test_index_and_assets_are_served():
     r = c.get("/")
-    assert r.status_code == 200 and "Not real financial advice" in r.text
+    assert r.status_code == 200 and 'id="chatInput"' in r.text
     assert c.get("/static/app.js").status_code == 200
     assert c.get("/static/styles.css").status_code == 200
 

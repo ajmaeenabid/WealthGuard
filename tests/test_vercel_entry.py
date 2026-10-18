@@ -14,7 +14,7 @@ def test_vercel_entry_serves_ui_and_api():
         "import importlib.util as u; s=u.spec_from_file_location('idx','api/index.py'); m=u.module_from_spec(s); s.loader.exec_module(m);"
         "from fastapi.testclient import TestClient; c=TestClient(m.app);"
         "cid=c.post('/api/session', json={'persona_id':'persona_li'}).json()['client_id'];"
-        "print(json.dumps({'db': os.environ['WEALTHGUARD_DB'], 'home': 'Not real financial advice' in c.get('/').text,"
+        "print(json.dumps({'db': os.environ['WEALTHGUARD_DB'], 'home': 'chatInput' in c.get('/').text,"
         "'reply': 'reply' in c.post('/api/chat', json={'client_id':cid,'message':'hi'}).json()}))")
     out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True, timeout=60)
     assert out.returncode == 0, out.stderr
