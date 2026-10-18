@@ -90,6 +90,15 @@ the key is wrong or the URL is not https, the app silently uses the local index 
 depends on it. On Vercel, set the same two variables in the project settings. The key is sent only as an `api-key` header.
  Lexical retrieval is not deep semantic search; see known risks.
 
+## Red-team arena
+
+The **Red-team arena** card runs 54 deterministic attacks (about a second) against the live defences and shows which layer stopped each:
+English and Chinese prompt injection, a poisoned brochure, the five forbidden (T3) actions, tool abuse, compliance bypasses (NovaYield,
+guaranteed wording in both languages, concentration, jargon, minimums, a vulnerable client, missing disclosures), approval bypasses
+(agent self-approval, cross-client, replay), purchase-history tricks, a hostile translation, a non-allowlisted URL, and four kinds of
+audit tampering (on an in-memory copy). Three benign **controls** must *not* be flagged, so it is not just blocking everything.
+No language model is called; results export as JSON and the run is audited.
+
 ## Self-inspection report (Art. 30)
 
 The **Self-inspection report** card generates, from the hash-chained audit log, a report modelled on Article 30 of the CSRC

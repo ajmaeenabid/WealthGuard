@@ -22,6 +22,8 @@
     "Required disclosures:": "必须披露：", "Draft log": "草稿记录",
     "Risk tolerance": "风险承受意愿", "Risk capacity": "风险承受能力",
     "Final bucket = the lower of the two:": "最终风险档位 = 两者中较低者：",
+    hR: "红队攻击演示", rtHint: "对真实防线运行一批中英文攻击，显示每次攻击由哪一层拦截。不调用语言模型。",
+    rtRun: "运行攻击", rtDl: "导出 JSON", "Defended": "已防御", "attacks": "次攻击",
     hS: "自查报告（第三十条）", siHint: "根据审计日志统计：被拦截、被拒绝和已批准的事项，按监管职责列出，并如实说明未覆盖事项。",
     siGen: "生成报告", siDl: "下载 Markdown", siClientOnly: "仅限当前客户", "Duties": "法定职责", "Findings": "发现", "Not covered": "未覆盖事项",
     hK: "法规与数据检索（向量库）", kbHint: "检索真实的证监会适当性管理办法（中文原文）、数据来源、历史情景和我们的规则。",

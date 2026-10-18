@@ -64,10 +64,16 @@ def list_entries(client_id: Optional[str] = None) -> list[dict]:
     return out
 
 
-def verify() -> dict:
+def raw_rows() -> list[dict]:
+    """Every audit row as stored (payload kept as its JSON string), for verification and the red-team arena."""
     conn = db.connect()
-    rows = conn.execute("SELECT * FROM audit ORDER BY id").fetchall()
+    rows = [dict(r) for r in conn.execute("SELECT * FROM audit ORDER BY id").fetchall()]
     conn.close()
+    return rows
+
+
+def verify_rows(rows: list[dict]) -> dict:
+    """Pure chain check over a list of stored rows (a copy can be tampered with in memory without touching the DB)."""
     prev = GENESIS
     expected_id = 1
     for r in rows:
@@ -83,3 +89,7 @@ def verify() -> dict:
         prev = r["entry_hash"]
         expected_id += 1
     return {"valid": True, "checked": len(rows), "head": prev}
+
+
+def verify() -> dict:
+    return verify_rows(raw_rows())

@@ -275,6 +275,38 @@ async function uploadDoc() {
 }
 
 
+// ---- red-team arena -------------------------------------------------------------------------------------------------
+let lastRedteam = null;
+async function rtRun() {
+  $("rtGo").disabled = true;
+  $("rtOut").innerHTML = '<div class="muted small">...</div>';
+  try {
+    const r = await api("/api/redteam/run", {});
+    lastRedteam = r;
+    const s = r.summary;
+    $("rtTag").textContent = `${s.defended}/${s.total}`;
+    $("rtTag").className = "tag " + (s.all_defended ? "good" : "bad");
+    const layers = Object.entries(s.by_layer).map(([k, v]) => `<span class="tag ${v.defended === v.total ? "good" : "bad"}">${esc(k)} ${v.defended}/${v.total}</span>`).join(" ");
+    let cat = "", html = `<div class="small">${layers}</div><div class="small muted">${s.seconds}s</div><table><tbody>`;
+    r.results.forEach((x) => {
+      if (x.category !== cat) { cat = x.category; html += `<tr><th colspan="3">${esc(cat)}</th></tr>`; }
+      html += `<tr><td>${x.defended ? "&#10003;" : "&#10007;"}</td><td class="small">${esc(x.name)}<div class="muted">${esc(x.evidence)}</div></td><td><span class="tag">${esc(x.layer)}</span></td></tr>`;
+    });
+    $("rtOut").innerHTML = html + "</tbody></table>";
+    await loadAudit();
+  } catch (e) { $("rtOut").textContent = "Error: " + e.message; }
+  $("rtGo").disabled = false;
+}
+
+function rtDownload() {
+  if (!lastRedteam) return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(lastRedteam, null, 2)], { type: "application/json" }));
+  a.download = "redteam_report.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 // ---- self-inspection report (Art. 30) ------------------------------------------------------------------------------
 let lastReport = null;
 async function siGenerate() {
@@ -404,6 +436,8 @@ async function init() {
   $("start").onclick = () => startSession().catch((e) => addMsg("sys", "Error: " + e.message));
   $("chatForm").onsubmit = (ev) => { ev.preventDefault(); send($("chatInput").value); };
   $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null);
+  $("rtGo").onclick = rtRun;
+  $("rtDl").onclick = rtDownload;
   $("siGo").onclick = siGenerate;
   $("siDl").onclick = siDownload;
   $("kbGo").onclick = kbSearch;
