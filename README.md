@@ -64,6 +64,16 @@ Clients and products stay synthetic. Real public data calibrates and grounds the
 | China CPI inflation, deposit and lending rate, GDP growth | [World Bank Open Data](https://data.worldbank.org/country/china) | CC BY 4.0 | China-specific context |
 | Suitability Management Measures, 43 articles (Chinese original) | [State Council Gazette](https://www.gov.cn/gongbao/content/2023/content_5742209.htm) (CSRC) | PRC regulations are not copyrightable (Copyright Law Art. 5) | grounding compliance explanations |
 
+## Knowledge base (vector database)
+
+The real CSRC *Suitability Management Measures* (43 articles, Chinese original), our data sources, the historical stress
+episodes and our compliance rules are indexed in a small vector database on SQLite + numpy (`app/vectorstore.py`,
+`app/knowledge.py`): hashing TF-IDF vectors (Chinese character n-grams, English words), cosine search, no network or
+model download, so mock mode, tests and Vercel behave the same. English questions reach the Chinese text through a small
+EN->ZH glossary. Use the **Regulation & data search** card, or ask the chat ("What does the CSRC regulation say about
+disclosing principal loss?"); the compliance panel also shows the **regulatory basis** (article) under each rule.
+The index is rebuilt automatically when the data changes. Lexical retrieval is not deep semantic search; see known risks.
+
 ## Deploy to Vercel (frontend and backend together)
 
 `api/index.py` serves the FastAPI app and the static UI as one serverless function; `vercel.json` routes every path to it.

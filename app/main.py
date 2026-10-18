@@ -3,11 +3,11 @@ import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import behaviour, comparison, config, ledger, profiling, service, state, store, translate
+from app import behaviour, comparison, config, knowledge, ledger, profiling, service, state, store, translate
 from app.agent import loop
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
@@ -152,6 +152,23 @@ def ledger_sample(req: LedgerSampleReq):
     return _ledger_view(req.client_id)
 
 
+KB_SOURCES = {"csrc_suitability", "data_sources", "market_episodes", "wealthguard_rules"}
+
+
+@app.get("/api/knowledge/search")
+def knowledge_search(q: str = Query(min_length=2, max_length=300), k: int = Query(3, ge=1, le=5),
+                     source: Optional[str] = None, client_id: Optional[str] = None):
+    """Vector search over the regulation text, data sources, stress episodes and our rules (T0 read, audited)."""
+    if source and source not in KB_SOURCES:
+        raise HTTPException(422, f"unknown source; choose from {sorted(KB_SOURCES)}")
+    if client_id:
+        _client(client_id)
+    hits = knowledge.search(q, k=k, source=source)
+    audit.append("client", "knowledge_search", "T0", {"chars": len(q), "source": source, "k": k, "hits": len(hits)},
+                 client_id)
+    return {"query": q, "results": hits}
+
+
 @app.get("/api/products")
 def products():
     audit.append("system", "list_products", "T0", {}, None)
@@ -243,6 +260,16 @@ def reject(ticket_id: str, req: ApproveReq):
         raise HTTPException(403, str(e))
 
 
+def _regulatory_basis(alloc) -> dict:
+    res = store.load_compliance(alloc.id) if alloc else None
+    out = {}
+    for ck in (res.checks if res else []):
+        b = knowledge.basis_for_rule(ck.rule_id)
+        if b:
+            out[ck.rule_id] = {k: b[k] for k in ("article", "article_no", "snippet", "text", "score", "url", "source")}
+    return out
+
+
 @app.get("/api/state")
 def get_state(client_id: str):
     d = _client(client_id)
@@ -253,6 +280,7 @@ def get_state(client_id: str):
             if prof else None,
             "attempts_blocked": store.consecutive_blocked(client_id),
             "compliance": store.load_compliance(alloc.id) if alloc else None,
+            "regulatory_basis": _regulatory_basis(alloc),
             "tickets": store.list_tickets(client_id),
             "why_not": service.why_not_notes(client_id, alloc) if alloc else {},
             "next_question": profiling.next_question(d["facts"]),

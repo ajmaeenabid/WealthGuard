@@ -33,3 +33,6 @@
 21. **US history as a proxy.** Scenario shocks and the backtest use US returns for synthetic CNY products; currency, China market structure and the asset-class blends (e.g. bond = 60% T-bond + 40% T-bill) are assumptions.
 22. **Two probabilities can disagree.** Monte Carlo uses the products' conservative assumptions; the backtest uses real US returns, which were higher. Both are shown and neither is a forecast.
 23. **Rolling windows overlap** and survivorship favours the US market, so the share of windows reaching a goal overstates what a typical future path may deliver.
+24. **Retrieval is lexical.** The embedder matches Chinese character n-grams and English words, not meaning: rare phrasings, long conversational questions and short Chinese queries can miss the best article. The EN->ZH glossary is hand-written. A neural multilingual embedder can replace the `_tf` function without changing the store.
+25. **Regulatory basis is a pointer, not legal analysis.** The article shown is the best textual match to a fixed query and a rule may relate to several articles; the demo does not claim legal compliance.
+26. **R7 denial pattern.** Chinese statements that deny a guarantee (不表明/不代表...保证) are not flagged so the regulation can be quoted; a sentence that both denies and then promises is still flagged.

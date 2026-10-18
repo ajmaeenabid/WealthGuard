@@ -1,11 +1,11 @@
 """Tool definitions the agent may call. Every call goes through security.tiers.execute (never directly)."""
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, Literal, Optional
 
 from pydantic import Field
 
 from app import allocation as al
-from app import behaviour, comparison, compliance, config, profiling, simulator, state, store
+from app import behaviour, comparison, compliance, config, knowledge, profiling, simulator, state, store
 from app.products import load_products
 from app.schemas import ClientProfile, OrderTicket, StrictArgs
 from app.security import audit
@@ -26,6 +26,12 @@ class ListProductsArgs(StrictArgs):
 
 class CompareArgs(StrictArgs):
     product_ids: list[str] = Field(max_length=15)
+
+
+class SearchKnowledgeArgs(StrictArgs):
+    query: str = Field(min_length=2, max_length=300)
+    k: int = Field(default=3, ge=1, le=5)
+    source: Optional[Literal["csrc_suitability", "data_sources", "market_episodes", "wealthguard_rules"]] = None
 
 
 class ProposeArgs(StrictArgs):
@@ -70,6 +76,12 @@ def _facts(client_id: str) -> dict:
 def list_products(a: ListProductsArgs, ctx: Ctx) -> dict:
     ps = [comparison.row(p) for p in load_products().values() if not a.asset_class or p.asset_class == a.asset_class]
     return {"products": ps}
+
+
+def search_knowledge(a: SearchKnowledgeArgs, ctx: Ctx) -> dict:
+    hits = knowledge.search(a.query, k=a.k, source=a.source)
+    return {"results": [{"source": h["source"], "ref": h["ref"], "title": h["title"], "score": h["score"],
+                         "url": h["url"], "text": h["text"][:600]} for h in hits]}
 
 
 def get_client_profile(a: NoArgs, ctx: Ctx) -> dict:
@@ -208,6 +220,9 @@ def generate_report(a: AllocIdArgs, ctx: Ctx) -> dict:
 
 TOOLS: dict[str, Tool] = {t.name: t for t in [
     Tool("list_products", "T0", ListProductsArgs, list_products, "List the synthetic product universe."),
+    Tool("search_knowledge", "T0", SearchKnowledgeArgs, search_knowledge,
+         "Search the knowledge base: the real CSRC suitability regulation (Chinese original), real data sources, "
+         "historical stress episodes and our compliance rules. Cite the article or source you use."),
     Tool("get_client_profile", "T0", NoArgs, get_client_profile, "Read the current client's profile and answers."),
     Tool("ask_profile_question", "T0", NoArgs, ask_profile_question,
          "Get the next unanswered profiling question (adaptive: answered or implied ones are skipped)."),

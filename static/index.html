@@ -110,6 +110,17 @@
       <div class="auditwrap"><table id="ledgerTable"><thead><tr><th data-i18n="thDate">Date</th><th data-i18n="thItem">Item</th><th class="num" data-i18n="thAmt">Amount</th><th data-i18n="thStatus">Status</th><th></th></tr></thead><tbody></tbody></table></div>
     </div>
 
+    <div class="card" id="kbCard">
+      <h2><span data-i18n="hK">Regulation &amp; data search (vector DB)</span> <span class="tag" id="kbTag"></span></h2>
+      <div class="small muted" data-i18n="kbHint">Searches the real CSRC suitability regulation (Chinese original), our data sources, historical episodes and rules.</div>
+      <div class="row">
+        <input id="kbQuery" type="text" maxlength="300" placeholder="e.g. Can a retail customer buy a complex product?" data-i18n-ph="kbPh" aria-label="Search the knowledge base">
+        <select id="kbSource" aria-label="Source"><option value="" data-i18n="kbAll">All sources</option><option value="csrc_suitability" data-i18n="kbCsrc">CSRC regulation</option><option value="data_sources" data-i18n="kbData">Data sources</option><option value="market_episodes" data-i18n="kbEp">Stress episodes</option><option value="wealthguard_rules" data-i18n="kbRules">Our rules</option></select>
+        <button type="button" id="kbGo" class="primary" data-i18n="search">Search</button>
+      </div>
+      <div id="kbResults"></div>
+    </div>
+
     <div class="card" id="docCard">
       <h2 data-i18n="h6">6. Upload a document (untrusted)</h2>
       <input id="docName" type="text" value="brochure.txt" aria-label="Filename">

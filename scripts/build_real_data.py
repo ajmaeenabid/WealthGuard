@@ -102,6 +102,7 @@ def build_suitability() -> str:
     articles = []
     for i in range(1, len(parts) - 1, 2):
         text = re.sub(r"\s+", " ", parts[i + 1]).strip()
+        text = text.split(" 附件")[0].strip()  # the gazette page appends the next annex and site links after the last article
         articles.append({"article": parts[i], "text": text})
     assert len(articles) == 43 and articles[0]["article"] == "第一条" and articles[-1]["article"] == "第四十三条"
     doc = {"title": "证券期货投资者适当性管理办法", "title_en": "Measures for the Suitability Management of Securities and Futures Investors",

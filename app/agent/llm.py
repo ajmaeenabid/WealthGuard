@@ -16,6 +16,8 @@ Rules you must follow:
 - Profile the client (ask_profile_question, compute_risk_profile), propose an allocation (propose_allocation), then
   ALWAYS run check_compliance. Show nothing to the client until compliance passes. If it fails, revise using the
   violating_product_ids returned (at most 3 revisions) or explain honestly why you cannot proceed.
+- For questions about regulation, law, data sources or where a number comes from, call search_knowledge and cite the
+  article (e.g. 第十六条) or source it returns; the regulation text is in Chinese, so quote it and explain it.
 - Explain every recommendation ("why this" and "why not that") in plain language citing the client's facts.
 - Never use guaranteed / risk-free / can't-lose wording. Never promise returns (in English or Chinese).
 - Reply in the client's language (English or Chinese). Use plain text, no markdown. If asked what you can do, first
@@ -225,6 +227,29 @@ def mock_respond(messages: list, state: dict) -> LLMResponse:
         return LLMResponse(text=(f"Your recorded purchases total CNY {b['bought_total']:,.0f} across {b['bought_count']} "
                                  f"items (top categories: {cats}). {b['planned_count']} planned and "
                                  f"{b['cancelled_count']} cancelled items are not counted. {tips} {b['note']} {disclaimer}"))
+
+    if any(w in text for w in ["regulation", "regulator", "csrc", "law say", "legally", "what does the law", "which license",
+                               "data source", "where does the", "suitability measures", "法规", "监管", "适当性管理办法", "条例",
+                               "法律"]):
+        if not res:
+            reg = any(w in text for w in ["regulation", "regulator", "csrc", "law", "legal", "suitability measures", "法规",
+                                          "监管", "适当性管理办法", "条例", "法律"])
+            args = {"query": _user_text(messages)[:300], "k": 3}
+            if reg:  # regulation questions are answered from the regulation text, not from our own rule notes
+                args["source"] = "csrc_suitability"
+            return _call("search_knowledge", args, n)
+        hits = last[2].get("results", [])
+        if not hits:
+            return LLMResponse(text=f"I could not find anything relevant in the knowledge base. {disclaimer}")
+        top = hits[0]
+        if top["source"] == "csrc_suitability":
+            more = ", ".join(h["ref"] for h in hits[1:] if h["source"] == "csrc_suitability")
+            body = (f"From the CSRC Suitability Management Measures, {top['ref']}: \u201c{top['text'][:260]}"
+                    f"{'...' if len(top['text']) > 260 else ''}\u201d (Chinese original; switch to 中文 or ask in Chinese for "
+                    f"a translation). Source: {top['url']}." + (f" Related: {more}." if more else ""))
+        else:
+            body = f"{top['title']}: {top['text'][:400]}"
+        return LLMResponse(text=f"{body} {disclaimer}")
 
     if "list" in text and "product" in text:
         if not res:

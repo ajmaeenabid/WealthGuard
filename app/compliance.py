@@ -29,12 +29,16 @@ ZH_NEGATION = re.compile(r"(不|无法|不能|不会|并不|并非|没有|不可
                          r"(任何)?(保证|保本|保收益|承诺保证)|(不是|并非|没有|不存在|不可能有|不等于)(任何)?(零风险|无风险|没有风险)")
 
 
+# "advice does not indicate any judgment or guarantee" statements (e.g. CSRC Measures Art. 4) deny a guarantee.
+ZH_DENIAL = re.compile(r"(不表明|不代表|并不代表|不意味着|并不意味着|不构成)[^。；]{0,40}?(保证|保本|保收益)")
+
+
 def _chk(rule_id: str, passed: bool, detail: str) -> ComplianceCheck:
     return ComplianceCheck(rule_id=rule_id, passed=passed, detail=detail)
 
 
 def banned_phrases(text: str) -> list[str]:
-    cleaned = ZH_NEGATION.sub(" ", NEGATION.sub(" ", text))
+    cleaned = ZH_DENIAL.sub(" ", ZH_NEGATION.sub(" ", NEGATION.sub(" ", text)))
     hits = []
     for pat in BANNED:
         m = re.search(pat, cleaned, re.IGNORECASE)

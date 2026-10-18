@@ -27,6 +27,7 @@ function addMsg(kind, text) {
   $("messages").scrollTop = $("messages").scrollHeight;
 }
 
+let regBasis = {};
 const ZH_LABELS = {
   "Stable (salary or pension)": "稳定（工资或养老金）", "Variable": "变动", "Unstable": "不稳定",
   "None (0%)": "不需要（0%）", "About 10%": "约10%", "About 25%": "约25%", "40% or more": "40%以上",
@@ -123,6 +124,8 @@ async function refresh() {
   renderProfile(st);
   renderAllocation(st);
   if (st.compliance) renderChecks(st.compliance);
+  regBasis = st.regulatory_basis || {};
+  if (st.compliance) renderChecks(st.compliance);
   renderTickets(st.tickets);
   await loadLedger();
   await loadAudit();
@@ -161,11 +164,17 @@ function renderAllocation(st) {
   $("whyNot").innerHTML = wn.length ? wn.map(([id, w]) => `<div class="whynot"><b>${esc(w.name)}</b> (${esc(id)}): ${tr(w.text)}</div>`).join("") : "-";
 }
 
+function basisHtml(ruleId) {
+  const b = regBasis[ruleId];
+  if (!b) return "";
+  return `<div class="basis small muted" title="${esc(b.text)}">${esc(t("Regulatory basis"))}: <a href="${esc(b.url)}" target="_blank" rel="noopener">CSRC Art. ${b.article_no} (${esc(b.article)})</a> &mdash; ${esc(b.snippet)}</div>`;
+}
+
 function renderChecks(c) {
   $("compTag").textContent = c.passed ? t("all checks passed") : t("BLOCKED");
   $("compTag").className = "tag " + (c.passed ? "good" : "bad");
   const names = { R1: "Suitability", R2: "Concentration", R3: "Complexity", R4: "Liquidity", R5: "Vulnerable client", R6: "Disclosures", R7: "Language", R8: "Minimums", LLM: "LLM reviewer (second opinion)" };
-  $("checks").innerHTML = c.checks.map((k) => `<li class="${k.passed ? "ok" : "fail"}"><b>${k.passed ? "&#10003;" : "&#10007;"} ${esc(k.rule_id)}</b><span><b>${esc(I() ? I().ruleName(k.rule_id, names[k.rule_id] || "") : (names[k.rule_id] || ""))}</b> - ${tr(k.detail)}</span></li>`).join("");
+  $("checks").innerHTML = c.checks.map((k) => `<li class="${k.passed ? "ok" : "fail"}"><b>${k.passed ? "&#10003;" : "&#10007;"} ${esc(k.rule_id)}</b><span><b>${esc(I() ? I().ruleName(k.rule_id, names[k.rule_id] || "") : (names[k.rule_id] || ""))}</b> - ${tr(k.detail)}${basisHtml(k.rule_id)}</span></li>`).join("");
   $("disclosures").innerHTML = `<b>${t("Required disclosures:")}</b><br>` + (c.required_disclosures || []).map(tr).join("<br>");
 }
 
@@ -266,6 +275,22 @@ async function uploadDoc() {
 }
 
 
+// ---- knowledge search (vector DB) ---------------------------------------------------------------------------------
+async function kbSearch() {
+  const q = $("kbQuery").value.trim();
+  if (q.length < 2) return;
+  const src = $("kbSource").value;
+  try {
+    const r = await api(`/api/knowledge/search?q=${encodeURIComponent(q)}&k=4${src ? "&source=" + src : ""}${clientId ? "&client_id=" + encodeURIComponent(clientId) : ""}`);
+    $("kbTag").textContent = r.results.length ? `${r.results.length}` : "";
+    $("kbResults").innerHTML = r.results.length ? r.results.map((h) => `<div class="insight ${h.source === "csrc_suitability" ? "ok" : "info"}">
+      <b>${esc(h.title)}</b> <span class="tag">${esc(h.source)}</span> <span class="small muted">${t("score")} ${h.score.toFixed(2)}${h.lang === "zh" ? " &middot; " + esc(t("Chinese original")) : ""}</span>
+      <div class="small">${esc(h.text.slice(0, 320))}${h.text.length > 320 ? "&hellip;" : ""}</div>
+      ${h.url ? `<a class="small" href="${esc(h.url)}" target="_blank" rel="noopener">${esc(h.url)}</a>` : ""}</div>`).join("")
+      : `<div class="muted small">${esc(t("No results."))}</div>`;
+  } catch (e) { $("kbResults").textContent = "Error: " + e.message; }
+}
+
 // ---- purchase history and behaviour -----------------------------------------------------------------------------
 async function showLedger(data) {
   const entries = data.entries || [], b = data.insights || {};
@@ -351,6 +376,8 @@ async function init() {
   $("start").onclick = () => startSession().catch((e) => addMsg("sys", "Error: " + e.message));
   $("chatForm").onsubmit = (ev) => { ev.preventDefault(); send($("chatInput").value); };
   $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null);
+  $("kbGo").onclick = kbSearch;
+  $("kbQuery").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); kbSearch(); } });
   $("ledgerGo").onclick = ledgerInterpret;
   $("ledgerCmd").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); ledgerInterpret(); } });
   $("lgAdd").onclick = ledgerAdd;
