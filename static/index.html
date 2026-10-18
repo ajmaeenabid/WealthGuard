@@ -64,14 +64,17 @@
       <h2 data-i18n="h4">4. Stress test &amp; goal probability</h2>
       <div class="row">
         <select id="scenario">
-          <option value="equity_-20" data-i18n="sc1">Equities -20%</option>
-          <option value="rate_+2" data-i18n="sc2">Rates +2 points</option>
-          <option value="crash_2008" data-i18n="sc3">2008-style crash</option>
-          <option value="inflation_spike" data-i18n="sc4">Inflation spike</option>
+          <option value="equity_-20" data-i18n="sc1">Equities -20% (hypothetical)</option>
+          <option value="rate_+2" data-i18n="sc2">Rate shock (real 2022)</option>
+          <option value="crash_2008" data-i18n="sc3">2008 financial crisis (real)</option>
+          <option value="inflation_spike" data-i18n="sc4">Inflation spike (real 1974)</option>
+          <option value="dotcom_bust" data-i18n="sc5">Dot-com bust (real 2000-02)</option>
+          <option value="great_depression" data-i18n="sc6">Great Depression (real 1929-32)</option>
         </select>
         <button id="runStress" data-i18n="run">Run</button>
       </div>
       <div id="stressOut" class="muted" data-i18n="ph_stress">Needs a compliant allocation.</div>
+      <div id="histOut" class="small"></div>
       <div class="chartwrap"><canvas id="stressChart" height="140"></canvas></div>
     </div>
 

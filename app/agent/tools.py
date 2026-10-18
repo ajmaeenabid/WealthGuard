@@ -181,7 +181,8 @@ def run_goal_projection(a: GoalArgs, ctx: Ctx) -> dict:
     prof = store.load_profile(ctx.client_id)
     base = simulator.goal_projection(alloc, prof)
     shocked = simulator.goal_projection(alloc, prof, a.shock_pct)
-    return {**shocked, "base_probability": base["probability"], "shock_pct": a.shock_pct}
+    hist = simulator.historical_backtest(alloc, load_products(), prof)
+    return {**shocked, "base_probability": base["probability"], "shock_pct": a.shock_pct, "historical": hist}
 
 
 # ---- T2 (stage only; approval is a separate endpoint) ----------------------------------------------------
