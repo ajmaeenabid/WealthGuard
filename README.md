@@ -90,6 +90,16 @@ the key is wrong or the URL is not https, the app silently uses the local index 
 depends on it. On Vercel, set the same two variables in the project settings. The key is sent only as an `api-key` header.
  Lexical retrieval is not deep semantic search; see known risks.
 
+## Verifiable advice receipt
+
+The **Advice receipt** card downloads a JSON receipt for the latest compliance-approved advice: the advice text and weights, the compliance
+result, the CSRC article behind each rule (with its text hash), the SHA-256 of every real dataset used, the client's audit entries with
+their chain hashes, and an anchor to the audit-chain head at issue, sealed by a content hash and an HMAC checkpoint. Anyone can run
+`python scripts/verify_receipt.py receipt.json` offline (content hash, entry hashes, dataset hashes); `--server URL` or the page's *Verify a
+receipt file* also checks that every entry is still in the live log, that the chain head recorded at issue is still intact (this catches later
+truncation or rewriting, which the chain alone cannot), and that the HMAC was issued by that server. Set `RECEIPT_KEY` in `.env` (or the
+Vercel settings) so receipts stay verifiable across restarts.
+
 ## Counterfactuals: "What would it take?"
 
 Under each "why not" note, **What would it take?** shows, rule by rule (with the CSRC article), whether the product passes today, and

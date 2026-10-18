@@ -59,3 +59,8 @@ disabled it reports the attacks as undefended while the benign controls still pa
 
 `explain_counterfactual` is T1 with strict arguments (`test_counterfactual.py`); the tests check that every returned path is eligible in the real
 engine, that paths are minimal (brute force), that only changeable answers appear, and that explaining never modifies the client record.
+
+**Advice receipt** (`test_receipt.py`): editing the advice breaks the content hash; a forger who recomputes it fails the HMAC checkpoint;
+a consistent forged audit entry fails membership; deleting the newest audit rows after issue (invisible to the chain alone) fails the anchor;
+a receipt from another server fails the checkpoint; changed datasets fail the data hash check. This closes the audit-tail-truncation risk
+for every receipt a client holds.

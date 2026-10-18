@@ -1,13 +1,14 @@
 """FastAPI app: JSON API (contract in CLAUDE.md) plus the static single-page UI."""
+import json
 import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import behaviour, comparison, config, knowledge, ledger, profiling, redteam, selfinspection, service, state, store, translate
+from app import behaviour, comparison, config, knowledge, ledger, profiling, receipt, redteam, selfinspection, service, state, store, translate
 from app.agent import loop
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
@@ -177,6 +178,29 @@ def knowledge_search(q: str = Query(min_length=2, max_length=300), k: int = Quer
     audit.append("client", "knowledge_search", "T0", {"chars": len(q), "source": source, "k": k, "hits": len(hits),
                                                       "backend": backend}, client_id)
     return {"query": q, "results": hits, "backend": backend}
+
+
+@app.get("/api/receipt")
+def get_receipt(client_id: str):
+    """A verifiable advice receipt for the latest compliance-approved allocation (T1, audited)."""
+    _client(client_id)
+    r = receipt.build(client_id)
+    if not r:
+        raise HTTPException(409, "no compliance-approved allocation yet")
+    audit.append("client", "receipt_issued", "T1", {"content_hash": r["content_hash"], "head_id": r["checkpoint"]["head_id"]},
+                 client_id)
+    return r
+
+
+@app.post("/api/receipt/verify")
+def verify_receipt(body: dict = Body(...)):
+    """Verify a receipt (the receipt itself, or {"receipt": ...}) against this server's audit log and key."""
+    r = body.get("receipt", body)
+    if len(json.dumps(r, default=str)) > 2_000_000:
+        raise HTTPException(413, "receipt too large")
+    res = receipt.verify(r if isinstance(r, dict) else {})
+    audit.append("system", "receipt_verified", "T1", {"valid": res["valid"], "failed": [c["name"] for c in res["checks"] if not c["ok"]]}, None)
+    return res
 
 
 @app.get("/api/counterfactual")

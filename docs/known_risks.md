@@ -47,3 +47,8 @@
 32. **Counterfactuals could be misused to game suitability.** The output lists what would have to be true and says it is not advice to change
     answers; it still shows which answers would matter. A real deployment would withhold it from the client or require adviser review.
 33. **Single-product view.** The explanation is per product (R1, R3, R4, R5); portfolio-level limits (equity share, concentration) are not part of it.
+34. **Receipt key custody.** The HMAC key lives with the server (env or database); anyone holding it can mint receipts. Without `RECEIPT_KEY`, a
+    restart on an ephemeral disk (Vercel `/tmp`) generates a new key and a new empty log, so older receipts no longer verify there. Verification of
+    membership and anchor needs the issuing server; only the content, entry and dataset hashes can be checked offline.
+35. **Receipts are not legal signatures.** The checkpoint is a symmetric HMAC (verified by the issuer), not a public-key signature or a trusted
+    timestamp.

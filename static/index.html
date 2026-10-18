@@ -121,6 +121,16 @@
       <div id="kbResults"></div>
     </div>
 
+    <div class="card" id="rcCard">
+      <h2><span data-i18n="hC">Advice receipt</span> <span class="tag" id="rcTag"></span></h2>
+      <div class="small muted" data-i18n="rcHint">A sealed record of the approved advice: rules, regulation articles, data hashes and audit anchors. Anyone can verify it.</div>
+      <div class="row">
+        <button type="button" id="rcDl" class="primary" data-i18n="rcDownload">Download receipt</button>
+        <label class="small"><span data-i18n="rcVerify">Verify a receipt file</span> <input type="file" id="rcFile" accept="application/json,.json"></label>
+      </div>
+      <div id="rcOut"></div>
+    </div>
+
     <div class="card" id="rtCard">
       <h2><span data-i18n="hR">Red-team arena</span> <span class="tag" id="rtTag"></span></h2>
       <div class="small muted" data-i18n="rtHint">Runs a battery of English and Chinese attacks against the live defences and shows which layer stopped each one. No language model is called.</div>
