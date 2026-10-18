@@ -75,24 +75,81 @@ function setChips() {
   });
 }
 
-async function startSession() {
-  const persona = $("persona").value || null;
-  const s = await api("/api/session", { persona_id: persona });
+// A chat is a saved advisory session: new chats are created on the server, old ones are reopened with their messages.
+function beginChat(s, msgs) {
   clientId = s.client_id;
   stressRan = false;
   if (window.WGUI) window.WGUI.progress({ profile: false, alloc: false, comp: false, stress: false, approve: false });
   $("messages").innerHTML = "";
   $("story").textContent = s.story ? `${s.name}: ${s.story}` : "";
   $("chatInput").disabled = false; syncSend();
-  addMsg("sys", t("Session started."));
-  addMsg("agent", `Hello${s.persona_id ? ", " + s.name : ""}! I'm WealthGuard. Nothing I propose is shown to you until an independent compliance check approves it. Say hi to begin${s.next_question ? " - I'll only ask what I don't already know." : "."}`);
+  msgs.forEach((m) => addMsg(m.role === "user" ? "user" : "agent", m.text));
   ["allocation", "whyNot", "attempts", "stressOut", "tickets", "docWarn", "disclosures"].forEach((id) => ($(id).innerHTML = ""));
   $("checks").innerHTML = ""; $("compTag").textContent = ""; $("allocTag").textContent = "";
   $("profile").textContent = "Answer the questions in the chat to build the profile.";
   $("allocation").textContent = "Nothing is shown until the compliance engine approves it.";
   drawAlloc(null); drawStress(null);
   setQuick(s.next_question);
-  await refresh();
+}
+
+function closeMobileSidebar() { if ($("sidebar").classList.contains("open") && $("scrim")) $("scrim").click(); }
+
+async function startSession() {
+  const s = await api("/api/conversations", { persona_id: $("persona").value || null });
+  beginChat(s, [{ role: "agent", text: s.greeting }]);
+  closeMobileSidebar();
+  await Promise.all([refresh(), refreshChats()]);
+}
+
+async function openChat(id) {
+  if (id === clientId) { closeMobileSidebar(); return; }
+  const s = await api(`/api/conversations/${encodeURIComponent(id)}`, undefined, "GET");
+  beginChat(s, s.messages);
+  closeMobileSidebar();
+  await Promise.all([refresh(), refreshChats()]);
+  if (I() && I().lang === "zh") await I().applyDynamic(api, clientId);
+}
+
+async function deleteChat(id) {
+  if (!window.confirm(t("Delete this chat?"))) return;
+  await api(`/api/conversations/${encodeURIComponent(id)}/delete`, {});
+  if (id === clientId) {
+    clientId = null;
+    $("messages").innerHTML = ""; $("story").textContent = "";
+    ["allocation", "whyNot", "attempts", "stressOut", "tickets", "docWarn", "disclosures", "checks"].forEach((x) => ($(x).innerHTML = ""));
+    drawAlloc(null); drawStress(null);
+    if (window.WGUI) window.WGUI.progress({ profile: false, alloc: false, comp: false, stress: false, approve: false });
+    setQuick(null);
+  }
+  await refreshChats();
+}
+
+let chatsCache = [];
+async function refreshChats() {
+  try { chatsCache = await api("/api/conversations", undefined, "GET"); } catch (e) { return; }
+  const box = $("chatList");
+  box.innerHTML = "";
+  if (!chatsCache.length) { box.innerHTML = `<p class="chat-empty muted">${esc(t("No chats yet."))}</p>`; return; }
+  const admin = window.WGAuth && window.WGAuth.user && window.WGAuth.user.role === "admin";
+  chatsCache.forEach((c) => {
+    const row = document.createElement("div");
+    row.className = "chat-item" + (c.id === clientId ? " active" : "");
+    row.setAttribute("role", "listitem");
+    const open = document.createElement("button");
+    open.type = "button"; open.className = "ci-open";
+    const day = new Date(c.updated).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    open.innerHTML = '<span class="ci-title"></span><span class="ci-meta"></span>';
+    open.querySelector(".ci-title").textContent = c.title === "New chat" ? t("New chat") : c.title;
+    open.querySelector(".ci-meta").textContent = [c.name, admin ? "@" + c.owner : "", day].filter(Boolean).join(" · ");
+    open.onclick = () => openChat(c.id).catch((e) => addMsg("sys", "Error: " + e.message));
+    const del = document.createElement("button");
+    del.type = "button"; del.className = "ci-del ghost icon";
+    del.setAttribute("aria-label", t("Delete chat")); del.title = t("Delete chat");
+    del.innerHTML = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg>';
+    del.onclick = () => deleteChat(c.id).catch((e) => addMsg("sys", "Error: " + e.message));
+    row.append(open, del);
+    box.appendChild(row);
+  });
 }
 
 async function send(text) {
@@ -116,7 +173,7 @@ async function send(text) {
     if (/stress|crash|inflation|equities fall|what if|depression|dot-?com/i.test(text) && r.allocation) await runStress(detectScenario(text), true);
   } catch (e) {
     addMsg("sys", "Error: " + e.message);
-  } finally { setBusy(false); await refresh(); }
+  } finally { setBusy(false); await Promise.all([refresh(), refreshChats()]); }
 }
 
 function detectScenario(t) {
@@ -600,6 +657,10 @@ async function init() {
   pr.forEach((p) => (products[p.id] = p));
   $("persona").innerHTML = ps.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("") + '<option value="">Blank client</option>';
   $("llmBadge").textContent = h.mock_llm ? "mock LLM" : "live LLM";
+  const me = window.WGAuth.user;
+  if (!me.can_pick_persona) {   // li / chen / wang are their own client: no picking, one persona per account
+    $("personaRow").hidden = true; $("whoRow").hidden = false; $("whoName").textContent = me.display_name;
+  }
   $("start").onclick = () => startSession().catch((e) => addMsg("sys", "Error: " + e.message));
   $("chatForm").onsubmit = (ev) => { ev.preventDefault(); send($("chatInput").value); };
   $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null);
@@ -623,6 +684,9 @@ async function init() {
   $("docSend").onclick = uploadDoc;
   $("docAttack").onclick = () => { $("docText").value = ATTACK; $("docName").value = "novayield_brochure.txt"; };
   $("auditTag").textContent = "";
+  await refreshChats();   // keep the history: carry on in the latest chat, or start the first one for a fixed client
+  if (chatsCache.length) await openChat(chatsCache[0].id);
+  else if (!me.can_pick_persona) await startSession();
 }
-init().catch((e) => { document.body.insertAdjacentHTML("beforeend", `<p class="warnbox">Failed to load: ${esc(e.message)}</p>`); });
+window.WGAuth.onReady(() => init().catch((e) => { document.body.insertAdjacentHTML("beforeend", `<p class="warnbox">Failed to load: ${esc(e.message)}</p>`); }));
 window.WGApp = { redraw: () => { if (clientId) refresh(); }, syncSend };

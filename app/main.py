@@ -6,10 +6,11 @@ from typing import Optional
 
 from fastapi import Body, FastAPI, HTTPException, Query, Request
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel, Field
 from fastapi.staticfiles import StaticFiles
 
-from app import behaviour, comparison, config, knowledge, ledger, profiling, provenance, receipt, redteam, replay, selfinspection, service, state, store, transcribe, translate
+from app import accounts, behaviour, comparison, conversations, config, knowledge, ledger, profiling, provenance, receipt, redteam, replay, selfinspection, service, state, store, transcribe, translate
 from app.agent import loop
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
@@ -33,6 +34,126 @@ async def lifespan(_app):
 
 app = FastAPI(title="WealthGuard", description=config.DISCLAIMER, lifespan=lifespan)
 STATIC = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+
+
+OPEN_API = {"/api/health", "/api/auth/login", "/api/auth/signup"}
+
+
+@app.middleware("http")
+async def auth_gate(request: Request, call_next):
+    """Every /api route needs a signed-in user, except health and the sign-in / sign-up routes."""
+    request.state.user, request.state.token = None, ""
+    path = request.url.path
+    if path.startswith("/api/"):
+        h = request.headers.get("authorization", "")
+        request.state.token = h[7:].strip() if h.lower().startswith("bearer ") else ""
+        if request.state.token:
+            request.state.user = await run_in_threadpool(accounts.user_for_token, request.state.token)
+        if accounts.auth_required() and path not in OPEN_API and request.state.user is None:
+            return JSONResponse({"detail": "Sign in required."}, status_code=401)
+    return await call_next(request)
+
+
+def _me(request: Request) -> dict:
+    if request.state.user is None:
+        raise HTTPException(401, "Sign in required.")
+    return request.state.user
+
+
+def _owns(request: Request, client_id: str) -> None:
+    """A signed-in user can only open their own chats (admins can open any). Sessions without a saved chat are open."""
+    if accounts.auth_required() and not conversations.can_access(request.state.user, client_id):
+        raise HTTPException(403, "This chat belongs to another account.")
+
+
+class Credentials(BaseModel):
+    username: str = Field(max_length=64)
+    password: str = Field(max_length=200)
+    display_name: str = Field("", max_length=40)
+
+
+class PasswordChange(BaseModel):
+    old_password: str = Field(max_length=200)
+    new_password: str = Field(max_length=200)
+
+
+class NewChat(BaseModel):
+    persona_id: Optional[str] = None
+
+
+def _auth_call(fn, *a):
+    try:
+        return fn(*a)
+    except accounts.AuthError as e:
+        raise HTTPException(e.status, e.message)
+
+
+@app.post("/api/auth/signup")
+def auth_signup(req: Credentials):
+    out = _auth_call(accounts.signup, req.username, req.password, req.display_name)
+    audit.append("system", "account_created", "T0", {"username": out["user"]["username"]})
+    return out
+
+
+@app.post("/api/auth/login")
+def auth_login(req: Credentials):
+    out = _auth_call(accounts.login, req.username, req.password)
+    audit.append("system", "login", "T0", {"username": out["user"]["username"]})
+    return out
+
+
+@app.post("/api/auth/logout")
+def auth_logout(request: Request):
+    accounts.logout(request.state.token)
+    return {"ok": True}
+
+
+@app.get("/api/auth/me")
+def auth_me(request: Request):
+    return _me(request)
+
+
+@app.post("/api/auth/password")
+def auth_password(req: PasswordChange, request: Request):
+    me = _me(request)
+    _auth_call(accounts.change_password, me["username"], req.old_password, req.new_password, request.state.token)
+    audit.append("system", "password_changed", "T0", {"username": me["username"]})
+    return {"ok": True}
+
+
+@app.get("/api/conversations")
+def list_conversations(request: Request):
+    return conversations.listing(_me(request))
+
+
+@app.post("/api/conversations")
+def new_conversation(req: NewChat, request: Request):
+    me = _me(request)
+    try:
+        return conversations.create(me, req.persona_id)
+    except KeyError:
+        raise HTTPException(404, "unknown persona")
+
+
+@app.get("/api/conversations/{client_id}")
+def open_conversation(client_id: str, request: Request):
+    me = _me(request)
+    if conversations.get(client_id) is None:
+        raise HTTPException(404, "unknown chat")
+    if not conversations.can_access(me, client_id):
+        raise HTTPException(403, "This chat belongs to another account.")
+    return conversations.open_chat(client_id)
+
+
+@app.post("/api/conversations/{client_id}/delete")
+def delete_conversation(client_id: str, request: Request):
+    me = _me(request)
+    if conversations.get(client_id) is None:
+        raise HTTPException(404, "unknown chat")
+    if not conversations.can_access(me, client_id):
+        raise HTTPException(403, "This chat belongs to another account.")
+    conversations.delete(client_id)
+    return {"ok": True}
 
 
 def _client(client_id: str) -> dict:
@@ -64,9 +185,12 @@ def session(req: SessionReq):
 
 
 @app.post("/api/chat")
-def chat(req: ChatReq):
+def chat(req: ChatReq, request: Request):
     _client(req.client_id)
-    return loop.run_turn(req.client_id, req.message)
+    _owns(request, req.client_id)
+    out = loop.run_turn(req.client_id, req.message)
+    conversations.record_turn(req.client_id, req.message, out["reply"])
+    return out
 
 
 @app.post("/api/transcribe")
@@ -401,7 +525,8 @@ def _regulatory_basis(alloc) -> dict:
 
 
 @app.get("/api/state")
-def get_state(client_id: str):
+def get_state(client_id: str, request: Request):
+    _owns(request, client_id)
     d = _client(client_id)
     alloc = store.latest_allocation(client_id)
     prof = d.get("profile")
