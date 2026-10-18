@@ -20,6 +20,8 @@ class FakeQdrant:
 
     def __init__(self, key=KEY):
         self.key, self.cols, self.calls, self.fail = key, {}, [], None
+        self.strict = False       # Qdrant Cloud strict mode: filters need a payload index
+        self.index_fail = False   # creating the payload index is refused
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         path, method = request.url.path, request.method
@@ -31,7 +33,7 @@ class FakeQdrant:
         if self.fail and method == "POST":
             return httpx.Response(self.fail, json={})
         body = json.loads(request.content) if request.content else {}
-        m = re.fullmatch(r"/collections(?:/([^/]+))?(/points(?:/query)?)?", path)
+        m = re.fullmatch(r"/collections(?:/([^/]+))?(/points(?:/query)?|/index)?", path)
         name, sub = m.group(1), m.group(2)
         if name is None:
             return httpx.Response(200, json={"result": {"collections": [{"name": n} for n in self.cols]}})
@@ -47,6 +49,12 @@ class FakeQdrant:
             if method == "DELETE":
                 self.cols.pop(name, None)
                 return httpx.Response(200, json={"result": True})
+        if sub == "/index" and method == "PUT":
+            if self.index_fail:
+                return httpx.Response(403, json={"status": {"error": "forbidden by strict mode"}})
+            self.cols[name].setdefault("indexes", set()).add(body["field_name"])
+            assert body["field_schema"] == "keyword"
+            return httpx.Response(200, json={"result": {"status": "completed"}})
         if sub == "/points" and method == "PUT":
             for p in body["points"]:
                 assert re.fullmatch(r"[0-9a-f-]{36}", p["id"]) and len(p["vector"]) == vectorstore.DIM
@@ -56,6 +64,9 @@ class FakeQdrant:
             if name not in self.cols:
                 return httpx.Response(404, json={})
             must = (body.get("filter") or {}).get("must", [])
+            for f in must:
+                if self.strict and f["key"] not in self.cols[name].get("indexes", set()):
+                    return httpx.Response(400, json={"status": {"error": f'Index required but not found for "{f["key"]}"'}})
             scored = []
             for p in self.cols[name]["points"].values():
                 if all(p["payload"].get(f["key"]) == f["match"]["value"] for f in must):
@@ -210,3 +221,31 @@ def test_api_reports_the_backend_and_audits_it(qd):
     assert c.get("/api/audit/verify").json()["valid"] and entry["tier"] == "T0"
     health = c.get("/api/health").json()
     assert health["vector_db"]["backend"] == "qdrant" and KEY not in json.dumps(health) and URL not in json.dumps(health)
+
+
+# ------------------------------------------------------------------------------------------ strict mode (Qdrant Cloud default)
+def test_payload_index_is_created_so_filtered_search_works_in_strict_mode(qd):
+    qd.strict = True
+    knowledge.ensure_index()
+    (name, col), = qd.cols.items()
+    assert col["indexes"] == {"source"}
+    hits, backend = knowledge.search_ex("risk disclosure", k=3, source="csrc_suitability")
+    assert backend == "qdrant" and hits and all(h["source"] == "csrc_suitability" for h in hits)
+
+
+def test_filtered_search_still_answered_by_qdrant_when_the_index_cannot_be_created(qd):
+    qd.strict, qd.index_fail = True, True
+    knowledge.ensure_index()
+    hits, backend = knowledge.search_ex("Can a retail customer buy a complex structured product?", k=3,
+                                         source="csrc_suitability")
+    assert backend == "qdrant" and vectorstore.backend_status()["qdrant_state"] == "ok"
+    assert [h["ref"] for h in hits] == [h["ref"] for h in local_hits("Can a retail customer buy a complex structured product?", 3, "csrc_suitability")]
+    assert qd.count("POST", "/points/query") == 2   # the refused filtered query, then the unfiltered one
+
+
+def test_server_reason_is_reported_without_secrets(qd):
+    qd.fail = 500
+    knowledge.ensure_index()
+    knowledge.search_ex("risk", k=1)
+    err = vectorstore.backend_status()["qdrant_error"]
+    assert err.startswith("HTTP 500") and KEY not in err and URL not in err

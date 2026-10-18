@@ -26,6 +26,8 @@ def main() -> int:
     q = "Can a retail customer buy a complex structured product?"
     hits, backend = knowledge.search_ex(q, k=3, source="csrc_suitability")
     print(f"query answered by: {backend}")
+    if backend != "qdrant":
+        print(f"qdrant error: {vectorstore.backend_status()['qdrant_error']}")
     for h in hits:
         print(f"  {h['score']:.3f}  {h['ref']}  {h['text'][:40]}")
     return 0 if backend == "qdrant" and hits else 1
