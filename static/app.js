@@ -173,7 +173,7 @@ function basisHtml(ruleId) {
 function renderChecks(c) {
   $("compTag").textContent = c.passed ? t("all checks passed") : t("BLOCKED");
   $("compTag").className = "tag " + (c.passed ? "good" : "bad");
-  const names = { R1: "Suitability", R2: "Concentration", R3: "Complexity", R4: "Liquidity", R5: "Vulnerable client", R6: "Disclosures", R7: "Language", R8: "Minimums", LLM: "LLM reviewer (second opinion)" };
+  const names = { R1: "Suitability", R2: "Concentration", R3: "Complexity", R4: "Liquidity", R5: "Vulnerable client", R6: "Disclosures", R7: "Language", R8: "Minimums", R9: "Plain language", LLM: "LLM reviewer (second opinion)" };
   $("checks").innerHTML = c.checks.map((k) => `<li class="${k.passed ? "ok" : "fail"}"><b>${k.passed ? "&#10003;" : "&#10007;"} ${esc(k.rule_id)}</b><span><b>${esc(I() ? I().ruleName(k.rule_id, names[k.rule_id] || "") : (names[k.rule_id] || ""))}</b> - ${tr(k.detail)}${basisHtml(k.rule_id)}</span></li>`).join("");
   $("disclosures").innerHTML = `<b>${t("Required disclosures:")}</b><br>` + (c.required_disclosures || []).map(tr).join("<br>");
 }

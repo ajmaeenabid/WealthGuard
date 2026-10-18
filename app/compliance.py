@@ -1,4 +1,4 @@
-"""Deterministic compliance rule engine (R1-R8) plus an LLM second-opinion reviewer.
+"""Deterministic compliance rule engine (R1-R9) plus an LLM second-opinion reviewer.
 
 The engine is independent of the agent: it re-derives everything from the stored profile and product data. The LLM
 reviewer can only add a failing check, never turn a failed rule into a pass.
@@ -154,8 +154,85 @@ def r8_minimums(a, prof, products):
     return _chk("R8", True, f"All lines meet minimums on CNY {prof.investable_amount_cny:,.0f}")
 
 
+# ---- R9 plain language (CSRC Suitability Measures Art. 24: warnings must be easy to understand) ---------------------
+MAX_AVG_SENTENCE_WORDS = 24
+MAX_SENTENCE_WORDS = 40
+MIN_FLESCH = 40.0
+MAX_AVG_SENTENCE_CHARS_ZH = 60
+MAX_SENTENCE_CHARS_ZH = 120
+JARGON_EN = ["alpha", "beta", "sharpe", "convexity", "kurtosis", "skewness", "autocall", "knock-in", "knock-out",
+             "barrier option", "tracking error", "basis points", "bps", "value at risk", "cvar", "gearing",
+             "duration risk", "yield curve", "mark-to-market", "delta hedg", "gamma", "vega", "theta"]
+JARGON_ZH = ["夏普比率", "凸性", "久期", "敲入", "敲出", "阿尔法", "贝塔系数", "风险价值", "基点", "收益率曲线"]
+_CJK = re.compile(r"[\u4e00-\u9fff]")
+
+
+def _sentences(text: str) -> list[str]:
+    return [s.strip() for s in re.split(r"(?<=[.!?。！？；])\s*|\n+", text) if len(s.strip()) > 1]
+
+
+def _syllables(word: str) -> int:
+    w = word.lower()
+    n = len(re.findall(r"[aeiouy]+", w))
+    if w.endswith("e") and n > 1:
+        n -= 1
+    return max(n, 1)
+
+
+def flesch_reading_ease(text: str) -> float:
+    sents = [s for s in _sentences(text) if re.search(r"[A-Za-z]", s)]
+    words = re.findall(r"[A-Za-z']+", text)
+    if not sents or not words:
+        return 100.0
+    return 206.835 - 1.015 * len(words) / len(sents) - 84.6 * sum(_syllables(w) for w in words) / len(words)
+
+
+def _unexplained_jargon(text: str, terms: list[str]) -> list[str]:
+    """Jargon terms that are not followed by a bracketed plain-language explanation."""
+    low = text.lower()
+    out = []
+    for t in terms:
+        for m in re.finditer(re.escape(t.lower()), low):
+            tail = low[m.end():m.end() + 3].strip()
+            if not tail.startswith(("(", "（")):
+                out.append(t)
+                break
+    return out
+
+
+def r9_plain_language(a, prof, products):
+    texts = [t for t in [a.summary, a.client_text] if t and t.strip()]
+    problems = []
+    for t in texts:
+        zh = len(_CJK.findall(t)) > 0.3 * max(len(re.sub(r"\s", "", t)), 1)
+        sents = _sentences(t)
+        if not sents:
+            continue
+        if zh:
+            lens = [len(re.sub(r"\s", "", s)) for s in sents]
+            avg, mx = sum(lens) / len(lens), max(lens)
+            if avg > MAX_AVG_SENTENCE_CHARS_ZH or mx > MAX_SENTENCE_CHARS_ZH:
+                problems.append(f"sentences too long (average {avg:.0f}, longest {mx} characters)")
+            jar = _unexplained_jargon(t, JARGON_ZH)
+        else:
+            lens = [len(re.findall(r"[A-Za-z']+", s)) for s in sents]
+            avg, mx = sum(lens) / len(lens), max(lens)
+            if avg > MAX_AVG_SENTENCE_WORDS or mx > MAX_SENTENCE_WORDS:
+                longest = max(sents, key=lambda s: len(re.findall(r"[A-Za-z']+", s)))
+                problems.append(f"sentences too long (average {avg:.0f}, longest {mx} words: \"{longest[:60]}...\")")
+            fre = flesch_reading_ease(t) if len(re.findall(r"[A-Za-z']+", t)) >= 40 else None
+            if fre is not None and fre < MIN_FLESCH:
+                problems.append(f"hard to read (Flesch reading ease {fre:.0f}, need at least {MIN_FLESCH:.0f})")
+            jar = _unexplained_jargon(t, JARGON_EN)
+        if jar:
+            problems.append(f"unexplained jargon: {', '.join(sorted(set(jar)))}")
+    if problems:
+        return _chk("R9", False, "Client text is not plain enough: " + "; ".join(problems))
+    return _chk("R9", True, "Short sentences, plain words, no unexplained jargon")
+
+
 RULES = [r1_suitability, r2_concentration, r3_complexity, r4_liquidity, r5_vulnerable, r6_disclosures,
-         r7_language, r8_minimums]
+         r7_language, r8_minimums, r9_plain_language]
 
 
 def llm_review(a: Allocation) -> Optional[ComplianceCheck]:

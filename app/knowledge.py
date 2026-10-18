@@ -4,7 +4,7 @@ Sources (all indexed in app/vectorstore.py):
   csrc_suitability  43 articles of the Suitability Management Measures (Chinese original, real, public)
   data_sources      where each real dataset comes from, its license and what it is used for (MANIFEST.json)
   market_episodes   the real historical episodes behind the stress scenarios
-  wealthguard_rules our compliance rules R1-R8 in plain English, with the regulatory articles they relate to
+  wealthguard_rules our compliance rules R1-R9 in plain English, with the regulatory articles they relate to
   history_cards     real yearly US returns, China macro data and decade averages, as short text cards
 """
 import hashlib
@@ -51,6 +51,7 @@ RULE_QUERIES = {  # fixed Chinese retrieval queries; the best-matching article i
     "R5": "普通投资者 特别保护 年龄 风险承受能力 高风险产品 特别的注意义务",
     "R6": "销售产品或者提供服务前 应当告知下列信息 可能直接导致本金亏损的事项",
     "R7": "禁止 向投资者就不确定事项提供确定性的判断 误导性陈述",
+    "R9": "告知 警示的内容应当真实 准确 完整 语言通俗易懂 书面",
 }
 BASIS_MIN_SCORE = 0.10
 
@@ -69,6 +70,8 @@ RULE_DOCS = [
     ("R7", "Language", "Guaranteed, risk-free or can't-lose wording, in English or Chinese, is rejected in any "
      "client-facing text.", ["第二十二条", "第二十四条"]),
     ("R8", "Minimums", "Every allocation line must meet the product's minimum investment amount.", []),
+    ("R9", "Plain language", "Client-facing text must be easy to understand: short sentences, a readable Flesch score and "
+     "no unexplained jargon (checked in English and Chinese).", ["第二十四条"]),
 ]
 
 
