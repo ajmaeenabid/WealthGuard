@@ -89,7 +89,7 @@ async function startSession() {
   if (window.WGUI) window.WGUI.progress({ profile: false, alloc: false, comp: false, stress: false, approve: false });
   $("messages").innerHTML = "";
   $("story").textContent = s.story ? `${s.name}: ${s.story}` : "";
-  $("chatInput").disabled = false; $("sendBtn").disabled = false;
+  $("chatInput").disabled = false; syncSend();
   addMsg("sys", "Session started. " + s.disclaimer);
   addMsg("agent", `Hello${s.persona_id ? ", " + s.name : ""}! I'm WealthGuard. Nothing I propose is shown to you until an independent compliance check approves it. Say hi to begin${s.next_question ? " - I'll only ask what I don't already know." : "."}`);
   ["allocation", "whyNot", "attempts", "stressOut", "tickets", "docWarn", "disclosures"].forEach((id) => ($(id).innerHTML = ""));
@@ -102,7 +102,11 @@ async function startSession() {
 }
 
 async function send(text) {
-  if (!clientId || !text.trim()) return;
+  if (!text.trim()) return;
+  if (!clientId) {   // typing or speaking before a session: start one for the selected client first, then send
+    if (window.WGUI) window.WGUI.toast(t("Starting a session for the selected client first."));
+    try { await startSession(); } catch (e) { addMsg("sys", "Error: " + e.message); return; }
+  }
   addMsg("user", text);
   $("chatInput").value = "";
   setBusy(true);
@@ -131,7 +135,9 @@ function detectScenario(t) {
   return "equity_-20";
 }
 
-function setBusy(b) { $("sendBtn").disabled = b; $("chatInput").disabled = b; if (!b) $("chatInput").focus(); }
+// Send is available as soon as there is text (typed or spoken) and no reply is pending.
+function syncSend() { $("sendBtn").disabled = $("chatInput").disabled || !$("chatInput").value.trim(); }
+function setBusy(b) { $("chatInput").disabled = b; if (!b) $("chatInput").focus(); syncSend(); }
 
 async function refresh() {
   if (!clientId) return;
@@ -625,4 +631,4 @@ async function init() {
   $("auditTag").textContent = "";
 }
 init().catch((e) => { document.body.insertAdjacentHTML("beforeend", `<p class="warnbox">Failed to load: ${esc(e.message)}</p>`); });
-window.WGApp = { redraw: () => { if (clientId) refresh(); } };
+window.WGApp = { redraw: () => { if (clientId) refresh(); }, syncSend };

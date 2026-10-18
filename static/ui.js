@@ -82,7 +82,8 @@
     input.style.height = "auto";
     input.style.height = Math.min(input.scrollHeight, 190) + "px";
   }
-  input.addEventListener("input", autosize);
+  const syncSend = () => { if (window.WGApp) window.WGApp.syncSend(); };
+  input.addEventListener("input", () => { autosize(); syncSend(); });
   input.addEventListener("keydown", (ev) => {
     if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing && !input.disabled) {
       ev.preventDefault();
@@ -93,7 +94,8 @@
   form.addEventListener("submit", () => setTimeout(autosize, 0));
   // programmatic fills (voice, quick answers) do not fire "input": resize on focus and after sends
   input.addEventListener("focus", autosize);
-  setInterval(() => { if (input.value !== input.dataset.last) { input.dataset.last = input.value; autosize(); } }, 250);
+  setInterval(() => { if (input.value !== input.dataset.last) { input.dataset.last = input.value; autosize(); syncSend(); } }, 250);
+  syncSend();
 
   const messages = $("messages");
   function markStarted() { chat.classList.toggle("started", messages.children.length > 0); }

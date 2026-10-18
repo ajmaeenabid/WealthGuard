@@ -122,3 +122,32 @@ def test_navigation_labels_and_hero_copy_have_chinese_translations():
 
 def test_charts_use_the_theme_colours():
     assert "PALETTE" in APP and "styleCharts" in UI and "Chart.defaults.color" in UI
+
+
+# ------------------------------------------------------------------------------------------ voice text and the Send button
+def test_the_composer_works_before_a_session_and_send_follows_the_text():
+    assert not re.search(r'<textarea id="chatInput"[^>]*\bdisabled\b', HTML)          # no longer locked until a session exists
+    assert "syncSend" in APP and "!$(\"chatInput\").value.trim()" in APP                 # Send is enabled by having text
+    assert re.search(r"async function send\(text\) \{\s*if \(!text\.trim\(\)\) return;\s*if \(!clientId\)", APP)   # starts a session itself
+    voice = c.get("/static/voice.js").text
+    assert voice.count('new Event("input"') == 1 and voice.count("announce(input)") >= 2     # spoken text tells the page it changed
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("Hello, how are you? Hello, how are you?", "Hello, how are you?"),
+    ("hello how are you  Hello, how are you?", "hello how are you"),
+    ("I bought headphones I bought headphones I bought headphones", "I bought headphones"),
+    ("no no", "no no"), ("yes yes yes", "yes yes yes"), ("Hello hello", "Hello hello"),
+    ("buy a laptop buy a phone", "buy a laptop buy a phone"), ("cancel the laptop", "cancel the laptop"),
+    ("你好你好", "你好"), ("买了耳机", "买了耳机"), ("", ""),
+])
+def test_repeated_phrases_from_speech_recognition_are_collapsed_but_real_speech_is_kept(raw, expected):
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not available")
+    js = ("global.window = {}; global.document = {addEventListener() {}, getElementById() { return null; }};"
+          "require('./static/voice.js'); console.log(JSON.stringify(window.WGVoice.tidy(process.argv[1])));")
+    r = subprocess.run([node, "-e", js, raw], capture_output=True, text=True, encoding="utf-8")
+    assert r.returncode == 0, r.stderr[:300]
+    import json
+    assert json.loads(r.stdout) == expected

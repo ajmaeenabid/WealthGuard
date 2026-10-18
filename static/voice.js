@@ -16,6 +16,25 @@
   let getClientId = null;
 
   function lang() { return $("voiceLang") ? $("voiceLang").value : "en-US"; }
+
+  // Some browsers return the same phrase twice ("Hello, how are you? Hello, how are you?"): collapse an exact repeat of a multi-word phrase.
+  function tidy(text) {
+    const t = String(text || "").replace(/\s+/g, " ").trim();
+    const words = t.split(" ");
+    const norm = (w) => w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+    for (let len = 2; len <= words.length / 2; len++) {
+      if (words.length % len) continue;
+      const first = words.slice(0, len).map(norm).join(" ");
+      let same = true;
+      for (let i = len; i < words.length && same; i += len) same = words.slice(i, i + len).map(norm).join(" ") === first;
+      if (same) return words.slice(0, len).join(" ");
+    }
+    // spaceless scripts (Chinese): an exact doubled string
+    const h = t.length / 2;
+    if (!t.includes(" ") && t.length >= 4 && t.length % 2 === 0 && t.slice(0, h) === t.slice(h)) return t.slice(0, h);
+    return t;
+  }
+  const announce = (input) => input.dispatchEvent(new Event("input", { bubbles: true }));
   function engine() {
     const v = $("voiceEngine") ? $("voiceEngine").value : "auto";
     if (v === "whisper") return whisper.available ? "whisper" : (SR ? "browser" : "none");
@@ -37,8 +56,9 @@
       if (!on && active && active.btn === btn) active = null;
     }
     const finish = (text) => {
-      input.value = (input.value ? input.value + " " : "") + text;
+      input.value = (input.value ? input.value + " " : "") + tidy(text);
       input.dataset.voice = "1";
+      announce(input);
       say("Check the text, then confirm.");
     };
 
@@ -86,10 +106,14 @@
       rec.continuous = false;
       const base = input.value ? input.value + " " : "";
       rec.onresult = (ev) => {
-        let t = "";
-        for (let i = 0; i < ev.results.length; i++) t += ev.results[i][0].transcript;
-        input.value = base + t;
+        let fin = "", interim = "";
+        for (let i = 0; i < ev.results.length; i++) {
+          const r = ev.results[i];
+          if (r.isFinal) fin += r[0].transcript + " "; else interim = r[0].transcript;
+        }
+        input.value = base + tidy(fin + interim);
         input.dataset.voice = "1";
+        announce(input);
       };
       rec.onerror = (ev) => { say("Voice error: " + ev.error); state(false); };
       rec.onend = () => { state(false); if (input.value.trim()) say("Check the text, then confirm."); };
@@ -148,6 +172,6 @@
     };
   }
 
-  window.WGVoice = { speak, attach, setClientIdGetter: (fn) => { getClientId = fn; } };
+  window.WGVoice = { speak, attach, tidy, setClientIdGetter: (fn) => { getClientId = fn; } };
   document.addEventListener("DOMContentLoaded", init);
 })();
