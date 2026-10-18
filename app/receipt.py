@@ -43,8 +43,19 @@ def _key() -> bytes:
     return r["value"].encode()
 
 
+def _norm(o):
+    """Integral floats become ints: JSON in a browser cannot tell 100000.0 from 100000, so the hash must not either."""
+    if isinstance(o, float):
+        return int(o) if o.is_integer() and abs(o) < 1e15 else o
+    if isinstance(o, dict):
+        return {k: _norm(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_norm(v) for v in o]
+    return o
+
+
 def _sha(obj) -> str:
-    return hashlib.sha256(audit.canonical(obj).encode("utf-8")).hexdigest()
+    return hashlib.sha256(audit.canonical(_norm(obj)).encode("utf-8")).hexdigest()
 
 
 def _file_sha(path: str) -> str:

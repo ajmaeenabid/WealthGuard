@@ -191,3 +191,39 @@ def test_the_offline_script_verifies_and_catches_tampering(tmp_path):
 def test_ui_has_the_receipt_card():
     html = c.get("/").text
     assert 'id="rcCard"' in html and 'id="rcDl"' in html and 'id="rcFile"' in html and "rcVerifyFile" in c.get("/static/app.js").text
+
+
+def js_roundtrip(o):
+    """What a browser does to JSON numbers: 100000.0 becomes 100000 (it cannot tell them apart)."""
+    if isinstance(o, float):
+        return int(o) if o.is_integer() else o
+    if isinstance(o, dict):
+        return {k: js_roundtrip(v) for k, v in o.items()}
+    if isinstance(o, list):
+        return [js_roundtrip(v) for v in o]
+    return o
+
+
+def test_a_receipt_survives_a_browser_json_round_trip():
+    r = receipt.build(approved_client())
+    assert json.dumps(r) != json.dumps(js_roundtrip(r))                  # the round trip really changes the text (200000.0 -> 200000)
+    res = receipt.verify(js_roundtrip(r))
+    assert res["valid"] and failed(res) == set()
+
+
+def test_the_offline_script_accepts_a_browser_saved_receipt(tmp_path):
+    r = js_roundtrip(receipt.build(approved_client()))
+    f = tmp_path / "browser.json"
+    f.write_text(json.dumps(r), encoding="utf-8")
+    out = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "verify_receipt.py"), str(f)], capture_output=True, text=True,
+                         encoding="utf-8", timeout=60)
+    assert out.returncode == 0 and "[OK] content hash" in out.stdout
+
+
+def test_normalisation_does_not_hide_real_edits():
+    r = js_roundtrip(receipt.build(approved_client()))
+    r["profile"]["investable_amount_cny"] = 200001
+    assert "content_hash" in failed(receipt.verify(r))
+    r2 = js_roundtrip(receipt.build(approved_client()))
+    r2["allocation"]["lines"][0]["weight"] = round(r2["allocation"]["lines"][0]["weight"] + 0.001, 4)
+    assert "content_hash" in failed(receipt.verify(r2))
