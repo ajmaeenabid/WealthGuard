@@ -90,6 +90,14 @@ the key is wrong or the URL is not https, the app silently uses the local index 
 depends on it. On Vercel, set the same two variables in the project settings. The key is sent only as an `api-key` header.
  Lexical retrieval is not deep semantic search; see known risks.
 
+## Click any number
+
+Dotted-underlined numbers (risk tolerance, capacity, bucket, expected return, volatility, the stress-test change, the goal probability, the
+historical share and the purchase-history total) open a panel with the **formula in words, every input with its source** (the client's answer,
+synthetic product assumptions with the file hash, or a real dataset with its license and SHA-256), and a **fresh recomputation** with a match
+flag. For historical stress scenarios the recomputation is independent: it re-reads the raw CSV with its own arithmetic. A stale or wrong
+displayed number shows as "does NOT match".
+
 ## Verifiable advice receipt
 
 The **Advice receipt** card downloads a JSON receipt for the latest compliance-approved advice: the advice text and weights, the compliance

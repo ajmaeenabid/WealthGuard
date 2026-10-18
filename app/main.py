@@ -8,7 +8,7 @@ from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import behaviour, comparison, config, knowledge, ledger, profiling, receipt, redteam, selfinspection, service, state, store, translate
+from app import behaviour, comparison, config, knowledge, ledger, profiling, provenance, receipt, redteam, selfinspection, service, state, store, translate
 from app.agent import loop
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
@@ -178,6 +178,17 @@ def knowledge_search(q: str = Query(min_length=2, max_length=300), k: int = Quer
     audit.append("client", "knowledge_search", "T0", {"chars": len(q), "source": source, "k": k, "hits": len(hits),
                                                       "backend": backend}, client_id)
     return {"query": q, "results": hits, "backend": backend}
+
+
+@app.get("/api/provenance")
+def get_provenance(client_id: str, kind: str, allocation_id: str = "", scenario: str = "", shock_pct: float = Query(0.0, ge=-100, le=100)):
+    """Where a displayed number comes from, with a fresh recomputation (T0 read, audited)."""
+    _client(client_id)
+    out = provenance.explain(client_id, kind, allocation_id, scenario, shock_pct)
+    if out.get("ok") is False:
+        raise HTTPException(404 if "unknown client" in out["error"] else 422 if "unknown" in out["error"] else 409, out["error"])
+    audit.append("client", "provenance_viewed", "T0", {"kind": kind, "matches": out["matches"]}, client_id)
+    return out
 
 
 @app.get("/api/receipt")

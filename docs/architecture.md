@@ -140,3 +140,11 @@ movement; if none exist, the reasons (vulnerable-client cap, lock-up longer than
 the whole with `content_hash` = SHA-256 of the canonical JSON and `checkpoint.mac` = HMAC-SHA256(key, content_hash | head). `receipt.verify`
 runs eight checks: content_hash, entry_hashes, membership, anchor (head still where it was and the chain up to it verifies), checkpoint,
 data_hashes, compliance, same_allocation. The key is `RECEIPT_KEY` or a random value stored in `app_meta` with the database.
+
+## Number provenance
+
+`provenance.explain(client_id, kind, ...)` supports nine kinds (tolerance, capacity, bucket, expected_return, volatility, stress_loss,
+goal_probability, backtest_share, ledger_total). Each returns the formula, the inputs with sources (client answers; `products.json` with its
+hash; real datasets with license and SHA-256 from `MANIFEST.json`) and a recomputation through the same engine function; `stress_loss` for
+historical scenarios recomputes straight from `returns_annual.csv` with separate arithmetic. `GET /api/provenance` is a T0 read, audited as
+`provenance_viewed` with the match flag.
