@@ -46,7 +46,8 @@ falls back to the mock automatically and logs `llm_fallback_to_mock`. `WEALTHGUA
 
 ## Voice and language
 
-- **Mic** fills the chat box from speech (browser Web Speech API, Chrome or Edge); you press Send, so spoken and typed text take the same guarded path. **Read aloud** speaks replies. Some browsers send audio to their vendor for recognition; typing always works.
+- **Mic** fills the chat box from speech; you press Send, so spoken and typed text take the same guarded path. **Read aloud** speaks replies.
+  Two engines, chosen by the *Voice* selector (default Auto): **Whisper** records with the browser (MediaRecorder) and uploads the clip to `/api/transcribe`, which runs Whisper (Groq-hosted `whisper-large-v3-turbo` when `GROQ_API_KEY` is set and the app is live, or `WHISPER_PROVIDER=local` with `pip install faster-whisper`); it works in any modern browser, in English and Chinese, with a vocabulary hint so "NovaYield", "CSRC" and "yuan" are spelled correctly, and silence gives no text. **Browser** uses the Web Speech API (Chrome/Edge). With Whisper the audio clip is sent to the transcription service (Groq); with Browser the vendor may process it. In mock mode (`USE_MOCK_LLM=1`) Whisper is off and the browser engine is used. `python scripts/check_whisper.py` verifies it end to end.
 - **EN / 中文** toggle: fixed UI labels come from a dictionary; engine text (rationales, compliance details) is translated by `/api/translate`. Chinese is also accepted in chat (answers, injection and R7 checks). With `USE_MOCK_LLM=1` there is no translator, so dynamic text stays English (never a guess); use a live LLM to demo it.
 
 ## Purchase history and behaviour

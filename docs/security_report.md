@@ -71,3 +71,8 @@ is shown as a mismatch, and every opened explanation is audited.
 Revealed-risk replay (`test_replay.py`): the path is checked against an independent computation from the raw CSV; a property test over every
 stated x revealed reaction proves `apply` can never make the profile less cautious; ownership is enforced on step and apply; apply is an explicit,
 single-use, audited click.
+
+**Voice (Whisper)** (`test_transcribe.py`, 54 tests): uploads are size-limited and identified by file signature (an executable or HTML file claiming to be audio is
+refused with 415); only the allowlisted Groq origin is contacted, over https; the key is sent only as a bearer header and never appears in responses, errors or the
+audit log; the audit entry records provider, model, bytes, language and character count but neither the audio nor the transcript; requests are rate limited;
+the transcript is plain text that still passes the injection guard, compliance and tiers when the user sends it.

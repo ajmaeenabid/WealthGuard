@@ -573,6 +573,7 @@ async function ledgerAdd() {
 }
 
 async function init() {
+  if (window.WGVoice) window.WGVoice.setClientIdGetter(() => clientId);
   setChips();
   const [ps, pr, h] = await Promise.all([api("/api/personas", undefined, "GET"), api("/api/products", undefined, "GET"), api("/api/health", undefined, "GET")]);
   pr.forEach((p) => (products[p.id] = p));

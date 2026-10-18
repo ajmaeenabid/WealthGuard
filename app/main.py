@@ -4,11 +4,12 @@ import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import Body, FastAPI, HTTPException, Query
+from fastapi import Body, FastAPI, HTTPException, Query, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import behaviour, comparison, config, knowledge, ledger, profiling, provenance, receipt, redteam, replay, selfinspection, service, state, store, translate
+from app import behaviour, comparison, config, knowledge, ledger, profiling, provenance, receipt, redteam, replay, selfinspection, service, state, store, transcribe, translate
 from app.agent import loop
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
@@ -45,7 +46,7 @@ def _client(client_id: str) -> dict:
 def health():
     from app import vectorstore
     return {"ok": True, "mock_llm": config.use_mock_llm(), "llm": config.describe_llm(),
-            "vector_db": vectorstore.backend_status(),
+            "vector_db": vectorstore.backend_status(), "transcription": transcribe.status(),
             "disclaimer": config.DISCLAIMER}
 
 
@@ -66,6 +67,32 @@ def session(req: SessionReq):
 def chat(req: ChatReq):
     _client(req.client_id)
     return loop.run_turn(req.client_id, req.message)
+
+
+@app.post("/api/transcribe")
+async def transcribe_audio(request: Request, language: Optional[str] = None, client_id: Optional[str] = None):
+    """Whisper speech-to-text. The body is the raw audio; the answer is text for the chat box (nothing is sent to the agent).
+
+    T1, audited (provider, model, size, language, length; never the audio or the transcript)."""
+    if client_id:
+        _client(client_id)
+    cl = request.headers.get("content-length")
+    if cl and cl.isdigit() and int(cl) > transcribe.MAX_BYTES:
+        raise HTTPException(413, "Audio is too long.")
+    data = b""
+    async for chunk in request.stream():
+        data += chunk
+        if len(data) > transcribe.MAX_BYTES:
+            raise HTTPException(413, "Audio is too long.")
+    try:
+        out = await run_in_threadpool(transcribe.transcribe, data, language, client_id)
+    except transcribe.TranscribeError as e:
+        audit.append("client", "voice_transcribe_failed", "T1", {"status": e.status, "bytes": len(data)}, client_id)
+        raise HTTPException(e.status, e.message)
+    audit.append("client", "voice_transcribed", "T1", {"provider": out["provider"], "model": out["model"], "bytes": len(data),
+                                                      "language": language, "chars": len(out["text"]), "empty": out["empty"],
+                                                      "container": out["container"]}, client_id)
+    return out
 
 
 @app.post("/api/translate")

@@ -157,3 +157,11 @@ equities and the year's Damodaran return spread evenly for bonds, cash and gold,
 tracked; at the first 10%/20%/30% drawdown the session pauses for a choice (hold, sell 25%, sell all, buy 10% of the start). `_result` compares
 the reaction at -20% (plus any earlier cautious sale) with the stored `loss_reaction` answer; `apply` is only allowed when strictly more cautious,
 replaces the answer, invalidates the profile and is audited (`replay_started`, `replay_finished`, `replay_applied`). Sessions are in memory.
+
+## Whisper voice commands
+
+`static/voice.js` records a short clip (MediaRecorder, at most 30 s) and posts the raw bytes to `POST /api/transcribe`; the answer is text that is
+placed in the chat or purchase-command box, never sent to the agent automatically. `transcribe.py` validates the upload (size limit of 2 MB, file
+signature for webm/ogg/wav/mp3/m4a/flac, language en/zh, 20 requests per client per minute), then calls Groq's `/openai/v1/audio/transcriptions` with
+`verbose_json` (so segments Whisper itself marks as silence are dropped), a vocabulary prompt, and the allowlisted URL check, or runs faster-whisper
+locally on a temporary file that is always deleted. Stock silence phrases ("Thank you for watching", 谢谢观看) are discarded. Mock mode turns it off.

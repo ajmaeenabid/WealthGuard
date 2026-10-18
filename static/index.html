@@ -33,6 +33,7 @@
     <div class="voice" id="voiceBar">
       <button type="button" id="micBtn" aria-pressed="false" title="Speak your message">Mic</button>
       <button type="button" id="speakBtn" aria-pressed="false">Read aloud: off</button>
+      <select id="voiceEngine" aria-label="Voice engine"><option value="auto" data-i18n="veAuto">Voice: auto</option><option value="whisper">Whisper</option><option value="browser" data-i18n="veBrowser">Browser</option></select>
       <select id="voiceLang" aria-label="Voice language"><option value="en-US">English</option><option value="zh-CN">Chinese</option></select>
       <span id="voiceNote" class="muted" aria-live="polite"></span>
     </div>
