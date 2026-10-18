@@ -162,7 +162,7 @@ def ledger_sample(req: LedgerSampleReq):
     return _ledger_view(req.client_id)
 
 
-KB_SOURCES = {"csrc_suitability", "data_sources", "market_episodes", "wealthguard_rules"}
+KB_SOURCES = {"csrc_suitability", "data_sources", "market_episodes", "wealthguard_rules", "history_cards"}
 
 
 @app.get("/api/knowledge/search")

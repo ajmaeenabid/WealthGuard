@@ -228,6 +228,20 @@ def mock_respond(messages: list, state: dict) -> LLMResponse:
                                  f"items (top categories: {cats}). {b['planned_count']} planned and "
                                  f"{b['cancelled_count']} cancelled items are not counted. {tips} {b['note']} {disclaimer}"))
 
+    if (re.search(r"\b(19[2-9]\d|20[0-2]\d)s?\b", text) or re.search(r"\b(19[2-9]0|20[0-2]0)s\b", text)) and any(
+            w in text for w in ["happen", "return", "gold", "stock", "bond", "inflation", "deposit", "gdp", "how did",
+                                "china", "decade", "average"]) and not any(
+            w in text for w in ["what if", "stress", "crash", "scenario"]):
+        if not res:
+            return _call("search_knowledge", {"query": _user_text(messages)[:300], "k": 2, "source": "history_cards"}, n)
+        hits = last[2].get("results", [])
+        if not hits:
+            return LLMResponse(text=f"I could not find that year in the real history data. {disclaimer}")
+        top = hits[0]
+        return LLMResponse(text=f"Real history ({top['title']}): {top['text'].split(' 美国')[0].split(' 中国')[0]} "
+                                f"Source: {top['url']}. Past performance is not a reliable indicator of future results. "
+                                f"{disclaimer}")
+
     if any(w in text for w in ["regulation", "regulator", "csrc", "law say", "legally", "what does the law", "which license",
                                "data source", "where does the", "suitability measures", "法规", "监管", "适当性管理办法", "条例",
                                "法律"]):

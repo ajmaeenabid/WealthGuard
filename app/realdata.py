@@ -65,3 +65,17 @@ def long_rate_change(start_month: str, end_month: str):
     if start_month not in s or end_month not in s:
         return None
     return float(s[end_month]["long_rate"]) - float(s[start_month]["long_rate"])
+
+
+@lru_cache(maxsize=1)
+def china_macro() -> dict:
+    """Year -> {cpi_inflation_pct, deposit_rate_pct, lending_rate_pct, gdp_growth_pct} (None where missing)."""
+    with open(os.path.join(DIR, "china_macro.csv"), encoding="utf-8") as f:
+        return {int(r["year"]): {k: (float(v) if v != "" else None) for k, v in r.items() if k != "year"}
+                for r in csv.DictReader(f)}
+
+
+def year_end_rate(year: int):
+    """10-year US rate in December of `year` (Shiller), or None."""
+    r = _shiller().get(f"{year}-12")
+    return float(r["long_rate"]) if r else None

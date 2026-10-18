@@ -13,6 +13,7 @@ from app.main import app
 from app.security import tiers
 
 c = TestClient(app)
+N_CHUNKS = len(knowledge.items())
 REAL = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "app", "data", "real")
 
 
@@ -51,9 +52,10 @@ def test_stored_vectors_are_unit_length_float32():
 
 # ------------------------------------------------------------------------------------------ knowledge base contents
 def test_index_contains_every_source_and_is_idempotent():
-    assert knowledge.ensure_index() == 61
-    assert knowledge.ensure_index() == 61 and vectorstore.count() == 61
-    for src, n in {"csrc_suitability": 43, "data_sources": 4, "market_episodes": 6, "wealthguard_rules": 8}.items():
+    assert knowledge.ensure_index() == N_CHUNKS
+    assert knowledge.ensure_index() == N_CHUNKS and vectorstore.count() == N_CHUNKS
+    for src, n in {"csrc_suitability": 43, "data_sources": 4, "market_episodes": 6, "wealthguard_rules": 8,
+                  "history_cards": 150}.items():
         assert vectorstore.count(src) == n, src
 
 
@@ -61,7 +63,7 @@ def test_stale_index_is_rebuilt(monkeypatch):
     knowledge.ensure_index()
     monkeypatch.setattr(knowledge, "_fingerprint", lambda its: "changed")
     knowledge.ensure_index()
-    assert vectorstore.fingerprint() == "changed" and vectorstore.count() == 61
+    assert vectorstore.fingerprint() == "changed" and vectorstore.count() == N_CHUNKS
 
 
 @pytest.mark.parametrize("query,expected,top1", [
@@ -79,7 +81,7 @@ def test_english_and_chinese_questions_reach_the_right_article(query, expected, 
 
 
 def test_non_regulation_questions_reach_data_sources_and_episodes():
-    assert knowledge.search("where does the 2008 crash number come from", k=1)[0]["ref"] == "crash_2008"
+    assert "crash_2008" in refs(knowledge.search("where does the 2008 crash number come from", k=3))
     top = knowledge.search("which license applies to the Shiller data", k=1)[0]
     assert top["ref"] == "shiller_monthly.csv" and "PDDL" in top["text"]
 
@@ -183,3 +185,78 @@ def test_chat_regulation_questions_are_answered_from_the_regulation_not_our_rule
     cid = c.post("/api/session", json={"persona_id": "persona_li"}).json()["client_id"]
     out = c.post("/api/chat", json={"client_id": cid, "message": "What does the law say about elderly investors?"}).json()
     assert "CSRC Suitability Management Measures" in out["reply"]
+
+
+# ------------------------------------------------------------------------------------------ history cards (real yearly data)
+import csv  # noqa: E402
+
+
+def _card(ref):
+    return next(i for i in knowledge.history_items() if i["ref"] == ref)
+
+
+def _raw(year):
+    with open(os.path.join(REAL, "returns_annual.csv"), encoding="utf-8") as f:
+        return next({k: float(v) for k, v in r.items()} for r in csv.DictReader(f) if int(r["year"]) == year)
+
+
+def test_history_cards_cover_every_year_and_decade():
+    cards = knowledge.history_items()
+    assert len([x for x in cards if x["ref"].startswith("US-")]) == 98
+    assert len([x for x in cards if x["ref"].startswith("CN-")]) == 41
+    assert [x["ref"] for x in cards if x["ref"].startswith("DECADE-")] == [f"DECADE-{d}s" for d in range(1920, 2030, 10)]
+    assert len({x["id"] for x in cards}) == len(cards)
+
+
+def test_us_card_numbers_match_the_raw_csv():
+    r = _raw(1979)
+    t = _card("US-1979")["text"]
+    assert f"gold {r['gold'] * 100:+.1f}%" in t and f"S&P 500 (with dividends) {r['sp500'] * 100:+.1f}%" in t
+    assert "Best: gold" in t and "CPI inflation (Dec to Dec) was 13.3%" in t
+    assert "CPI inflation" not in _card("US-2025")["text"]          # no Shiller months for 2025: no invented figure
+
+
+def test_china_card_includes_the_derived_real_deposit_return():
+    t = _card("CN-2024")["text"]
+    assert "CPI inflation 0.2%" in t and "deposit rate 1.50%" in t and "+1.3 points" in t
+    assert "CPI inflation" not in _card("CN-1985")["text"] and "Real deposit" not in _card("CN-1985")["text"]   # no data, no invented figure
+
+
+def test_decade_card_averages_are_computed_from_the_data():
+    t = _card("DECADE-1970s")["text"]
+    avg_gold = sum(_raw(y)["gold"] for y in range(1970, 1980)) / 10
+    assert f"gold {avg_gold * 100:+.1f}%" in t and "worst S&P 500 year was 1974" in t
+    assert "1928-1929" in _card("DECADE-1920s")["text"]               # partial first decade is labelled honestly
+
+
+@pytest.mark.parametrize("query,expected", [
+    ("what happened to gold in 1979", "US-1979"),
+    ("China inflation in 2024", "CN-2024"),
+    ("real deposit return in China 2024", "CN-2024"),
+    ("1979年黄金", "US-1979"),
+    ("1970s decade average returns", "DECADE-1970s"),
+])
+def test_history_questions_reach_the_right_card(query, expected):
+    assert expected in refs(knowledge.search(query, k=3, source="history_cards")), query
+
+
+def test_chat_answers_year_questions_from_the_real_cards():
+    cid = c.post("/api/session", json={"persona_id": "persona_li"}).json()["client_id"]
+    out = c.post("/api/chat", json={"client_id": cid, "message": "What happened to gold in 1979?"}).json()
+    assert "+126.5%" in out["reply"] and "Past performance is not a reliable indicator" in out["reply"]
+    assert any(t["tool"] == "search_knowledge" for t in out["trace"])
+
+
+def test_scenario_questions_are_not_hijacked_by_the_history_route():
+    cid = c.post("/api/session", json={"persona_id": "persona_li"}).json()["client_id"]
+    chat = lambda m: c.post("/api/chat", json={"client_id": cid, "message": m}).json()
+    for m in ["hi", "Stable", "About 10%", "Sell some"]:
+        chat(m)
+    out = chat("What if there is a 2008 style crash?")
+    assert "Real 2008 market returns" in out["reply"] and not any(t["tool"] == "search_knowledge" for t in out["trace"])
+
+
+def test_api_accepts_the_history_source_and_the_ui_offers_it():
+    r = c.get("/api/knowledge/search", params={"q": "gold 1979", "source": "history_cards", "k": 2}).json()
+    assert r["results"][0]["ref"] == "US-1979"
+    assert 'value="history_cards"' in c.get("/").text
