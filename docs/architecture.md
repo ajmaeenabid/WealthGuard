@@ -50,6 +50,7 @@ engine (what may be done) or the compliance engine (what may be shown).
 | `security/guard.py` | Injection detector, redaction, untrusted wrapper |
 | `agent/*` | Tool definitions, loop, Anthropic/Groq wrapper + deterministic mock |
 | `vectorstore.py` | Vector DB: SQLite tables `kb_chunks`/`kb_meta`, hashing TF-IDF embedder (1024 dims), cosine search |
+| `qdrant_backend.py` | Optional Qdrant Cloud client over REST (httpx): create collection, upsert, query; allowlist-checked |
 | `knowledge.py` | Builds the index from the CSRC text, MANIFEST, stress episodes and rules; EN->ZH glossary; `basis_for_rule` |
 | `ledger.py` | Purchase ledger storage; EN/ZH command parser that only creates proposals; confirm/reject endpoints |
 | `behaviour.py` | Deterministic totals, category/month sums, flags and guidance; capped one-way capacity penalty |
@@ -89,3 +90,11 @@ R1/R3-R7 has a fixed Chinese retrieval query; the best-matching CSRC article abo
 nothing is shown). `search_knowledge` is a T0 tool and `/api/knowledge/search` is audited as a T0 read. The regulation text
 is public data, so retrieved passages are not treated as untrusted instructions, but tool results never change tiers.
 Quoting Article 4 (which denies that advice is a guarantee) passes R7 through a Chinese denial pattern.
+
+### Vector backends
+
+The local SQLite index is always built first (it holds the IDF weights and is the fallback). When `QDRANT_URL` and
+`QDRANT_API_KEY` are set, `vectorstore.ensure_remote` mirrors the chunks to the collection `<prefix>_<fingerprint>` (reused if
+it already holds every chunk, older versions deleted) and `search_ex` queries Qdrant with the locally computed query vector.
+Any error (network, 4xx/5xx, bad shape, URL not allowlisted) falls back to the local index and starts a 60-second
+cooldown, so a failing service is not hammered. The Qdrant origin joins the URL allowlist only while it is configured.

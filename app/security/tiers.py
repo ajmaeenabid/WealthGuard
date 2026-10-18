@@ -26,7 +26,7 @@ def is_url_allowed(url: str) -> bool:
     except Exception:
         return False
     base = f"{u.scheme}://{u.netloc}"
-    return u.scheme == "https" and base in config.URL_ALLOWLIST
+    return u.scheme == "https" and base in config.url_allowlist()
 
 
 def _digest(result) -> dict:

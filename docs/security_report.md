@@ -23,6 +23,7 @@
 | Ledger edits need confirmation | spoken/typed commands only create proposals; apply needs an explicit confirm click; single use, owner-checked, audited (`ledger_command`, `ledger_confirm`) | code | `test_ledger.py` |
 | Behaviour can only reduce risk | capped (10 points) one-way penalty on capacity; negative penalties ignored | code | `test_behaviour_only_ever_lowers_capacity` |
 | Knowledge search is read-only | `search_knowledge` is T0 with strict args (length, k, source allowlist); the endpoint validates input and is audited | code | `test_knowledge.py` |
+| Optional Qdrant backend | https only; origin allowed only when configured and enforced by `tiers.is_url_allowed` before every request; key sent as `api-key` header only, never logged or returned; any failure falls back to the local index | code | `test_qdrant.py` |
 | Voice input | fills the chat box only; no auto-send, no API calls from `voice.js` | code | `test_voice_controls_and_script_served` |
 | Safe failure | LLM errors fall back to the mock, logged | code | manual |
 

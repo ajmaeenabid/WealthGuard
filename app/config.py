@@ -70,6 +70,30 @@ MC_SEED = 42
 URL_ALLOWLIST = ["https://api.anthropic.com", "https://api.groq.com"]
 
 
+def qdrant_url() -> str | None:
+    return (os.environ.get("QDRANT_URL") or "").strip().rstrip("/") or None
+
+
+def qdrant_key() -> str | None:
+    return (os.environ.get("QDRANT_API_KEY") or "").strip() or None
+
+
+def qdrant_prefix() -> str:
+    return (os.environ.get("QDRANT_COLLECTION") or "wealthguard_kb").strip()
+
+
+def url_allowlist() -> list[str]:
+    """Static allowlist plus the Qdrant origin, which is allowed only because the operator configured it."""
+    out = list(URL_ALLOWLIST)
+    u = qdrant_url()
+    if u:
+        from urllib.parse import urlparse
+        p = urlparse(u)
+        if p.scheme == "https" and p.netloc:
+            out.append(f"https://{p.netloc}")
+    return out
+
+
 def provider() -> str:
     """LLM_PROVIDER=anthropic|groq. If unset: Anthropic when its key exists, else Groq when its key exists."""
     p = os.environ.get("LLM_PROVIDER", "").lower()
