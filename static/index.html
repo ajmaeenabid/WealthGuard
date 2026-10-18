@@ -121,6 +121,16 @@
       <div id="kbResults"></div>
     </div>
 
+    <div class="card" id="rtCard">
+      <h2><span data-i18n="hR">Red-team arena</span> <span class="tag" id="rtTag"></span></h2>
+      <div class="small muted" data-i18n="rtHint">Runs a battery of English and Chinese attacks against the live defences and shows which layer stopped each one. No language model is called.</div>
+      <div class="row">
+        <button type="button" id="rtGo" class="warn" data-i18n="rtRun">Run attacks</button>
+        <button type="button" id="rtDl" data-i18n="rtDl">Export JSON</button>
+      </div>
+      <div id="rtOut"></div>
+    </div>
+
     <div class="card" id="siCard">
       <h2><span data-i18n="hS">Self-inspection report (Art. 30)</span> <span class="tag" id="siTag"></span></h2>
       <div class="small muted" data-i18n="siHint">Counted from the audit log: what was blocked, refused and approved, per regulatory duty, with honest gaps.</div>

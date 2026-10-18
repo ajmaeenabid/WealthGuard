@@ -52,3 +52,7 @@ allocation, so a model cannot obscure risk behind complicated wording.
 
 The self-inspection report (`test_selfinspection.py`) turns the audit chain into a reviewable control: a tampered log produces a
 high-severity finding, and refused approvals or LLM fallbacks are flagged for review.
+
+**Red-team arena** (`test_redteam.py`): 54 attacks, all defended, grouped by layer (guard 20, tier 12, compliance 9, audit 5,
+isolation 3, allowlist 2, confirm-first 2, translation-check 1). The test suite also proves the arena can fail: with the injection detector
+disabled it reports the attacks as undefended while the benign controls still pass.

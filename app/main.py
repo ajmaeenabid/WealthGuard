@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import behaviour, comparison, config, knowledge, ledger, profiling, selfinspection, service, state, store, translate
+from app import behaviour, comparison, config, knowledge, ledger, profiling, redteam, selfinspection, service, state, store, translate
 from app.agent import loop
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
@@ -177,6 +177,12 @@ def knowledge_search(q: str = Query(min_length=2, max_length=300), k: int = Quer
     audit.append("client", "knowledge_search", "T0", {"chars": len(q), "source": source, "k": k, "hits": len(hits),
                                                       "backend": backend}, client_id)
     return {"query": q, "results": hits, "backend": backend}
+
+
+@app.post("/api/redteam/run")
+def redteam_run():
+    """Run the attack battery against the live engines (deterministic, no model call) on throw-away probe clients."""
+    return redteam.run_all()
 
 
 @app.get("/api/selfinspection")

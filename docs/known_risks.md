@@ -42,3 +42,5 @@
     particular client understood. The jargon list is hand-written and the Chinese check is character-count based.
 30. **Report scope.** The default report covers all sessions in the deployment (aggregate counts, no client identifiers); in the public
     demo any user can read those aggregates. It is generated on demand, not on a half-yearly schedule, and is not filed anywhere.
+31. **The arena is our own attacks.** It demonstrates that the defences hold against this battery, not against an independent penetration test or
+    novel attacks. It leaves probe clients and audit entries in the database (labelled "Red-team probe").

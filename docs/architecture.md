@@ -116,3 +116,10 @@ a bracketed plain explanation follows it. A failure blocks the allocation like a
 T3/invalid refusals, approvals, refused approvals, ledger confirmations, LLM fallbacks) and re-verifies the chain, then renders
 duties, findings and gaps from fixed English/Chinese templates (no model). The report is audited after it is computed, so it
 never counts itself; a broken chain becomes a high-severity finding.
+
+## Red-team arena
+
+`redteam.ATTACKS` is a list of (id, category, name, layer, runner). Runners call the real engines (`guard`, `tiers`, `compliance`,
+`ledger`, `translate`, `audit`) on throw-away probe clients; none calls a language model, so results are reproducible. A result is
+`defended` only if the intended layer stopped the attack; a crashing runner counts as a failure. Audit tampering works on an in-memory
+copy of the rows via `audit.verify_rows`, never on the live log.
