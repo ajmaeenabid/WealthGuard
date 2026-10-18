@@ -54,7 +54,7 @@ def test_stored_vectors_are_unit_length_float32():
 def test_index_contains_every_source_and_is_idempotent():
     assert knowledge.ensure_index() == N_CHUNKS
     assert knowledge.ensure_index() == N_CHUNKS and vectorstore.count() == N_CHUNKS
-    for src, n in {"csrc_suitability": 43, "data_sources": 4, "market_episodes": 6, "wealthguard_rules": 8,
+    for src, n in {"csrc_suitability": 43, "data_sources": 4, "market_episodes": 6, "wealthguard_rules": 9,
                   "history_cards": 150}.items():
         assert vectorstore.count(src) == n, src
 

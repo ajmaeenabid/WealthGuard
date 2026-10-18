@@ -34,7 +34,7 @@
     "Cancelled (not counted)": "已取消（不计入）", "No entries yet.": "暂无记录。", "Start a session first.": "请先开始会话。", "Enter an item and an amount.": "请输入物品和金额。",
     "Review the change below, then confirm.": "请查看下方的更改，然后确认。",
   };
-  const ZH_RULES = { R1: "适当性", R2: "集中度", R3: "复杂性", R4: "流动性", R5: "脆弱客户", R6: "披露", R7: "用语", R8: "最低金额" };
+  const ZH_RULES = { R1: "适当性", R2: "集中度", R3: "复杂性", R4: "流动性", R5: "脆弱客户", R6: "披露", R7: "用语", R8: "最低金额", R9: "通俗易懂" };
   let lang = "en";
   const cache = new Map();
 

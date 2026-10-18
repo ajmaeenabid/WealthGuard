@@ -121,7 +121,7 @@ tamper detection, 12 injection strings, attack tests, Chinese R7/guard/answer pa
    The profile card shows tolerance vs capacity and the final bucket (the lower of the two).
 2. The agent's first draft contains the tempting **NovaYield Note**; the **draft log** shows it BLOCKED (R1, R3) and the
    revised draft passing. The allocation table shows a rationale per line, and "Why not that product?" explains NovaYield.
-3. The compliance panel lists R1-R8 (and the LLM second opinion).
+3. The compliance panel lists R1-R9 (and the LLM second opinion).
 4. Click "Stress test: equities -20%" for portfolio loss and goal probability, then pick a **real** episode (2008, 2022, 1974, dot-com, Great Depression) from the dropdown: the shocks are the real returns of those years, followed by a rolling-window check on 1928-2025 history.
 5. Click "Create order ticket", then **Approve** in the queue (T2 needs this click). Click **Verify log**: chain valid.
 6. Attack: in section 6 click "Load attack sample" then Upload. The guard quotes the injected sentences. Re-run the flow

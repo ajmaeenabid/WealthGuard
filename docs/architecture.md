@@ -102,3 +102,10 @@ cooldown, so a failing service is not hammered. The Qdrant origin joins the URL 
 History cards (`knowledge.history_items`) are short English texts generated from `returns_annual.csv`, `shiller_monthly.csv` and
 `china_macro.csv`: every figure is computed from the data (including Dec-to-Dec inflation and the real deposit return), missing
 years carry no invented figure, and a few Chinese keywords let Chinese questions reach them.
+
+## R9 plain language
+
+`compliance.r9_plain_language` makes Article 24 of the CSRC Measures (warnings must be easy to understand) a deterministic
+rule: average sentence length at most 24 words and no sentence over 40 (Chinese: 60 and 120 characters), Flesch reading
+ease at least 40 for English text of 40+ words, and no jargon term (alpha, Sharpe, convexity, autocall, 久期, 敲入...) unless
+a bracketed plain explanation follows it. A failure blocks the allocation like any other rule.
