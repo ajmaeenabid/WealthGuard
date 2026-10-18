@@ -27,3 +27,6 @@
 15. **Ledger is self-reported.** Behaviour insights use only what the client enters (or sample data) and the stated income; they are guidance, not a credit or spending assessment. Impulse is a client-set tag.
 16. **Command parser is rule-based.** Unusual phrasings are refused with an example rather than guessed; Chinese numerals (e.g. 三百) are not parsed, digits are.
 17. **Behaviour data is sensitive.** A real system would need explicit consent, retention limits and access control; the demo uses synthetic entries only.
+18. **Real data is history, not a forecast.** Damodaran and Shiller series are US-centric and backward-looking; China macro data is annual and has gaps (inflation starts in 1987). The demo calibrates synthetic products on them and says so.
+19. **Damodaran terms.** The page states no explicit license; the data is cited with attribution for an educational demo. Confirm before any redistribution beyond the competition.
+20. **Regulation text is a consolidated reprint.** Taken from the State Council Gazette; the CSRC site is authoritative and the law can change. It is retrieval context, not legal advice.

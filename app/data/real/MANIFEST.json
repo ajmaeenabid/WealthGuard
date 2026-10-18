@@ -1,0 +1,62 @@
+{
+ "retrieved": "2026-10-18",
+ "generated": "2026-10-18",
+ "note": "Real, public data used to calibrate and ground the demo. Products and clients stay synthetic.",
+ "datasets": [
+  {
+   "file": "returns_annual.csv",
+   "sha256": "e4716ddb14c9177cb3b854261ac5d7e7a73891c11385e82a91e98ba6a0d3940d",
+   "raw_files": {
+    "raw/damodaran/histretSP.xls": "28b8110916a15a4dcc11c87c6422510704608ddedcdfa67a1298abdc22e49c69"
+   },
+   "title": "Historical Returns on Stocks, Bonds and Bills: 1928-2025",
+   "author": "Aswath Damodaran, NYU Stern",
+   "url": "https://www.stern.nyu.edu/~adamodar/pc/datasets/histretSP.xls",
+   "page": "https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/histretSP.html",
+   "license": "Not stated on the page: used with attribution for an educational demo; confirm before any redistribution",
+   "used_for": "calibrate return, volatility and correlation of asset classes; real historical stress episodes"
+  },
+  {
+   "file": "shiller_monthly.csv",
+   "sha256": "eb693fe9109d0ed1636bd7192d5dead75c09dc6ab49b7b095c018d0c25314abe",
+   "raw_files": {
+    "raw/shiller_sp500/data.csv": "3a45dffabc414afc298c12159abc84c2875f88175ff3d4473ef7417e725ecac6"
+   },
+   "title": "S&P 500 monthly data incl. dividend, earnings, CPI and 10-year rate (Shiller)",
+   "author": "Robert Shiller (Yale), via the Open Knowledge Foundation datasets mirror",
+   "url": "https://raw.githubusercontent.com/datasets/s-and-p-500/main/data/data.csv",
+   "page": "https://datahub.io/core/s-and-p-500",
+   "license": "ODC-PDDL-1.0 (public domain dedication)",
+   "used_for": "real inflation and interest-rate episodes for the rate and inflation stress scenarios; valuation context"
+  },
+  {
+   "file": "china_macro.csv",
+   "sha256": "b3a63b489b1abbabd559bec7cea1a1cace00f697117eb7547d4b73eafe45a5dc",
+   "raw_files": {
+    "raw/worldbank_china/CHN_FP.CPI.TOTL.ZG.json": "3c2ec61ca4f1ad32100d4f4d6fef9d6f807951c54b2331c95bcbfdc84743127e",
+    "raw/worldbank_china/CHN_FR.INR.DPST.json": "76613569d4e5ce751f1167a20b58181ff00ba6cf6a828346dbd65111cf6acb3f",
+    "raw/worldbank_china/CHN_FR.INR.LEND.json": "1f7e12ec88fe336d91e6016555bc3693f7aecca8c8c89edaae2850290dfb464a",
+    "raw/worldbank_china/CHN_NY.GDP.MKTP.KD.ZG.json": "ba98c5183d6a66b1dbc62ff1bf29d58b8723cfb0341a1d086b9998bf9b59fd26"
+   },
+   "title": "China: CPI inflation, deposit rate, lending rate, GDP growth (annual)",
+   "author": "World Bank Open Data",
+   "url": "https://api.worldbank.org/v2/country/CHN/indicator/{FP.CPI.TOTL.ZG,FR.INR.DPST,FR.INR.LEND,NY.GDP.MKTP.KD.ZG}",
+   "page": "https://data.worldbank.org/country/china",
+   "license": "CC BY 4.0",
+   "used_for": "China-specific inflation and cash-return context in explanations and the inflation scenario"
+  },
+  {
+   "file": "suitability_zh.json",
+   "sha256": "e907cf792f20a2e7ff79d03032c577c758ea6ee69950218e15d0d647c678148e",
+   "raw_files": {
+    "raw/csrc/gov_cn_gazette_2023_5_order202.html": "62b06da9f3a47c206894971f223a849f17bcebf44cdbf6b3229a44e27d259ef4"
+   },
+   "title": "Measures for the Suitability Management of Securities and Futures Investors (consolidated, Chinese original)",
+   "author": "China Securities Regulatory Commission (CSRC Order No. 130, amended by Order No. 202)",
+   "url": "https://www.gov.cn/gongbao/content/2023/content_5742209.htm",
+   "page": "https://www.gov.cn/gongbao/content/2023/content_5742209.htm",
+   "license": "PRC laws and regulations are not protected by copyright (PRC Copyright Law, Art. 5); official State Council Gazette text",
+   "used_for": "knowledge base for retrieval: compliance explanations cite the real article"
+  }
+ ]
+}
