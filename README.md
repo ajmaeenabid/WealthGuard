@@ -72,7 +72,22 @@ episodes and our compliance rules are indexed in a small vector database on SQLi
 model download, so mock mode, tests and Vercel behave the same. English questions reach the Chinese text through a small
 EN->ZH glossary. Use the **Regulation & data search** card, or ask the chat ("What does the CSRC regulation say about
 disclosing principal loss?"); the compliance panel also shows the **regulatory basis** (article) under each rule.
-The index is rebuilt automatically when the data changes. Lexical retrieval is not deep semantic search; see known risks.
+The index is rebuilt automatically when the data changes.
+
+**Qdrant Cloud (optional, real vector database).** Create a free cluster at [cloud.qdrant.io](https://cloud.qdrant.io), copy
+its https URL (REST port 6333) and an API key into `.env`:
+
+```
+QDRANT_URL=https://xxxx.region.cloud.qdrant.io:6333
+QDRANT_API_KEY=your_key_here
+```
+
+On start the app mirrors the 61 chunks to a collection named `wealthguard_kb_<index version>` and answers searches through
+Qdrant; the terminal prints `WealthGuard vector DB: qdrant`, `/api/health` shows `vector_db.backend`, and each search
+response says which backend answered. `python scripts/check_qdrant.py` verifies the setup. If the service is unreachable,
+the key is wrong or the URL is not https, the app silently uses the local index (and retries after 60 s), so the demo never
+depends on it. On Vercel, set the same two variables in the project settings. The key is sent only as an `api-key` header.
+ Lexical retrieval is not deep semantic search; see known risks.
 
 ## Deploy to Vercel (frontend and backend together)
 

@@ -10,19 +10,22 @@ import hashlib
 import math
 import re
 import threading
+import time
 import unicodedata
 from collections import Counter
 from functools import lru_cache
 
 import numpy as np
 
-from app import config, db
+from app import config, db, qdrant_backend
 
 DIM = 1024
 _CJK = re.compile(r"[一-鿿]+")
 _LATIN = re.compile(r"[a-z0-9]{2,}")
 _LOCK = threading.RLock()
 _CACHE: dict = {}
+COOLDOWN_S = 60
+REMOTE: dict = {"state": "off", "collection": None, "error": None, "until": 0.0, "synced_fp": None}
 
 
 @lru_cache(maxsize=100_000)
@@ -105,6 +108,7 @@ def build(items: list[dict], fp: str) -> int:
         conn.commit()
         conn.close()
         _CACHE.clear()
+    ensure_remote(fp)
     return len(items)
 
 
@@ -124,13 +128,63 @@ def _load():
         return _CACHE["data"]
 
 
+def _remote_failed(e: Exception) -> None:
+    REMOTE.update(state="error", error=str(e)[:120], until=time.time() + COOLDOWN_S)
+
+
+def ensure_remote(fp: str) -> None:
+    """Mirror the local index to Qdrant when configured (once per index version). Never raises."""
+    if not qdrant_backend.configured():
+        REMOTE.update(state="off", collection=None, error=None)
+        return
+    if REMOTE["synced_fp"] == fp and REMOTE["state"] == "ok":
+        return
+    if time.time() < REMOTE["until"]:
+        return
+    try:
+        rows, mat, _ = _load()
+        info = qdrant_backend.sync(rows, mat, fp)
+        REMOTE.update(state="ok", collection=info["collection"], error=None, synced_fp=fp, until=0.0)
+    except Exception as e:  # network, auth, allowlist, bad response: stay local
+        _remote_failed(e)
+
+
+def backend_status() -> dict:
+    """What answers searches now. Never includes the URL or key."""
+    on = qdrant_backend.configured()
+    return {"backend": "qdrant" if on and REMOTE["state"] == "ok" else "local", "qdrant_configured": on,
+            "qdrant_state": REMOTE["state"] if on else "off", "qdrant_error": REMOTE["error"] if on else None}
+
+
 def search(query: str, k: int = 3, source: str | None = None, min_score: float = 0.0) -> list[dict]:
+    return search_ex(query, k, source, min_score)[0]
+
+
+def search_ex(query: str, k: int = 3, source: str | None = None, min_score: float = 0.0) -> tuple[list[dict], str]:
+    """(hits, backend). Qdrant answers when configured and healthy; any failure falls back to the local index."""
     rows, mat, idf = _load()
     if not len(rows):
-        return []
+        return [], "local"
     q = _unit(_tf(query) * idf)
     if not float(np.linalg.norm(q)):
-        return []
+        return [], "local"
+    fp = fingerprint()
+    if qdrant_backend.configured() and REMOTE["state"] == "ok" and REMOTE["synced_fp"] == fp:
+        try:
+            return qdrant_backend.search(q, fp, k, source, min_score), "qdrant"
+        except Exception as e:
+            _remote_failed(e)
+    elif qdrant_backend.configured():
+        ensure_remote(fp)  # retry after the cooldown
+        if REMOTE["state"] == "ok":
+            try:
+                return qdrant_backend.search(q, fp, k, source, min_score), "qdrant"
+            except Exception as e:
+                _remote_failed(e)
+    return _local_search(rows, mat, q, k, source, min_score), "local"
+
+
+def _local_search(rows, mat, q, k, source, min_score) -> list[dict]:
     scores = mat @ q
     order = np.argsort(-scores, kind="stable")
     out = []

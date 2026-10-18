@@ -18,6 +18,14 @@ from app.security import audit, guard, tiers
 @asynccontextmanager
 async def lifespan(_app):
     print(f"WealthGuard LLM: {config.describe_llm()}", flush=True)
+    from app import knowledge, vectorstore
+    try:
+        knowledge.ensure_index()
+    except Exception as e:  # the app must start even if the vector index cannot be built
+        print(f"WealthGuard vector DB: index build failed ({type(e).__name__})", flush=True)
+    st = vectorstore.backend_status()
+    print(f"WealthGuard vector DB: {st['backend']}" + (f" (qdrant: {st['qdrant_state']})" if st["qdrant_configured"] else
+                                                   " (set QDRANT_URL and QDRANT_API_KEY to use Qdrant)"), flush=True)
     yield
 
 
@@ -34,7 +42,9 @@ def _client(client_id: str) -> dict:
 
 @app.get("/api/health")
 def health():
+    from app import vectorstore
     return {"ok": True, "mock_llm": config.use_mock_llm(), "llm": config.describe_llm(),
+            "vector_db": vectorstore.backend_status(),
             "disclaimer": config.DISCLAIMER}
 
 
@@ -163,10 +173,10 @@ def knowledge_search(q: str = Query(min_length=2, max_length=300), k: int = Quer
         raise HTTPException(422, f"unknown source; choose from {sorted(KB_SOURCES)}")
     if client_id:
         _client(client_id)
-    hits = knowledge.search(q, k=k, source=source)
-    audit.append("client", "knowledge_search", "T0", {"chars": len(q), "source": source, "k": k, "hits": len(hits)},
-                 client_id)
-    return {"query": q, "results": hits}
+    hits, backend = knowledge.search_ex(q, k=k, source=source)
+    audit.append("client", "knowledge_search", "T0", {"chars": len(q), "source": source, "k": k, "hits": len(hits),
+                                                      "backend": backend}, client_id)
+    return {"query": q, "results": hits, "backend": backend}
 
 
 @app.get("/api/products")

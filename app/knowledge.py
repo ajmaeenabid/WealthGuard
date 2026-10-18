@@ -121,12 +121,20 @@ def ensure_index() -> int:
     with _LOCK:
         if vectorstore.fingerprint() != fp:
             vectorstore.build(its, fp)
+        else:
+            vectorstore.ensure_remote(fp)
     return len(its)
 
 
 def search(query: str, k: int = 3, source: str | None = None, min_score: float = 0.0) -> list[dict]:
     ensure_index()
     return vectorstore.search(expand(query), k=k, source=source, min_score=min_score)
+
+
+def search_ex(query: str, k: int = 3, source: str | None = None, min_score: float = 0.0):
+    """Like search, but also returns which backend answered ('qdrant' or 'local')."""
+    ensure_index()
+    return vectorstore.search_ex(expand(query), k=k, source=source, min_score=min_score)
 
 
 def basis_for_rule(rule_id: str) -> dict | None:
