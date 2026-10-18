@@ -84,7 +84,7 @@ QDRANT_API_KEY=your_key_here
 
 On start the app mirrors the 61 chunks to a collection named `wealthguard_kb_<index version>` and answers searches through
 Qdrant; the terminal prints `WealthGuard vector DB: qdrant`, `/api/health` shows `vector_db.backend`, and each search
-response says which backend answered. `python scripts/check_qdrant.py` verifies the setup. If the service is unreachable,
+response says which backend answered. `python scripts/check_qdrant.py` verifies the setup (verified on a real Qdrant Cloud free cluster). If the service is unreachable,
 the key is wrong or the URL is not https, the app silently uses the local index (and retries after 60 s), so the demo never
 depends on it. On Vercel, set the same two variables in the project settings. The key is sent only as an `api-key` header.
  Lexical retrieval is not deep semantic search; see known risks.
