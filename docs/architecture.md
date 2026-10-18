@@ -148,3 +148,12 @@ goal_probability, backtest_share, ledger_total). Each returns the formula, the i
 hash; real datasets with license and SHA-256 from `MANIFEST.json`) and a recomputation through the same engine function; `stress_loss` for
 historical scenarios recomputes straight from `returns_annual.csv` with separate arithmetic. `GET /api/provenance` is a T0 read, audited as
 `provenance_viewed` with the match flag.
+
+## Revealed-risk replay
+
+`replay.start` builds a session from the client's profile and latest compliance-approved allocation (or 100% equities): the monthly portfolio
+return is the weighted sum of its asset classes' mapped series (`realdata.ASSET_MIX`), with the S&P 500 monthly price index from Shiller for
+equities and the year's Damodaran return spread evenly for bonds, cash and gold, minus weighted fees. A risky sleeve and a cash sleeve are
+tracked; at the first 10%/20%/30% drawdown the session pauses for a choice (hold, sell 25%, sell all, buy 10% of the start). `_result` compares
+the reaction at -20% (plus any earlier cautious sale) with the stored `loss_reaction` answer; `apply` is only allowed when strictly more cautious,
+replaces the answer, invalidates the profile and is audited (`replay_started`, `replay_finished`, `replay_applied`). Sessions are in memory.

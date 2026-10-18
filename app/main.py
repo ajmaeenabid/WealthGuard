@@ -8,12 +8,12 @@ from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import behaviour, comparison, config, knowledge, ledger, profiling, provenance, receipt, redteam, selfinspection, service, state, store, translate
+from app import behaviour, comparison, config, knowledge, ledger, profiling, provenance, receipt, redteam, replay, selfinspection, service, state, store, translate
 from app.agent import loop
 from app.agent.tools import Ctx
 from app.products import load_personas, load_products
 from app.schemas import (AllocationReq, ApproveReq, ChatReq, ClientProfile, CompareReq, DocumentReq, LedgerCommandReq,
-                         LedgerIn, LedgerPatch, LedgerSampleReq, ProfileReq, SessionReq, StressReq, TranslateReq)
+                         LedgerIn, LedgerPatch, LedgerSampleReq, ProfileReq, ReplayStartReq, ReplayStepReq, SessionReq, StressReq, TranslateReq)
 from app.security import audit, guard, tiers
 
 @asynccontextmanager
@@ -178,6 +178,35 @@ def knowledge_search(q: str = Query(min_length=2, max_length=300), k: int = Quer
     audit.append("client", "knowledge_search", "T0", {"chars": len(q), "source": source, "k": k, "hits": len(hits),
                                                       "backend": backend}, client_id)
     return {"query": q, "results": hits, "backend": backend}
+
+
+def _replay_result(out: dict) -> dict:
+    if out.get("ok") is False:
+        raise HTTPException(out.pop("status", 409), out["error"])
+    return out
+
+
+@app.post("/api/replay/start")
+def replay_start(req: ReplayStartReq):
+    """Start a revealed-risk replay of a real market episode with the client's approved allocation."""
+    _client(req.client_id)
+    out = replay.start(req.client_id, req.episode, req.portfolio)
+    if out.get("ok") is False:
+        raise HTTPException(422 if "unknown episode" in out["error"] or "portfolio" in out["error"] else 409, out["error"])
+    return out
+
+
+@app.post("/api/replay/{session_id}/step")
+def replay_step(session_id: str, req: ReplayStepReq):
+    _client(req.client_id)
+    return _replay_result(replay.step(session_id, req.client_id, req.choice))
+
+
+@app.post("/api/replay/{session_id}/apply")
+def replay_apply(session_id: str, req: ApproveReq):
+    """Apply the revealed (more cautious) reaction to the profile: an explicit click, never automatic."""
+    _client(req.client_id)
+    return _replay_result(replay.apply(session_id, req.client_id))
 
 
 @app.get("/api/provenance")

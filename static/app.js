@@ -277,6 +277,70 @@ async function uploadDoc() {
 }
 
 
+// ---- revealed-risk replay ---------------------------------------------------------------------------------------------
+let rpChart = null, rpId = null;
+
+function rpDraw(history) {
+  if (!window.Chart) return;
+  if (rpChart) rpChart.destroy();
+  rpChart = new Chart($("rpChart"), { type: "line", data: { labels: history.map((h) => h.month), datasets: [{ label: "CNY", data: history.map((h) => h.value), pointRadius: 0, borderWidth: 2 }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: (v) => Math.round(v / 1000) + "k" } } } } });
+}
+
+function rpRender(r) {
+  rpId = r.id;
+  rpDraw(r.history);
+  const last = r.history[r.history.length - 1];
+  $("rpStatus").innerHTML = `<b>${esc(r.label)}</b> &middot; ${esc(r.month)} &middot; ${cny(last.value)} (${r.progress[0]}/${r.progress[1]})`;
+  $("rpChoices").innerHTML = "";
+  $("rpResult").innerHTML = "";
+  if (r.state === "decision") {
+    const p = r.prompt;
+    $("rpStatus").innerHTML += `<div class="insight high">${tr(`Your portfolio is down ${(-p.drawdown * 100).toFixed(1)}% from its peak (${cny(p.peak)} to ${cny(p.value)}). What do you do?`)}</div>`;
+    p.choices.forEach((ch) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = t(p.labels[ch]); b.onclick = () => rpStep(ch);
+      $("rpChoices").appendChild(b);
+    });
+  } else if (r.state === "done") {
+    const x = r.result;
+    const cmp = { not_tested: "Your portfolio never fell 20% in this replay, so your reaction at -20% could not be tested. Try the stock-market-only option or a harsher episode.",
+      same_or_bolder: "You acted at least as boldly as you said. Your profile keeps your original, more cautious answer.",
+      more_cautious: "You acted more cautiously than you said. You can apply your revealed reaction to your profile (it can only make it more cautious)." }[x.comparison];
+    $("rpResult").innerHTML = `<div class="insight ok">${tr(`Final value ${cny(x.final_value)}. If you had held everything and added nothing: ${cny(x.held_value)}. Worst drop: ${(x.worst_drawdown * 100).toFixed(1)}%. Cost (or gain) of acting: ${cny(x.cost_of_acting)}.`)}</div>
+      <div class="insight ${x.comparison === "more_cautious" ? "info" : "ok"}">${tr(cmp)}${x.revealed_loss_reaction ? ` ${tr(`You said: ${x.stated_loss_reaction}; you did: ${x.revealed_loss_reaction}.`)}` : ""}</div>
+      <div class="small muted">${tr(x.note)}</div>`;
+    if (x.can_apply && !r.applied) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "approve"; b.textContent = t("Apply to my profile"); b.onclick = rpApply;
+      $("rpResult").appendChild(b);
+    }
+    $("rpTag").textContent = x.comparison.replace("_", " ");
+  }
+  if (I() && I().lang === "zh") I().applyDynamic(api, clientId);
+}
+
+async function rpStart() {
+  if (!clientId) { $("rpStatus").textContent = t("Start a session first."); return; }
+  try {
+    rpRender(await api("/api/replay/start", { client_id: clientId, episode: $("rpEpisode").value, portfolio: $("rpPortfolio").value }));
+    await loadAudit();
+  } catch (e) { $("rpStatus").textContent = "Error: " + e.message; }
+}
+
+async function rpStep(choice) {
+  try { rpRender(await api(`/api/replay/${rpId}/step`, { client_id: clientId, choice })); await loadAudit(); }
+  catch (e) { $("rpStatus").textContent = "Error: " + e.message; }
+}
+
+async function rpApply() {
+  try {
+    const r = await api(`/api/replay/${rpId}/apply`, { client_id: clientId });
+    $("rpResult").innerHTML += `<div class="insight ok">${tr(r.note)}</div>`;
+    await refresh();
+  } catch (e) { $("rpResult").innerHTML += `<div class="insight high">Error: ${esc(e.message)}</div>`; }
+}
+
 // ---- number provenance: click a number to see where it comes from --------------------------------------------------------
 const num = (text, kind, params) => `<a class="prov" tabindex="0" role="button" title="${esc(t("How is this calculated?"))}" data-kind="${esc(kind)}" data-params="${esc(JSON.stringify(params || {}))}">${text}</a>`;
 
@@ -517,6 +581,7 @@ async function init() {
   $("start").onclick = () => startSession().catch((e) => addMsg("sys", "Error: " + e.message));
   $("chatForm").onsubmit = (ev) => { ev.preventDefault(); send($("chatInput").value); };
   $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null);
+  $("rpGo").onclick = rpStart;
   $("rcDl").onclick = rcDownload;
   $("rcFile").addEventListener("change", rcVerifyFile);
   $("rtGo").onclick = rtRun;
