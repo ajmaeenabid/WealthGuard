@@ -48,6 +48,17 @@ falls back to the mock automatically and logs `llm_fallback_to_mock`. `WEALTHGUA
 
 A ledger of planned, bought and cancelled purchases. Type or speak a command (English or Chinese): "I bought headphones for 300", "plan to buy a laptop 6000", "I didn't buy the laptop", "change headphones to 250", "delete lunch", 买了耳机花了300元, 取消耳机. A command only creates a **proposal**; nothing changes until you click Confirm (voice can never confirm). The form buttons (Mark bought, Cancel item, Delete) are your own clicks. Totals, category/month sums and the guidance are computed by code from your entries, never by the model. Heavy or impulse-driven spending lowers risk *capacity* by at most 10 points; it can never raise risk. Ask the chat "How is my spending?" for a summary. "Load sample history" fills synthetic data for the demo.
 
+## Real-world data
+
+Clients and products stay synthetic. Real public data calibrates and grounds them. Every file is listed with its source, license and SHA-256 in `app/data/real/MANIFEST.json`; `python -I scripts/build_real_data.py` rebuilds the processed files from `app/data/real/raw/` (needs `pip install xlrd`, dev only).
+
+| Dataset | Source | License | Used for |
+|---|---|---|---|
+| Annual returns 1928-2025 (S&P 500, small caps, T-bills, T-bonds, Baa bonds, real estate, gold) | [Damodaran, NYU Stern](https://pages.stern.nyu.edu/~adamodar/New_Home_Page/datafile/histretSP.html) | not stated; used with attribution, confirm before redistribution | calibrating returns, volatility, correlations, stress episodes |
+| Monthly S&P 500, dividends, earnings, CPI, 10-year rate since 1871 | [Shiller via Open Knowledge mirror](https://datahub.io/core/s-and-p-500) | ODC-PDDL-1.0 (public domain) | real inflation and interest-rate episodes |
+| China CPI inflation, deposit and lending rate, GDP growth | [World Bank Open Data](https://data.worldbank.org/country/china) | CC BY 4.0 | China-specific context |
+| Suitability Management Measures, 43 articles (Chinese original) | [State Council Gazette](https://www.gov.cn/gongbao/content/2023/content_5742209.htm) (CSRC) | PRC regulations are not copyrightable (Copyright Law Art. 5) | grounding compliance explanations |
+
 ## Deploy to Vercel (frontend and backend together)
 
 `api/index.py` serves the FastAPI app and the static UI as one serverless function; `vercel.json` routes every path to it.
@@ -110,5 +121,6 @@ Evidence export: `python scripts/export_audit.py > audit_log.json`.
 | HTTPX (tests) | BSD-3-Clause |
 | Chart.js (CDN, frontend) | MIT |
 | SQLite (stdlib) | Public domain |
+| xlrd (dev only, rebuilds data) | BSD-3-Clause |
 
 The project's own code is provided for the competition under the MIT license.
