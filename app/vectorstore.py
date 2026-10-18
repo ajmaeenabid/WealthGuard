@@ -156,18 +156,22 @@ def backend_status() -> dict:
             "qdrant_state": REMOTE["state"] if on else "off", "qdrant_error": REMOTE["error"] if on else None}
 
 
-def search(query: str, k: int = 3, source: str | None = None, min_score: float = 0.0) -> list[dict]:
-    return search_ex(query, k, source, min_score)[0]
+def search(query: str, k: int = 3, source: str | None = None, min_score: float = 0.0, local: bool = False) -> list[dict]:
+    return search_ex(query, k, source, min_score, local)[0]
 
 
-def search_ex(query: str, k: int = 3, source: str | None = None, min_score: float = 0.0) -> tuple[list[dict], str]:
-    """(hits, backend). Qdrant answers when configured and healthy; any failure falls back to the local index."""
+def search_ex(query: str, k: int = 3, source: str | None = None, min_score: float = 0.0,
+              local: bool = False) -> tuple[list[dict], str]:
+    """(hits, backend). Qdrant answers when configured and healthy; any failure falls back to the local index.
+    local=True skips the network: same vectors, same ranking, used for internal lookups on the hot path."""
     rows, mat, idf = _load()
     if not len(rows):
         return [], "local"
     q = _unit(_tf(query) * idf)
     if not float(np.linalg.norm(q)):
         return [], "local"
+    if local:
+        return _local_search(rows, mat, q, k, source, min_score), "local"
     fp = fingerprint()
     if qdrant_backend.configured() and REMOTE["state"] == "ok" and REMOTE["synced_fp"] == fp:
         try:

@@ -20,6 +20,8 @@ Rules you must follow:
   article (e.g. 第十六条) or source it returns; the regulation text is in Chinese, so quote it and explain it.
 - Explain every recommendation ("why this" and "why not that") in plain language citing the client's facts.
 - Never use guaranteed / risk-free / can't-lose wording. Never promise returns (in English or Chinese).
+- If the client greets you, thanks you or just chats, answer naturally and briefly like a friendly person, call no
+  tools and do not start the questionnaire; offer help. Only ask profile questions when they want advice.
 - Reply in the client's language (English or Chinese). Use plain text, no markdown. If asked what you can do, first
   say briefly: profile the client, propose a compliant allocation, compare products, stress-test it, stage an order.
 - Orders and reports need the client's explicit approval click: create_order_ticket / generate_report only stage them.
@@ -189,8 +191,36 @@ SCENARIO_WORDS = [("dot-com", "dotcom_bust"), ("dotcom", "dotcom_bust"), ("depre
                   ("rate", "rate_+2"), ("equit", "equity_-20"), ("stress", "equity_-20"), ("scenario", "equity_-20")]
 
 
-def mock_respond(messages: list, state: dict) -> LLMResponse:
-    text = _user_text(messages).lower()
+SMALL_TALK = re.compile(
+    r"^\s*(hi+|hello+|hey+|hiya|yo|good (morning|afternoon|evening|day)|how are you( doing)?|how's it going|what's up|"
+    r"thanks?( you)?( so much)?|thank you|ok(ay)?|cool|nice|great|bye|goodbye|see you|"
+    r"你好|您好|嗨|哈喽|早上好|下午好|晚上好|谢谢|多谢|再见|好的)[\s!.,?？！。，~]*"
+    r"(there|wealthguard|again|today)?[\s!.,?？！。，~]*$", re.IGNORECASE)
+
+
+def small_talk_reply(text: str) -> str:
+    t = text.strip().lower()
+    zh = bool(re.search(r"[一-鿿]", t))
+    if re.search(r"thank|谢", t):
+        return "不客气！还有什么想了解的吗？" if zh else "You're welcome! Anything else you'd like to look at?"
+    if re.search(r"bye|see you|再见", t):
+        return "再见，祝您一切顺利！" if zh else "Goodbye, and take care!"
+    if re.search(r"how are you|how's it going|what's up", t):
+        return ("I'm doing well, thanks for asking! I can help you build a risk profile, suggest a compliant allocation, "
+                "compare products or stress-test a portfolio. What would you like to do?")
+    if zh:
+        return "您好！我可以帮您做风险评估、给出合规的资产配置、比较产品或做压力测试。您想从哪里开始？"
+    return ("Hello! Nice to meet you. I can help you build a risk profile, suggest a compliant allocation, compare "
+            "products or stress-test a portfolio. Just say \"let's start\" when you want advice, or ask me anything.")
+
+
+def guided_respond(messages: list, state: dict) -> LLMResponse:
+    """The deterministic advisory flow for questionnaire answers (used in live mode too: the next step is fixed)."""
+    return mock_respond(messages, state, guided=True)
+
+
+def mock_respond(messages: list, state: dict, guided: bool = False) -> LLMResponse:
+    text = "" if guided else _user_text(messages).lower()
     res = _turn_results(messages)
     n = len(res)
     done = {name for name, _, _ in res}
@@ -202,7 +232,10 @@ def mock_respond(messages: list, state: dict) -> LLMResponse:
         return isinstance(r, dict) and r.get("ok") is False
 
     # --- explicit single-purpose intents -------------------------------------------------------------
-    forbidden = [("execute_real_trade", ["execute", "place a trade", "sell my", "buy now"]),
+    if not guided and not res and SMALL_TALK.match(_user_text(messages)):
+        return LLMResponse(text=f"{small_talk_reply(_user_text(messages))} {disclaimer}")
+
+    forbidden =[("execute_real_trade", ["execute", "place a trade", "sell my", "buy now"]),
                  ("change_bank_details", ["bank detail", "change my bank", "account number"]),
                  ("export_client_data", ["export", "download all", "dump"]),
                  ("disable_audit_log", ["disable the audit", "turn off the log", "disable audit"]),

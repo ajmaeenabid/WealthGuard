@@ -20,19 +20,21 @@ def _state(client_id: str) -> dict:
             "has_allocation": alloc is not None, "allocation_id": alloc.id if alloc else None}
 
 
-def _record_answer(client_id: str, message: str) -> None:
+def _record_answer(client_id: str, message: str) -> bool:
+    """True when the message answered the pending profile question."""
     qid = state.PENDING_QUESTION.get(client_id)
     if not qid:
-        return
+        return False
     val = profiling.parse_answer(qid, message)
     if val is None:
-        return
+        return False
     d = store.load_client(client_id)
     d["facts"][qid] = val
     d["profile"] = None  # profile must be recomputed from the new answers
     store.save_client(client_id, d)
     state.PENDING_QUESTION.pop(client_id, None)
     audit.append("client", "profile_answer", "T1", {"question": qid, "answer": val}, client_id)
+    return True
 
 
 def _doc_context(client_id: str) -> list:
@@ -52,7 +54,9 @@ def run_turn(client_id: str, message: str) -> dict:
         warnings = guard.warnings_for(message, "chat message")
         audit.append("system", "injection_flagged", "T1", {"source": "chat", "findings": findings}, client_id)
     store.archive_blocked(client_id)
-    _record_answer(client_id, message)
+    # A questionnaire answer has a fixed next step (next question, or profile -> allocation -> compliance -> stress ->
+    # projection), so it is driven deterministically through the same tier engine: no model round trips, no waiting.
+    guided = _record_answer(client_id, message)
 
     history = state.HISTORY.setdefault(client_id, [])
     messages = _doc_context(client_id) + list(history) + [{"role": "user", "content": message}]
@@ -61,7 +65,9 @@ def run_turn(client_id: str, message: str) -> dict:
 
     for _ in range(MAX_STEPS):
         st = _state(client_id)
-        resp = llm.respond(llm.SYSTEM_PROMPT, messages, tools.anthropic_tools(), st)
+        resp = (llm.guided_respond(messages, st) if guided else
+                llm.mock_respond(messages, st) if llm.SMALL_TALK.match(message) else   # "hello" gets a hello, instantly
+                llm.respond(llm.SYSTEM_PROMPT, messages, tools.anthropic_tools(), st))
         fallback = fallback or resp.fallback
         if not resp.tool_calls:
             final_text = resp.text
@@ -103,7 +109,8 @@ def run_turn(client_id: str, message: str) -> dict:
         "attempts": attempts,
         "why_not": service.why_not_notes(client_id, alloc) if alloc else {},
         "question": (profiling.next_question(store.load_client(client_id)["facts"])
-                     if state.PENDING_QUESTION.get(client_id) else None),
+                     if state.PENDING_QUESTION.get(client_id) and any(t["tool"] == "ask_profile_question" for t in trace)
+                     else None),
         "warnings": warnings,
         "trace": trace,
         "llm_fallback": fallback,

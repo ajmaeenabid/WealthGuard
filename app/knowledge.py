@@ -179,6 +179,9 @@ def _fingerprint(its: list[dict]) -> str:
     return h.hexdigest()
 
 
+_BASIS: dict = {}   # (index fingerprint, rule_id) -> basis; the rule queries are fixed, so it only changes with the index
+
+
 def ensure_index() -> int:
     """Build the index if missing or stale (data or code changed). Cheap: about 60 chunks."""
     its = items()
@@ -208,7 +211,14 @@ def basis_for_rule(rule_id: str) -> dict | None:
     if not q:
         return None
     ensure_index()
-    hits = vectorstore.search(q, k=1, source="csrc_suitability", min_score=BASIS_MIN_SCORE)
+    key = (vectorstore.fingerprint(), rule_id)
+    if key not in _BASIS:
+        _BASIS[key] = _basis_lookup(rule_id, q)
+    return _BASIS[key]
+
+
+def _basis_lookup(rule_id: str, q: str) -> dict | None:
+    hits = vectorstore.search(q, k=1, source="csrc_suitability", min_score=BASIS_MIN_SCORE, local=True)
     if not hits:
         return None
     h = hits[0]

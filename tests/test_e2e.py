@@ -130,7 +130,9 @@ def test_compare_and_products():
 
 def test_blank_client_flow_asks_everything():
     cid = c.post("/api/session", json={}).json()["client_id"]
-    out = chat(cid, "hello")
+    out = chat(cid, "hello")                       # a greeting gets a greeting, not the questionnaire
+    assert out["question"] is None and out["trace"] == [] and out["reply"].startswith("Hello")
+    out = chat(cid, "I'd like some investment advice")
     assert out["question"]["id"] == "age"
     out = chat(cid, "I am 50")
     assert out["question"]["id"] == "horizon_years"
