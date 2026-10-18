@@ -5,7 +5,7 @@
     banner: "教育演示，产品均为合成数据，不构成真实的投资建议。",
     footer: "教育演示，产品均为合成数据，不构成真实的投资建议。所有数据均为合成数据。",
     tagline: "合规的财富顾问智能体", client: "客户", start: "开始会话", send: "发送",
-    chatTitle: "顾问对话", chatPh: "输入消息或回答…",
+    chatTitle: "顾问对话", chatPh: "给 WealthGuard 发消息…",
     h1: "1. 风险画像", h2: "2. 建议配置", h3: "3. 合规检查", h4: "4. 压力测试与目标概率", h5: "5. 审批队列 (T2)",
     h6: "6. 上传文档（不可信）", h7: "7. 审计日志", whyNotTitle: "为什么不选其他产品？",
     run: "运行", upload: "上传", attack: "加载攻击样本", verify: "验证日志", refresh: "刷新", exportJson: "导出 JSON",
@@ -31,7 +31,12 @@
     rpEquity: "仅股票市场（测试心态）", rpMine: "我的配置", rpStart: "开始重演", "Hold and wait": "持有等待",
     "Sell some (25% to cash)": "卖出一部分（25%转为现金）", "Sell everything to cash": "全部卖出转为现金",
     "Buy more (add 10% of the starting amount)": "加仓（追加起始金额的10%）", "Apply to my profile": "应用到我的画像",
-    veAuto: "语音：自动", veBrowser: "浏览器",
+    veAuto: "语音：自动", veBrowser: "浏览器", veLabel: "引擎", vlLabel: "语言",
+    navFlow: "咨询流程", navTools: "洞察", navTrust: "信任与证据",
+    nProfile: "风险画像", nAlloc: "建议配置", nComp: "合规检查", nStress: "压力测试", nApprove: "审批", nLedger: "购买记录",
+    nReplay: "历史重演", nSearch: "法规检索", nReceipt: "建议回执", nRedteam: "红队演示", nSelf: "自查报告", nDocs: "上传文档", nAudit: "审计日志",
+    heroTitle: "可以验证的建议。", heroSub: "在独立合规引擎批准之前，不会向你展示任何内容；每一步都有记录。",
+    "Start with": "开始：", "Advice approved by compliance": "建议已通过合规批准", "Open allocation": "查看配置",
     hC: "建议回执", rcHint: "已批准建议的封存记录：规则、法规条文、数据哈希和审计锚点。任何人都可以验证。", rcDownload: "下载回执",
     rcVerify: "验证回执文件", "Receipt is valid": "回执有效", "Receipt is NOT valid": "回执无效",
     hR: "红队攻击演示", rtHint: "对真实防线运行一批中英文攻击，显示每次攻击由哪一层拦截。不调用语言模型。",
@@ -94,7 +99,7 @@
     if (rerender) await rerender();
     await applyDynamic(api, clientId);
     const b = document.getElementById("langBtn");
-    if (b) { b.textContent = lang === "zh" ? "English" : "中文"; b.setAttribute("aria-pressed", String(lang === "zh")); }
+    if (b) { (b.querySelector("span") || b).textContent = lang === "zh" ? "English" : "中文"; b.setAttribute("aria-pressed", String(lang === "zh")); }
   }
 
   window.WGI18n = { t, tr, ruleName, setLang, applyDynamic, applyStatic, get lang() { return lang; }, ZH };

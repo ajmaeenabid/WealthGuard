@@ -28,12 +28,12 @@
     const btn = $(btnId), input = $(inputId), note = $(noteId);
     if (!btn || !input) return;
     const say = (m) => { if (note) note.textContent = m; };
-    const label = btn.textContent;
+    const labelHtml = btn.innerHTML;
 
     function state(on) {
       btn.classList.toggle("rec", on);
       btn.setAttribute("aria-pressed", String(on));
-      btn.textContent = on ? "Stop" : label;
+      btn.innerHTML = on ? (btn.dataset.stopHtml || "Stop") : labelHtml;
       if (!on && active && active.btn === btn) active = null;
     }
     const finish = (text) => {
@@ -143,7 +143,7 @@
     sb.onclick = () => {
       speakOn = !speakOn;
       sb.setAttribute("aria-pressed", String(speakOn));
-      sb.textContent = speakOn ? "Read aloud: on" : "Read aloud: off";
+      sb.title = speakOn ? "Reading replies aloud (click to stop)" : "Read replies aloud";
       if (!speakOn) synth.cancel();
     };
   }

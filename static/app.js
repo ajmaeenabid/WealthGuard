@@ -19,15 +19,28 @@ async function api(path, body, method) {
   return data;
 }
 
+const DISC = /^([\s\S]*?)\s*(Educational demo with synthetic products\. Not real financial advice\.(?:\s*教育演示[^\n]*)?)\s*$/;
+const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const PALETTE = () => ["--accent", "--brass", "#7a8cff", "#e58fa6", "#59c3e6", "#b7a2f0", "#9ad06b", "#f0a56a"].map((x) => (x.startsWith("--") ? cssVar(x) : x));
+
 function addMsg(kind, text) {
   const d = document.createElement("div");
   d.className = "msg " + kind;
-  d.textContent = String(text).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#+\s*/gm, "");
+  const body = String(text).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#+\s*/gm, "");
+  const m = kind === "agent" ? body.match(DISC) : null;
+  if (m && m[1].trim()) {   // the fixed disclaimer is shown, but quietly, under the answer
+    d.appendChild(document.createTextNode(m[1]));
+    const s = document.createElement("span");
+    s.className = "disc";
+    s.textContent = m[2];
+    d.appendChild(s);
+  } else d.textContent = body;
   $("messages").appendChild(d);
   $("messages").scrollTop = $("messages").scrollHeight;
 }
 
 let regBasis = {};
+let stressRan = false;
 const ZH_LABELS = {
   "Stable (salary or pension)": "稳定（工资或养老金）", "Variable": "变动", "Unstable": "不稳定",
   "None (0%)": "不需要（0%）", "About 10%": "约10%", "About 25%": "约25%", "40% or more": "40%以上",
@@ -72,6 +85,8 @@ async function startSession() {
   const persona = $("persona").value || null;
   const s = await api("/api/session", { persona_id: persona });
   clientId = s.client_id;
+  stressRan = false;
+  if (window.WGUI) window.WGUI.progress({ profile: false, alloc: false, comp: false, stress: false, approve: false });
   $("messages").innerHTML = "";
   $("story").textContent = s.story ? `${s.name}: ${s.story}` : "";
   $("chatInput").disabled = false; $("sendBtn").disabled = false;
@@ -125,6 +140,8 @@ async function refresh() {
   renderAllocation(st);
   if (st.compliance) renderChecks(st.compliance);
   regBasis = st.regulatory_basis || {};
+  if (window.WGUI) window.WGUI.progress({ profile: !!st.profile, alloc: !!st.allocation, comp: !!(st.compliance && st.compliance.passed),
+    stress: stressRan, approve: (st.tickets || []).some((t) => t.status === "approved") });
   if (st.compliance) renderChecks(st.compliance);
   renderTickets(st.tickets);
   await loadLedger();
@@ -219,8 +236,8 @@ function drawAlloc(a) {
   if (!a) { allocChart = null; return; }
   allocChart = new Chart($("allocChart"), {
     type: "doughnut",
-    data: { labels: a.lines.map((l) => (products[l.product_id] || {}).name || l.product_id), datasets: [{ data: a.lines.map((l) => +(l.weight * 100).toFixed(2)) }] },
-    options: { plugins: { legend: { position: "right", labels: { boxWidth: 10, font: { size: 11 } } } } },
+    data: { labels: a.lines.map((l) => (products[l.product_id] || {}).name || l.product_id), datasets: [{ data: a.lines.map((l) => +(l.weight * 100).toFixed(2)), backgroundColor: PALETTE(), borderColor: cssVar("--surface"), borderWidth: 3, hoverOffset: 6 }] },
+    options: { cutout: "62%", plugins: { legend: { position: "right", labels: { boxWidth: 10, font: { size: 11 } } } } },
   });
 }
 
@@ -230,7 +247,8 @@ function drawStress(s) {
   if (!s) { stressChart = null; return; }
   stressChart = new Chart($("stressChart"), {
     type: "bar",
-    data: { labels: s.by_line.map((l) => l.name), datasets: [{ label: "Contribution to portfolio change (%)", data: s.by_line.map((l) => l.contribution_pct) }] },
+    data: { labels: s.by_line.map((l) => l.name), datasets: [{ label: "Contribution to portfolio change (%)", data: s.by_line.map((l) => l.contribution_pct), borderRadius: 6,
+      backgroundColor: s.by_line.map((l) => (l.contribution_pct < 0 ? cssVar("--bad") : cssVar("--good"))) }] },
     options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: "% of portfolio" } } } },
   });
 }
@@ -248,6 +266,8 @@ async function runStress(scenario, quiet) {
     $("provRow").innerHTML = `${esc(t("How is this calculated?"))} ${num(esc(t("portfolio change")), "stress_loss", { allocation_id: lastAllocId, scenario: s.scenario })} &middot; ${num(esc(t("goal probability")), "goal_probability", { allocation_id: lastAllocId, shock_pct: s.loss_pct })} &middot; ${num(esc(t("historical share")), "backtest_share", { allocation_id: lastAllocId })}`;
     if (I() && I().lang === "zh") await I().applyDynamic(api, clientId);
     drawStress(s);
+    stressRan = true;
+    if (window.WGUI) window.WGUI.progress({ stress: true });
   } catch (e) { $("stressOut").textContent = "Error: " + e.message; }
 }
 
@@ -283,7 +303,8 @@ let rpChart = null, rpId = null;
 function rpDraw(history) {
   if (!window.Chart) return;
   if (rpChart) rpChart.destroy();
-  rpChart = new Chart($("rpChart"), { type: "line", data: { labels: history.map((h) => h.month), datasets: [{ label: "CNY", data: history.map((h) => h.value), pointRadius: 0, borderWidth: 2 }] },
+  rpChart = new Chart($("rpChart"), { type: "line", data: { labels: history.map((h) => h.month), datasets: [{ label: "CNY", data: history.map((h) => h.value), pointRadius: 0, borderWidth: 2.5, tension: .25, borderColor: cssVar("--accent"),
+      fill: true, backgroundColor: cssVar("--accent-soft") }] },
     options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: (v) => Math.round(v / 1000) + "k" } } } } });
 }
 
@@ -604,3 +625,4 @@ async function init() {
   $("auditTag").textContent = "";
 }
 init().catch((e) => { document.body.insertAdjacentHTML("beforeend", `<p class="warnbox">Failed to load: ${esc(e.message)}</p>`); });
+window.WGApp = { redraw: () => { if (clientId) refresh(); } };
