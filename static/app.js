@@ -94,10 +94,30 @@ function beginChat(s, msgs) {
 
 function closeMobileSidebar() { if ($("sidebar").classList.contains("open") && $("scrim")) $("scrim").click(); }
 
-async function startSession() {
-  const s = await api("/api/conversations", { persona_id: $("persona").value || null });
-  beginChat(s, [{ role: "agent", text: s.greeting }]);
+// The welcome page is where a new chat starts. The conversation itself is only created when the first message is sent.
+function newChatView() {
+  beginChat({ client_id: null, name: "", story: null, next_question: null }, []);
   closeMobileSidebar();
+  paintHero();
+  refreshChats();
+  $("chatInput").focus();
+}
+
+async function paintHero() {
+  const me = window.WGAuth && window.WGAuth.user;
+  if (!me) return;
+  $("heroName").textContent = me.display_name;
+  const box = $("heroMemory");
+  try {
+    const m = await api("/api/memory", undefined, "GET");
+    box.hidden = !m.count;
+    box.textContent = m.count ? t("I remember {n} things from your earlier chats. Open Memory to review them.").replace("{n}", m.count) : "";
+  } catch (e) { box.hidden = true; }
+}
+
+async function startSession() {
+  const s = await api("/api/conversations", {});
+  beginChat(s, []);
   await Promise.all([refresh(), refreshChats()]);
 }
 
@@ -113,15 +133,9 @@ async function openChat(id) {
 async function deleteChat(id) {
   if (!window.confirm(t("Delete this chat?"))) return;
   await api(`/api/conversations/${encodeURIComponent(id)}/delete`, {});
-  if (id === clientId) {
-    clientId = null;
-    $("messages").innerHTML = ""; $("story").textContent = "";
-    ["allocation", "whyNot", "attempts", "stressOut", "tickets", "docWarn", "disclosures", "checks"].forEach((x) => ($(x).innerHTML = ""));
-    drawAlloc(null); drawStress(null);
-    if (window.WGUI) window.WGUI.progress({ profile: false, alloc: false, comp: false, stress: false, approve: false });
-    setQuick(null);
-  }
+  if (id === clientId) newChatView();
   await refreshChats();
+  memLoad();
 }
 
 let chatsCache = [];
@@ -154,8 +168,7 @@ async function refreshChats() {
 
 async function send(text) {
   if (!text.trim()) return;
-  if (!clientId) {   // typing or speaking before a session: start one for the selected client first, then send
-    if (window.WGUI) window.WGUI.toast(t("Starting a session for the selected client first."));
+  if (!clientId) {   // the first message of a new chat creates the conversation
     try { await startSession(); } catch (e) { addMsg("sys", "Error: " + e.message); return; }
   }
   addMsg("user", text);
@@ -173,7 +186,7 @@ async function send(text) {
     if (/stress|crash|inflation|equities fall|what if|depression|dot-?com/i.test(text) && r.allocation) await runStress(detectScenario(text), true);
   } catch (e) {
     addMsg("sys", "Error: " + e.message);
-  } finally { setBusy(false); await Promise.all([refresh(), refreshChats()]); }
+  } finally { setBusy(false); await Promise.all([refresh(), refreshChats(), memLoad()]); }
 }
 
 function detectScenario(t) {
@@ -650,20 +663,164 @@ async function ledgerAdd() {
   $("lgItem").value = ""; $("lgAmount").value = ""; $("lgImpulse").checked = false;
 }
 
+// ---------------------------------------------------------------- memory panel: what the assistant remembers about this account
+const memMsg = (x, bad) => { $("memMsg").textContent = x || ""; $("memMsg").classList.toggle("bad", !!bad); };
+const memDay = (iso) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+function xButton(label, fn) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "ghost icon mem-x";
+  b.setAttribute("aria-label", label); b.title = label;
+  b.innerHTML = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  b.onclick = fn;
+  return b;
+}
+
+function memRender(m) {
+  $("memTag").textContent = m.count ? String(m.count) : "";
+  const facts = $("memFacts"), notes = $("memNotes"), sums = $("memSums");
+  facts.innerHTML = ""; notes.innerHTML = ""; sums.innerHTML = "";
+  const empty = (box, text) => { const p = document.createElement("p"); p.className = "small muted"; p.textContent = t(text); box.appendChild(p); };
+  if (!m.facts.length) empty(facts, "Nothing saved yet. Answers you give in a chat appear here.");
+  m.facts.forEach((f) => {
+    const row = document.createElement("div"); row.className = "mem-row";
+    const k = document.createElement("span"); k.className = "mem-k"; k.textContent = t(f.label);
+    const v = document.createElement("input"); v.className = "mem-v"; v.type = "text"; v.maxLength = 40; v.value = f.text;
+    v.setAttribute("aria-label", f.label);
+    v.onchange = async () => {
+      try { memRender(await api("/api/memory/fact", { key: f.key, value: v.value })); memMsg(t("Saved. New chats will use it.")); }
+      catch (e) { v.value = f.text; memMsg(e.message, true); }
+    };
+    row.append(k, v, xButton(t("Forget this"), async () => memRender(await api(`/api/memory/fact/${f.key}/delete`, {}))));
+    facts.appendChild(row);
+  });
+  if (!m.notes.length) empty(notes, "No notes yet. Tell me things like \"remember that I prefer low fees\".");
+  m.notes.forEach((n) => {
+    const row = document.createElement("div"); row.className = "mem-row note";
+    const tx = document.createElement("span"); tx.className = "mem-t"; tx.textContent = n.text;
+    row.append(tx, xButton(t("Forget this"), async () => memRender(await api(`/api/memory/item/${n.id}/delete`, {}))));
+    notes.appendChild(row);
+  });
+  if (!m.summaries.length) empty(sums, "Short summaries of your chats appear here.");
+  m.summaries.forEach((x) => {
+    const row = document.createElement("div"); row.className = "mem-row note";
+    const tx = document.createElement("span"); tx.className = "mem-t";
+    tx.textContent = `${x.title ? x.title + " · " : ""}${memDay(x.updated)}: ${x.text}`;
+    row.append(tx, xButton(t("Forget this"), async () => memRender(await api(`/api/memory/item/${x.id}/delete`, {}))));
+    sums.appendChild(row);
+  });
+}
+
+async function memLoad() {
+  if (window.WGAuth.user.role === "admin") return;
+  try { memRender(await api("/api/memory", undefined, "GET")); } catch (e) { /* the panel keeps what it had */ }
+}
+
+function wireMemory() {
+  $("memNoteAdd").onclick = async () => {
+    const text = $("memNoteIn").value.trim();
+    if (!text) return;
+    try { memRender(await api("/api/memory/notes", { text })); $("memNoteIn").value = ""; memMsg(t("Saved.")); } catch (e) { memMsg(e.message, true); }
+  };
+  $("memNoteIn").addEventListener("keydown", (ev) => { if (ev.key === "Enter") { ev.preventDefault(); $("memNoteAdd").click(); } });
+  $("memDemo").onclick = async () => {
+    try {
+      memRender(await api("/api/memory/demo", { persona_id: $("persona").value }));
+      newChatView();
+      if (window.WGUI) window.WGUI.toast(t("Demo profile loaded. New chats start with it."));
+    } catch (e) { memMsg(e.message, true); }
+  };
+  $("memClear").onclick = async () => {
+    if (!window.confirm(t("Forget everything saved about you?"))) return;
+    memRender(await api("/api/memory/clear", {}));
+    paintHero();
+    memMsg(t("Everything was forgotten."));
+  };
+}
+
+// ---------------------------------------------------------------- what this account may use (the server enforces it too)
+const FEATURE_PANELS = { ledger: ["ledgerCard"], replay: ["rpCard"], documents: ["docCard"], orders: ["approvalCard"],
+  knowledge: ["kbCard"], receipt: ["rcCard"], insights: ["rtCard", "siCard"] };
+
+function applyAccess(me) {
+  if (me.role === "admin") { document.body.classList.add("is-admin"); $("adminView").hidden = false; return; }
+  Object.entries(FEATURE_PANELS).forEach(([feature, panels]) => {
+    if (me.permissions[feature] !== false) return;
+    panels.forEach((p) => { const n = document.querySelector(`.nav[data-panel="${p}"]`); if (n) n.hidden = true; });
+  });
+  if (me.permissions.voice === false) { $("voiceBar").hidden = true; const m = $("ledgerMic"); if (m) m.hidden = true; }
+  if (me.permissions.chat === false) {
+    $("chatInput").disabled = true; $("chatInput").placeholder = t("Chat is switched off for your account.");
+    $("start").disabled = true;
+  }
+}
+
+// ---------------------------------------------------------------- administration: accounts, roles, per-account access
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+
+async function adminCall(path, body, done) {
+  try { await api(path, body); await adminLoad(); $("adminMsg").textContent = t(done); $("adminMsg").classList.remove("bad"); }
+  catch (e) { $("adminMsg").textContent = e.message; $("adminMsg").classList.add("bad"); await adminLoad(); }
+}
+
+function adminRender(out) {
+  const box = $("adminUsers");
+  box.innerHTML = "";
+  const me = window.WGAuth.user.username;
+  out.users.forEach((u) => {
+    const card = el("div", "u-card" + (u.banned ? " banned" : ""));
+    const head = el("div", "u-head");
+    const av = el("span", "avatar", (u.display_name || u.username).replace(/^(Ms|Mr)\.\s*/i, "").charAt(0).toUpperCase());
+    const who = el("span", "who"); who.append(el("b", "", u.display_name), el("i", "", "@" + u.username + " · " + u.chats + " " + t("chats")));
+    const badges = el("span", "u-badges");
+    badges.append(el("span", "tag", u.role === "admin" ? t("Administrator") : t("Member")));
+    if (u.banned) badges.append(el("span", "tag bad", t("Suspended")));
+    head.append(av, who, badges);
+
+    const ctl = el("div", "u-controls");
+    const role = el("select"); role.setAttribute("aria-label", t("Role"));
+    [["client", t("Member")], ["admin", t("Administrator")]].forEach(([v, l]) => { const o = el("option", "", l); o.value = v; role.appendChild(o); });
+    role.value = u.role; role.disabled = u.username === me;
+    role.onchange = () => adminCall(`/api/admin/users/${u.username}/role`, { role: role.value }, "Role updated.");
+    const ban = el("button", u.banned ? "primary" : "warn", u.banned ? t("Restore access") : t("Suspend account"));
+    ban.type = "button"; ban.disabled = u.username === me;
+    ban.onclick = () => adminCall(`/api/admin/users/${u.username}/ban`, { banned: !u.banned }, u.banned ? "Account restored." : "Account suspended.");
+    const pw = el("button", "", t("Reset password")); pw.type = "button";
+    pw.onclick = () => {
+      const v = window.prompt(t("New password for") + " @" + u.username + " (" + t("at least 6 characters") + ")");
+      if (v) adminCall(`/api/admin/users/${u.username}/password`, { new_password: v }, "Password reset. The account was signed out everywhere.");
+    };
+    ctl.append(role, ban, pw);
+
+    const perms = el("div", "u-perms");
+    if (u.role === "admin") perms.append(el("p", "small muted", t("Administrators have every feature.")));
+    else Object.entries(out.features).forEach(([f, label]) => {
+      const lab = el("label", "perm"); const cb = el("input"); cb.type = "checkbox"; cb.checked = u.permissions[f] !== false;
+      cb.onchange = () => adminCall(`/api/admin/users/${u.username}/permissions`, { permissions: { [f]: cb.checked } }, "Access updated.");
+      lab.append(cb, el("span", "", t(label)));
+      perms.append(lab);
+    });
+    card.append(head, ctl, perms);
+    box.appendChild(card);
+  });
+}
+
+async function adminLoad() { adminRender(await api("/api/admin/users", undefined, "GET")); }
+
 async function init() {
   if (window.WGVoice) window.WGVoice.setClientIdGetter(() => clientId);
+  const me = window.WGAuth.user;
+  applyAccess(me);
   setChips();
   const [ps, pr, h] = await Promise.all([api("/api/personas", undefined, "GET"), api("/api/products", undefined, "GET"), api("/api/health", undefined, "GET")]);
   pr.forEach((p) => (products[p.id] = p));
-  $("persona").innerHTML = ps.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("") + '<option value="">Blank client</option>';
+  $("persona").innerHTML = ps.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("");
   $("llmBadge").textContent = h.mock_llm ? "mock LLM" : "live LLM";
-  const me = window.WGAuth.user;
-  if (!me.can_pick_persona) {   // li / chen / wang are their own client: no picking, one persona per account
-    $("personaRow").hidden = true; $("whoRow").hidden = false; $("whoName").textContent = me.display_name;
-  }
-  $("start").onclick = () => startSession().catch((e) => addMsg("sys", "Error: " + e.message));
+  $("start").onclick = newChatView;
   $("chatForm").onsubmit = (ev) => { ev.preventDefault(); send($("chatInput").value); };
-  $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null);
+  $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null).then(() => {
+    if (me.role === "admin") adminLoad(); else { paintHero(); memLoad(); refreshChats(); }
+  });
   $("rpGo").onclick = rpStart;
   $("rcDl").onclick = rcDownload;
   $("rcFile").addEventListener("change", rcVerifyFile);
@@ -684,9 +841,10 @@ async function init() {
   $("docSend").onclick = uploadDoc;
   $("docAttack").onclick = () => { $("docText").value = ATTACK; $("docName").value = "novayield_brochure.txt"; };
   $("auditTag").textContent = "";
-  await refreshChats();   // keep the history: carry on in the latest chat, or start the first one for a fixed client
-  if (chatsCache.length) await openChat(chatsCache[0].id);
-  else if (!me.can_pick_persona) await startSession();
+  wireMemory();
+  if (me.role === "admin") { await adminLoad(); return; }
+  await memLoad();
+  newChatView();          // land on the welcome page; earlier chats are one click away in the sidebar
 }
 window.WGAuth.onReady(() => init().catch((e) => { document.body.insertAdjacentHTML("beforeend", `<p class="warnbox">Failed to load: ${esc(e.message)}</p>`); }));
 window.WGApp = { redraw: () => { if (clientId) refresh(); }, syncSend };
