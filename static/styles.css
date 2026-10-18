@@ -75,3 +75,11 @@ button#micBtn.rec { background: var(--warn); color: #fff; border-color: var(--wa
 .proposal { border: 1px dashed var(--brand); border-radius: 8px; padding: 8px; margin: 8px 0; font-size: 13px; }
 #ledgerCmd { flex: 1; min-width: 160px; }
 td.num, th.num { text-align: right; }
+
+a.prov { cursor: help; border-bottom: 1px dotted var(--brand); text-decoration: none; color: inherit; }
+a.prov:hover { color: var(--brand); }
+.prov-box { position: fixed; right: 16px; bottom: 16px; width: min(460px, calc(100vw - 32px)); max-height: 70vh; overflow: auto; z-index: 20;
+  background: var(--card); border: 1px solid var(--brand); border-radius: 12px; padding: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.35); font-size: 13px; }
+.prov-box[hidden] { display: none; }
+.prov-box h3 { margin: 0 0 6px; }
+.prov-box table { margin: 6px 0; }

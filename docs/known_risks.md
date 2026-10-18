@@ -52,3 +52,5 @@
     membership and anchor needs the issuing server; only the content, entry and dataset hashes can be checked offline.
 35. **Receipts are not legal signatures.** The checkpoint is a symmetric HMAC (verified by the issuer), not a public-key signature or a trusted
     timestamp.
+36. **Recomputation shares code.** Except for historical stress scenarios (independent re-read of the CSV), the recomputation calls the same engine function
+    as the displayed value, so it detects stale or tampered stored values, not a logic error inside that function (the unit tests cover those).

@@ -64,3 +64,6 @@ engine, that paths are minimal (brute force), that only changeable answers appea
 a consistent forged audit entry fails membership; deleting the newest audit rows after issue (invisible to the chain alone) fails the anchor;
 a receipt from another server fails the checkpoint; changed datasets fail the data hash check. This closes the audit-tail-truncation risk
 for every receipt a client holds.
+
+Provenance (`test_provenance.py`) is a transparency control: a stored value that no longer recomputes (for example a forged profile score)
+is shown as a mismatch, and every opened explanation is audited.

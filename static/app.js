@@ -138,9 +138,9 @@ function renderProfile(st) {
   const eff = st.effective_bucket;
   $("profile").removeAttribute("data-i18n");
   $("profile").innerHTML = `
-    <div>${t("Risk tolerance")} <b>${p.risk_tolerance_score}</b>/100</div><div class="bar"><span style="width:${p.risk_tolerance_score}%"></span></div>
-    <div>${t("Risk capacity")} <b>${p.risk_capacity_score}</b>/100</div><div class="bar cap"><span style="width:${p.risk_capacity_score}%"></span></div>
-    <div>${t("Final bucket = the lower of the two:")} <span class="tag good">${esc(p.bucket)}</span>
+    <div>${t("Risk tolerance")} <b>${num(p.risk_tolerance_score, "tolerance")}</b>/100</div><div class="bar"><span style="width:${p.risk_tolerance_score}%"></span></div>
+    <div>${t("Risk capacity")} <b>${num(p.risk_capacity_score, "capacity")}</b>/100</div><div class="bar cap"><span style="width:${p.risk_capacity_score}%"></span></div>
+    <div>${t("Final bucket = the lower of the two:")} <span class="tag good">${num(esc(p.bucket), "bucket")}</span>
     ${eff !== p.bucket ? `&rarr; capped to <span class="tag bad">${esc(eff)}</span> (vulnerable client, rule R5)` : ""}</div>
     <div class="small muted">Age ${p.age}, horizon ${p.horizon_years} years, goal ${esc(p.goal)}, experience ${esc(p.experience)}, liquidity need ${p.liquidity_need_pct}%.</div>`;
 }
@@ -158,7 +158,8 @@ function renderAllocation(st) {
   }).join("");
   $("allocation").innerHTML = `<p>${tr(a.summary)}</p>
     <table><thead><tr><th>${t("Product")}</th><th class="num">${t("Weight")}</th><th class="num">${t("Amount")}</th><th>${t("Why this")}</th></tr></thead><tbody>${rows}</tbody></table>
-    <p class="small muted">${tr(`Expected net return ${pct(a.expected_return)} a year, volatility ${pct(a.volatility)}. Past performance is not a reliable indicator of future results.`)}</p>`;
+    <p class="small muted">${tr(`Expected net return ${pct(a.expected_return)} a year, volatility ${pct(a.volatility)}. Past performance is not a reliable indicator of future results.`)}</p>
+    <p class="small">${esc(t("How is this calculated?"))} ${num(esc(t("expected return")), "expected_return", { allocation_id: a.id })} &middot; ${num(esc(t("volatility")), "volatility", { allocation_id: a.id })}</p>`;
   drawAlloc(a);
   const wn = Object.entries(st.why_not || {});
   $("whyNot").innerHTML = wn.length ? wn.map(([id, w]) => `<div class="whynot"><b>${esc(w.name)}</b> (${esc(id)}): ${tr(w.text)} <button type="button" class="small" onclick="cfShow('${esc(id)}', this)">${esc(t("What would it take?"))}</button><div class="cf"></div></div>`).join("") : "-";
@@ -244,6 +245,7 @@ async function runStress(scenario, quiet) {
     const h = g.historical;
     $("histOut").innerHTML = (s.basis && s.basis.note ? `<div class="insight ${s.basis.type === "historical" ? "ok" : "info"}">${tr(s.basis.note)}</div>` : "")
       + (h ? `<div class="insight ok">${tr(`Real-history check (${h.first_year}-${h.last_year}): in ${h.windows_reaching_target} of ${h.windows} rolling ${h.years}-year windows this mix reached the goal; the worst window (starting ${h.worst_start_year}) ended at ${cny(h.worst_cny)}, the median at ${cny(h.median_cny)}. Resampling real years gives ${pct(h.bootstrap_probability, 0)}. ${h.note}`)}</div>` : "");
+    $("provRow").innerHTML = `${esc(t("How is this calculated?"))} ${num(esc(t("portfolio change")), "stress_loss", { allocation_id: lastAllocId, scenario: s.scenario })} &middot; ${num(esc(t("goal probability")), "goal_probability", { allocation_id: lastAllocId, shock_pct: s.loss_pct })} &middot; ${num(esc(t("historical share")), "backtest_share", { allocation_id: lastAllocId })}`;
     if (I() && I().lang === "zh") await I().applyDynamic(api, clientId);
     drawStress(s);
   } catch (e) { $("stressOut").textContent = "Error: " + e.message; }
@@ -274,6 +276,36 @@ async function uploadDoc() {
   } catch (e) { $("docWarn").textContent = "Error: " + e.message; }
 }
 
+
+// ---- number provenance: click a number to see where it comes from --------------------------------------------------------
+const num = (text, kind, params) => `<a class="prov" tabindex="0" role="button" title="${esc(t("How is this calculated?"))}" data-kind="${esc(kind)}" data-params="${esc(JSON.stringify(params || {}))}">${text}</a>`;
+
+async function provShow(kind, params) {
+  const box = $("provBox");
+  box.hidden = false;
+  box.innerHTML = '<div class="muted small">...</div>';
+  try {
+    const q = new URLSearchParams({ client_id: clientId, kind, ...params });
+    const r = await api(`/api/provenance?${q.toString()}`);
+    const rows = r.inputs.map((i) => `<tr><td>${esc(i.name)}</td><td>${esc(i.value)}${i.detail ? `<div class="muted">${esc(i.detail)}</div>` : ""}</td><td class="muted">${esc(i.source || "")}${i.sha256 ? `<div>sha256 ${esc(i.sha256.slice(0, 12))}&hellip;</div>` : ""}</td></tr>`).join("");
+    const ds = r.datasets.map((d) => `<div class="small"><a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.title)}</a> &middot; ${esc(d.license)} &middot; sha256 ${esc(d.sha256.slice(0, 12))}&hellip;</div>`).join("");
+    box.innerHTML = `<h3>${esc(r.label)}: <b>${esc(r.display)}</b></h3>
+      <div class="small"><b>${esc(t("Formula"))}:</b> ${tr(r.formula)}</div>
+      <table><thead><tr><th>${esc(t("Inputs"))}</th><th></th><th></th></tr></thead><tbody>${rows}</tbody></table>
+      ${ds ? `<div class="small"><b>${esc(t("Datasets"))}</b></div>${ds}` : ""}
+      <div class="insight ${r.matches === false ? "high" : "ok"}">${r.matches === false ? "&#10007;" : "&#10003;"} ${esc(t("Recomputed"))}: <b>${esc(typeof r.recomputed === "number" ? +r.recomputed.toFixed(6) : r.recomputed)}</b> ${esc(r.matches === false ? t("does NOT match") : t("matches"))}${r.independent_recomputation ? ` (${esc(t("independent check from the raw CSV"))})` : ""}</div>
+      <button type="button" id="provClose">${esc(t("Close"))}</button>`;
+    $("provClose").onclick = () => (box.hidden = true);
+    if (I() && I().lang === "zh") await I().applyDynamic(api, clientId);
+    await loadAudit();
+  } catch (e) { box.innerHTML = `<div class="small">Error: ${esc(e.message)}</div><button type="button" id="provClose">${esc(t("Close"))}</button>`; $("provClose").onclick = () => (box.hidden = true); }
+}
+
+document.addEventListener("click", (ev) => {
+  const a = ev.target.closest && ev.target.closest("a.prov");
+  if (a && clientId) { ev.preventDefault(); provShow(a.dataset.kind, JSON.parse(a.dataset.params || "{}")); }
+});
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") $("provBox").hidden = true; });
 
 // ---- advice receipt ---------------------------------------------------------------------------------------------------
 function rcShow(res) {
@@ -419,7 +451,7 @@ async function showLedger(data) {
   });
   if (!entries.length) tb.innerHTML = `<tr><td colspan="5" class="muted">${esc(t("No entries yet."))}</td></tr>`;
   $("ledgerSummary").innerHTML = entries.length
-    ? `<b>${esc(t("Bought total"))}: ${cny(b.bought_total || 0)}</b> &middot; ${esc(t("Planned (not counted)"))}: ${cny(b.planned_total || 0)} &middot; ${esc(t("Cancelled (not counted)"))}: ${cny(b.cancelled_total || 0)}` : "";
+    ? `<b>${esc(t("Bought total"))}: ${num(cny(b.bought_total || 0), "ledger_total")}</b> &middot; ${esc(t("Planned (not counted)"))}: ${cny(b.planned_total || 0)} &middot; ${esc(t("Cancelled (not counted)"))}: ${cny(b.cancelled_total || 0)}` : "";
   const flags = (b.flags || []).map((f) => `<div class="insight ${esc(f.severity)}">${tr(f.text)}</div>`).join("");
   const pen = b.capacity_penalty ? `<div class="insight high">${tr(`Applied to risk capacity: -${b.capacity_penalty} points. Behaviour data can only make the profile more cautious, never riskier.`)}</div>` : "";
   $("ledgerInsights").innerHTML = flags + pen + (entries.length ? `<div class="small muted">${tr(b.note || "")}</div>` : "");
