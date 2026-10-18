@@ -44,6 +44,16 @@ The terminal prints `WealthGuard LLM: groq (live), model ...` at startup, and th
 says mock, the key was not found or `USE_MOCK_LLM=1` is set. Leave `USE_MOCK_LLM` unset. If `LLM_PROVIDER` is unset, Anthropic is used when its key exists, else Groq. Tests ignore `.env` and always use the mock. The key is only ever read from the environment. If the network or key fails mid-demo, the app
 falls back to the mock automatically and logs `llm_fallback_to_mock`. `WEALTHGUARD_DB` overrides the SQLite path.
 
+## Interface
+
+The page is a chat with a Claude-style composer (growing text box, send on the right, a separate voice dock on the left with microphone,
+read-aloud and voice settings; the profile-question answers appear as larger pills above it and the suggestions as small ones below).
+Everything else lives in the **sidebar**: the five *Advice flow* steps (risk profile, allocation, compliance, stress test, approvals) are drawn
+as a thread that fills as each step completes, followed by *Insights* (purchase history, history replay, regulation search) and *Trust and
+evidence* (receipt, red-team arena, self-inspection, document upload, audit log). Clicking an item slides its panel in from the right (Esc or the
+close button hides it); a brass dot on an item means its content changed while closed, and a toast offers to open the allocation when compliance
+approves it. English/Chinese and a dark/light theme are in the top bar; the layout adapts down to phones.
+
 ## Voice and language
 
 - **Mic** fills the chat box from speech; you press Send, so spoken and typed text take the same guarded path. **Read aloud** speaks replies.
