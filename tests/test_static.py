@@ -26,8 +26,10 @@ def test_voice_controls_and_script_served():
         assert el in html
     js = c.get("/static/voice.js")
     assert js.status_code == 200
-    # voice only fills the chat box; it must never call the API or auto-send
-    assert "fetch(" not in js.text and "/api/" not in js.text and "onsubmit" not in js.text
+    # voice only fills a text box: it may call the speech endpoint and the health check, never the agent, and never auto-sends
+    import re
+    assert set(re.findall(r"/api/[a-z]+", js.text)) == {"/api/transcribe", "/api/health"}
+    assert "/api/chat" not in js.text and "onsubmit" not in js.text and "requestSubmit" not in js.text and ".submit(" not in js.text
 
 
 def test_i18n_keys_in_html_exist_in_dictionary():

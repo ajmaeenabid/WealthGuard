@@ -58,3 +58,9 @@
     evenly, so intra-year dynamics are smoothed and drawdowns are slightly milder than daily closes. A game decision is not a real-money decision.
 38. **Replay sessions are in memory** (lost on restart or between serverless instances). The inference uses one episode and one reaction; it is a nudge for
     the client, not a psychometric test.
+39. **Voice privacy.** With the Whisper engine the audio clip leaves the machine for the transcription service (Groq); the browser engine may send it to the browser
+    vendor. The local provider (faster-whisper) keeps audio on the machine. Do not speak real personal data in the demo.
+40. **Whisper is not perfect.** It can mishear numbers, product names and Chinese homophones and can invent text from noise; the vocabulary hint and the silence filter reduce this,
+    and the user always sees and confirms the text before it is used. The local provider was tested against a stand-in, not with a real downloaded model.
+41. **Quota and body limits.** Each clip costs a (tiny) transcription request and is capped at 2 MB (about 2 minutes) to stay under hosting body limits; a rate limit protects the
+    API key from abuse of the public demo endpoint.
