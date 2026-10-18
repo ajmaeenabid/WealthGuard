@@ -36,7 +36,7 @@
     nProfile: "风险画像", nAlloc: "建议配置", nComp: "合规检查", nStress: "压力测试", nApprove: "审批", nLedger: "购买记录",
     nReplay: "历史重演", nSearch: "法规检索", nReceipt: "建议回执", nRedteam: "红队演示", nSelf: "自查报告", nDocs: "上传文档", nAudit: "审计日志",
     heroTitle: "可以验证的建议。", heroSub: "在独立合规引擎批准之前，不会向你展示任何内容；每一步都有记录。",
-    "Start with": "开始：", "Advice approved by compliance": "建议已通过合规批准", "Open allocation": "查看配置",
+    "Start with": "开始：", "Starting a session for the selected client first.": "先为所选客户开始会话。", "Advice approved by compliance": "建议已通过合规批准", "Open allocation": "查看配置",
     hC: "建议回执", rcHint: "已批准建议的封存记录：规则、法规条文、数据哈希和审计锚点。任何人都可以验证。", rcDownload: "下载回执",
     rcVerify: "验证回执文件", "Receipt is valid": "回执有效", "Receipt is NOT valid": "回执无效",
     hR: "红队攻击演示", rtHint: "对真实防线运行一批中英文攻击，显示每次攻击由哪一层拦截。不调用语言模型。",
