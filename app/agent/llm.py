@@ -182,7 +182,8 @@ def _call(name: str, inp: dict, n: int) -> LLMResponse:
     return LLMResponse(tool_calls=[{"id": f"mock_{n}_{name}", "name": name, "input": inp}])
 
 
-SCENARIO_WORDS = [("2008", "crash_2008"), ("crash", "crash_2008"), ("inflation", "inflation_spike"),
+SCENARIO_WORDS = [("dot-com", "dotcom_bust"), ("dotcom", "dotcom_bust"), ("depression", "great_depression"),
+                  ("2008", "crash_2008"), ("crash", "crash_2008"), ("inflation", "inflation_spike"),
                   ("rate", "rate_+2"), ("equit", "equity_-20"), ("stress", "equity_-20"), ("scenario", "equity_-20")]
 
 
@@ -254,7 +255,8 @@ def mock_respond(messages: list, state: dict) -> LLMResponse:
         return LLMResponse(text=f"The advisory report is staged ({last[2].get('ticket_id')}) and will be released "
                                 f"only after you approve it. {disclaimer}")
 
-    if any(w in text for w in ["stress", "scenario", "crash", "inflation", "what if"]) and state.get("has_allocation"):
+    if any(w in text for w in ["stress", "scenario", "crash", "inflation", "what if", "depression", "dot-com",
+                               "dotcom"]) and state.get("has_allocation"):
         scen = next((s for w, s in SCENARIO_WORDS if w in text), "equity_-20")
         if not res:
             return _call("run_stress_test", {"allocation_id": aid, "scenario": scen}, n)
@@ -264,8 +266,9 @@ def mock_respond(messages: list, state: dict) -> LLMResponse:
             return LLMResponse(text=f"I could not run that: {last[2].get('error')}. {disclaimer}")
         st, gp = res[0][2], res[1][2]
         return LLMResponse(text=f"Under '{st['label']}' your portfolio would change by {st['loss_pct']:.1f}%. "
+                                f"{st.get('basis', {}).get('note', '')} "
                                 f"Chance of reaching your goal: {gp['base_probability']:.0%} normally, "
-                                f"{gp['probability']:.0%} if the shock hits today. {disclaimer}")
+                                f"{gp['probability']:.0%} if the shock hits today. {_history_sentence(gp)} {disclaimer}")
 
     # --- advisory flow -------------------------------------------------------------------------------
     if not state.get("facts_complete"):
@@ -303,9 +306,19 @@ def mock_respond(messages: list, state: dict) -> LLMResponse:
             f"Your allocation passed every compliance check.{note} See the table for each line's rationale and the "
             f"'why not' notes. If equities fall 20%, the portfolio would change by about {st['loss_pct']:.1f}%, and the "
             f"estimated chance of reaching your goal would be {gp['probability']:.0%} "
-            f"(vs {gp['base_probability']:.0%} without the shock). Ask me to create an order ticket when ready. "
-            f"{disclaimer}"))
+            f"(vs {gp['base_probability']:.0%} without the shock). {_history_sentence(gp)} "
+            f"Ask me to create an order ticket when ready. {disclaimer}"))
     return LLMResponse(text=f"How can I help? {disclaimer}")
+
+
+def _history_sentence(gp: dict) -> str:
+    h = gp.get("historical")
+    if not h:
+        return ""
+    return (f"Real-history check ({h['first_year']}-{h['last_year']}): in {h['windows_reaching_target']} of "
+            f"{h['windows']} rolling {h['years']}-year windows this mix reached your goal; the worst window (starting "
+            f"{h['worst_start_year']}) ended at CNY {h['worst_cny']:,.0f}. Past performance is not a reliable "
+            f"indicator of future results.")
 
 
 def aid_from(res):

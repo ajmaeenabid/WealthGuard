@@ -30,3 +30,6 @@
 18. **Real data is history, not a forecast.** Damodaran and Shiller series are US-centric and backward-looking; China macro data is annual and has gaps (inflation starts in 1987). The demo calibrates synthetic products on them and says so.
 19. **Damodaran terms.** The page states no explicit license; the data is cited with attribution for an educational demo. Confirm before any redistribution beyond the competition.
 20. **Regulation text is a consolidated reprint.** Taken from the State Council Gazette; the CSRC site is authoritative and the law can change. It is retrieval context, not legal advice.
+21. **US history as a proxy.** Scenario shocks and the backtest use US returns for synthetic CNY products; currency, China market structure and the asset-class blends (e.g. bond = 60% T-bond + 40% T-bill) are assumptions.
+22. **Two probabilities can disagree.** Monte Carlo uses the products' conservative assumptions; the backtest uses real US returns, which were higher. Both are shown and neither is a forecast.
+23. **Rolling windows overlap** and survivorship favours the US market, so the share of windows reaching a goal overstates what a typical future path may deliver.

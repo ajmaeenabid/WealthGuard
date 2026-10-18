@@ -99,7 +99,7 @@ async function send(text) {
     renderAttempts(r.attempts || []);
     if (r.compliance) renderChecks(r.compliance);
     if (r.trace) r.trace.filter((t) => t.ok === false).forEach((t) => addMsg("sys", `Refused: ${t.tool} (${t.tier})`));
-    if (/stress|crash|inflation|equities fall|what if/i.test(text) && r.allocation) await runStress(detectScenario(text), true);
+    if (/stress|crash|inflation|equities fall|what if|depression|dot-?com/i.test(text) && r.allocation) await runStress(detectScenario(text), true);
   } catch (e) {
     addMsg("sys", "Error: " + e.message);
   } finally { setBusy(false); await refresh(); }
@@ -107,6 +107,8 @@ async function send(text) {
 
 function detectScenario(t) {
   t = t.toLowerCase();
+  if (t.includes("dot-com") || t.includes("dotcom") || t.includes("2000")) return "dotcom_bust";
+  if (t.includes("depression") || t.includes("1929")) return "great_depression";
   if (t.includes("2008") || t.includes("crash")) return "crash_2008";
   if (t.includes("inflation")) return "inflation_spike";
   if (t.includes("rate")) return "rate_+2";
@@ -230,6 +232,9 @@ async function runStress(scenario, quiet) {
     const g = s.goal;
     $("stressOut").removeAttribute("data-i18n");
     $("stressOut").innerHTML = tr(`${s.label}: portfolio change ${s.loss_pct.toFixed(2)}%. Chance of reaching the goal (${cny(g.target_cny)} in ${g.years} years): ${pct(g.base_probability, 0)} normally, ${pct(g.probability, 0)} if the shock hits today (${g.paths.toLocaleString("en-US")} Monte Carlo paths).`);
+    const h = g.historical;
+    $("histOut").innerHTML = (s.basis && s.basis.note ? `<div class="insight ${s.basis.type === "historical" ? "ok" : "info"}">${tr(s.basis.note)}</div>` : "")
+      + (h ? `<div class="insight ok">${tr(`Real-history check (${h.first_year}-${h.last_year}): in ${h.windows_reaching_target} of ${h.windows} rolling ${h.years}-year windows this mix reached the goal; the worst window (starting ${h.worst_start_year}) ended at ${cny(h.worst_cny)}, the median at ${cny(h.median_cny)}. Resampling real years gives ${pct(h.bootstrap_probability, 0)}. ${h.note}`)}</div>` : "");
     if (I() && I().lang === "zh") await I().applyDynamic(api, clientId);
     drawStress(s);
   } catch (e) { $("stressOut").textContent = "Error: " + e.message; }

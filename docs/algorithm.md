@@ -43,3 +43,29 @@ risk/fee alternative in the same class already held, or no added diversification
 Per-asset-class percentage shocks for equity -20%, rates +2, 2008-style crash, inflation spike. Portfolio change =
 sum of weight x shock. Goal probability: 5,000 lognormal paths (fixed seed) with annual mean/vol of the allocation over
 the horizon; probability that final value >= target, reported with and without the immediate shock.
+
+### Real-data calibration (`realdata.py`, `simulator.py`)
+
+Products stay synthetic. Their asset classes are mapped onto real annual US returns 1928-2025 (Damodaran, see
+`app/data/real/MANIFEST.json`):
+
+| Asset class | Real series blend (assumption) |
+|---|---|
+| cash | 3-month T-bill |
+| bond | 60% 10-year T-bond + 40% T-bill (intermediate-duration proxy) |
+| balanced_fund | 60% S&P 500 + 40% 10-year T-bond |
+| equity_fund | S&P 500 with dividends |
+| structured_note | 70% S&P 500 + 30% T-bill |
+| gold | gold |
+
+**Stress scenarios.** `equity_-20` is a hypothetical round number and is labelled so. The others are the compounded
+real returns of named years: `crash_2008` (2008), `rate_+2` (2022, the 10-year rate rose about 2.2 points, from Shiller),
+`inflation_spike` (1974, CPI +12.3% Dec-Dec, from Shiller), `dotcom_bust` (2000-2002), `great_depression` (1929-1932).
+Each result carries a `basis` sentence with the real numbers. Because the blends are real, a bond-heavy portfolio can
+*gain* in 2008 or 2000-02 (bonds rallied) and lose in 2022; that is the point of using history.
+
+**Historical backtest** (`historical_backtest`). For every rolling window of the client's horizon in 1928-2025 the
+allocation is annually rebalanced, after the weighted product fees, and the final value is compared with the goal:
+windows reaching the goal, worst/median/best final value, and the worst start year. A bootstrap resamples real years
+5,000 times (seeded) for a second probability. It is shown next to the lognormal Monte Carlo, which uses the products'
+own (more conservative) return assumptions, so the two can differ widely. Windows overlap and US history is a proxy.
