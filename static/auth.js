@@ -5,7 +5,8 @@
   const $ = (id) => document.getElementById(id);
   const T = (x) => (window.WGI18n ? window.WGI18n.t(x) : x);
   let token = "";
-  try { token = localStorage.getItem("wg-token") || ""; } catch (e) { /* private mode: sign-in lasts until reload */ }
+  // The sign-in lives in sessionStorage: closing the tab or browser ends it, so opening the site again always asks for a login.
+  try { localStorage.removeItem("wg-token"); token = sessionStorage.getItem("wg-token") || ""; } catch (e) { /* private mode: sign-in lasts until reload */ }
   let user = null, mode = "login", started = false;
   const waiting = [];
 
@@ -25,7 +26,7 @@
     });
   };
 
-  function save(t) { token = t; try { t ? localStorage.setItem("wg-token", t) : localStorage.removeItem("wg-token"); } catch (e) { /* ignore */ } }
+  function save(t) { token = t; try { t ? sessionStorage.setItem("wg-token", t) : sessionStorage.removeItem("wg-token"); } catch (e) { /* ignore */ } }
   function forget(reload) { save(""); user = null; if (reload) location.reload(); }
 
   async function call(path, body, method) {
@@ -86,6 +87,7 @@
     try {
       const out = await call(mode === "signup" ? "/api/auth/signup" : "/api/auth/login", { username, password });
       save(out.token);
+      try { localStorage.removeItem("wg-mode"); } catch (e) { /* ignore */ }      // a fresh sign-in starts on the default screen
       $("authPass").value = ""; $("authPass2").value = ""; err($("authErr"), "");
       begin(out.user);
     } catch (e) { err($("authErr"), e.message); }

@@ -482,3 +482,5 @@ html:lang(zh) .hero-hello { font-style: normal; font-weight: 600; letter-spacing
 @media (max-width: 900px) { .admin { padding: 8px 14px 40px; } .mem-row { grid-template-columns: 1fr auto; } .mem-k { grid-column: 1 / -1; } }
 
 .admin-manage { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
+
+.admin-users[hidden], .admin-ai[hidden] { display: none; }

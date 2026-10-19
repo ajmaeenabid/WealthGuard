@@ -84,3 +84,9 @@ def test_receipts_reminders_activity_and_report_language_are_wired_in_the_interf
     assert "only works while WealthGuard is open" in JS                                  # no pretence of server-side push
     app = c.get("/static/app.js").text
     assert "/api/admin/ai-usage" in app and "never message text" in app
+
+
+def test_sign_in_is_per_tab_session_and_the_admin_member_list_really_hides():
+    auth = c.get("/static/auth.js").text
+    assert "sessionStorage.setItem(\"wg-token\"" in auth and "localStorage.setItem(\"wg-token\"" not in auth     # a new visit asks for a login
+    assert ".admin-users[hidden]" in c.get("/static/styles.css").text                                         # display:grid must not override hidden
