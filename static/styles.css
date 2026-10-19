@@ -489,3 +489,29 @@ html:lang(zh) .hero-hello { font-style: normal; font-weight: 600; letter-spacing
 .avatar.sm { width: 30px; height: 30px; font-size: 15px; }
 h3.mini { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 #adminMsg.bad { color: var(--warn); }
+
+/* ---------- sign-in page: marble-and-gold artwork with a cream card (always light, whatever the app theme) ---------- */
+#auth {
+  background: #f6ecd6 url("/static/login-bg.jpg") right center / cover no-repeat;
+  justify-items: start; padding: clamp(16px, 6vw, 96px);
+}
+#auth .auth-card {
+  --ink: #1f2a24; --ink-2: #55605a; --muted: #7b837d; --surface: #fbf6ea; --surface-2: #f1ead8; --surface-3: #ffffff; --line-strong: rgba(150, 120, 60, .35);
+  width: min(460px, 100%); gap: 12px; padding: 34px 36px; border-radius: 28px; color: var(--ink);
+  background: rgba(252, 248, 238, .93); border: 1px solid rgba(190, 160, 95, .45); backdrop-filter: blur(10px);
+  box-shadow: 0 30px 70px -30px rgba(70, 55, 20, .45);
+}
+#auth .auth-brand .wordmark { font-style: normal; font-family: var(--font-display); font-weight: 600; font-size: 38px; letter-spacing: -.01em; color: #17493b; }
+#auth .seal { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: transparent; border: 3px solid #b88a2e; color: #b88a2e; }
+#auth .seal svg { display: none; }
+#auth .seal::after { content: "W"; font-style: normal; font-family: var(--font-display); font-weight: 700; font-size: 24px; line-height: 1; }
+#auth .auth-lead { font-size: 19px; color: #4b564f; margin: 6px 0 8px; }
+#auth .auth-tabs { background: #efe8d6; border: 1px solid rgba(150, 120, 60, .25); border-radius: 999px; }
+#auth .auth-tabs button { border-radius: 999px; padding: 11px; font-weight: 600; color: #3b4a42; }
+#auth .auth-tabs button[aria-selected="true"] { background: linear-gradient(180deg, #2b8f7d, #1d7566); color: #fff; box-shadow: 0 6px 14px -6px rgba(20, 100, 85, .7); }
+#auth label { color: #6b736d; }
+#auth input { background: #fffdf7; color: #1f2a24; border: 1px solid rgba(150, 120, 60, .3); border-radius: 14px; padding: 13px 14px; }
+#auth input:focus { border-color: #2b8f7d; outline: 2px solid rgba(43, 143, 125, .25); }
+#auth .primary { background: linear-gradient(180deg, #1f7a69, #145646); color: #fff; border: 0; border-radius: 14px; padding: 14px; font-size: 17px; font-weight: 600; box-shadow: 0 10px 22px -10px rgba(15, 80, 65, .8); }
+#auth .auth-hint { color: #5d655f; }
+@media (max-width: 760px) { #auth { justify-items: center; background-position: 70% center; } #auth .auth-card { padding: 26px 22px; background: rgba(252, 248, 238, .95); } }
