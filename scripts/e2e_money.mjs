@@ -183,6 +183,7 @@ await run(click(".nav[data-tab=transactions]"), 1200);
 await run(setv("tqQ", "Shwapno"), 1200);
 check("the list marks the transaction with a receipt", await ev(`document.querySelector('#tqList .chip[title*="receipt"]') !== null`));
 await run(click("#tqList tbody tr"), 1200);
+for (let k = 0; k < 20 && !(await ev(`document.querySelector('#tfRcpView img') !== null`)); k++) await sleep(300);     // the photo is fetched after the form opens
 check("the edit form shows the attached photo", await ev(`document.querySelector('#tfRcpView img') !== null`));
 await run(click("#tfRcpDel"), 900);
 check("removing the photo clears it", (await ev(`fetch('/api/fin/transactions/${rc.id}').then(r=>r.json()).then(t=>t.has_receipt)`)) === false);

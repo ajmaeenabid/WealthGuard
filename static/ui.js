@@ -65,7 +65,7 @@
   function currentTheme() {
     const t = document.documentElement.dataset.theme;
     if (t) return t;
-    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    return "light";                                   // the brand canvas is warm ivory; dark is an explicit choice (saved in wg-theme)
   }
   function paintTheme() { themeBtn.innerHTML = currentTheme() === "light" ? MOON : SUN; }
   themeBtn.onclick = () => {

@@ -1,0 +1,140 @@
+/* WealthGuard design tokens: the single source of colour, type, space, shape and elevation.
+   Layers:  1) primitives (raw brand values, HEX with RGB)   2) semantic tokens (what components use, light and dark)
+            3) legacy aliases (the names the older stylesheets already use, pointed at the semantic tokens)
+   Components must use semantic tokens only; never a raw colour. Loaded AFTER styles.css/finance.css so it wins at equal specificity. */
+
+:root {
+  /* ---------------------------------------------------------------- 1. primitives (reference palette; HEX / RGB) */
+  --p-ivory: #F2EEDB;            /* 242 238 219  main canvas */
+  --p-champagne: #E4CFB5;        /* 228 207 181  sidebar and secondary panels */
+  --p-paper: #FAF7ED;            /* 250 247 237  cards, dialogs, inputs */
+  --p-sage: #81A482;             /* 129 164 130  brand sage: tints, selected states, charts */
+  --p-sage-dark: #6D795F;        /* 109 121  95  hover / emphasis */
+  --p-sage-action: #4F7352;      /*  79 115  82  actions and links: 5.4:1 with white, 4.6:1 on ivory (AA) */
+  --p-bronze: #815B3D;           /* 129  91  61  logo accents, borders, icon details */
+  --p-ink: #29251F;              /*  41  37  31  headings and body */
+  --p-ink-soft: #6B5742;         /* 107  87  66  secondary text: 5.9:1 on ivory (the 826B55 reference is 4.3:1, below AA) */
+  --p-border: #D5C4AA;           /* 213 196 170  dividers and control borders */
+  --p-success: #4A6D4B;          /*  74 109  75  (reference 527653 is 4.4:1; darkened to pass AA for small text) */
+  --p-warning: #8A5D1F;          /* 138  93  31  (reference A87532 is 3.4:1; darkened to pass AA) */
+  --p-danger: #A7463D;           /* 167  70  61 */
+  --p-info: #476578;             /*  71 101 120  (reference 58788B is 4.0:1; darkened to pass AA) */
+
+  /* ---------------------------------------------------------------- type */
+  --font-ui: "Inter", "Noto Sans Bengali", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Playfair Display", "Noto Serif Bengali", "Noto Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
+  --font-accent: "Cormorant Garamond", "Playfair Display", Georgia, serif;     /* short decorative lines only */
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  --fs-hero: clamp(2.5rem, 4vw + 1rem, 3.75rem);   /* 40-60px, weight 500 */
+  --fs-page: clamp(1.75rem, 2vw + 1rem, 2.5rem);   /* 28-40px, weight 600 */
+  --fs-section: clamp(1.375rem, 1vw + 1rem, 1.75rem);  /* 22-28px */
+  --fs-card: 1.125rem;                              /* 18px */
+  --fs-body: 0.9375rem;                             /* 15px */
+  --fs-control: 0.9375rem;                          /* 15px */
+  --fs-caption: 0.8125rem;                          /* 13px */
+  --lh-tight: 1.2; --lh-body: 1.6; --lh-table: 1.45;
+  --tracking-display: -0.012em; --tracking-label: 0.08em;
+
+  /* ---------------------------------------------------------------- space, shape, motion */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
+  --r-sm: 8px; --r-control: 12px; --r-card: 16px; --r-dialog: 20px; --r-pill: 999px;
+  --h-sm: 34px; --h-md: 42px; --h-lg: 50px; --h-input: 46px;
+  --z-sidebar: 20; --z-drawer: 40; --z-dialog: 100; --z-menu: 120; --z-toast: 140;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+
+/* ================================================================== 2. semantic tokens: LIGHT (default) */
+:root, :root[data-theme="light"], :root:not([data-theme]) {
+  color-scheme: light;
+  --color-bg-primary: var(--p-ivory);
+  --color-bg-secondary: var(--p-champagne);
+  --color-bg-surface: var(--p-paper);
+  --color-bg-surface-2: #F5F0E0;
+  --color-bg-surface-3: #EBE3CE;
+  --color-brand-sage: var(--p-sage);
+  --color-brand-sage-dark: var(--p-sage-dark);
+  --color-brand-bronze: var(--p-bronze);
+  --color-action: var(--p-sage-action);
+  --color-action-hover: #45694A;
+  --color-action-active: #3B5C3F;
+  --color-on-action: #FFFFFF;
+  --color-text-primary: var(--p-ink);
+  --color-text-secondary: var(--p-ink-soft);
+  --color-text-muted: #7A6650;                      /* 4.7:1 on paper: captions only */
+  --color-border: var(--p-border);
+  --color-border-soft: #E6DAC3;
+  --color-success: var(--p-success);  --color-success-bg: rgba(74, 109, 75, .12);
+  --color-warning: var(--p-warning);  --color-warning-bg: rgba(168, 117, 50, .15);
+  --color-danger: var(--p-danger);    --color-danger-bg: rgba(167, 70, 61, .10);
+  --color-info: var(--p-info);        --color-info-bg: rgba(71, 101, 120, .11);
+  --color-selected-bg: rgba(129, 164, 130, .26);    /* sage tint behind selected navigation (text stays ink: 9:1) */
+  --color-hover-bg: rgba(129, 91, 61, .08);
+  --color-disabled-bg: #E9E1CD;  --color-disabled-text: #9A8A74;
+  --color-focus-ring: #3B5C3F;
+  --overlay-modal: rgba(41, 37, 31, .42);
+  --overlay-scrim-soft: rgba(41, 37, 31, .16);
+  --shadow-sm: 0 1px 2px rgba(70, 47, 29, .08);
+  --shadow-md: 0 10px 28px -14px rgba(70, 47, 29, .12);
+  --shadow-lg: 0 24px 60px -24px rgba(70, 47, 29, .18);
+  --glow: radial-gradient(900px 520px at 12% -8%, rgba(129, 164, 130, .16), transparent 62%), radial-gradient(720px 420px at 98% 0%, rgba(129, 91, 61, .08), transparent 58%);
+}
+
+/* ================================================================== 2b. semantic tokens: DARK (warm charcoal, deep bronze, muted sage) */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg-primary: #17140F;
+  --color-bg-secondary: #1F1A13;
+  --color-bg-surface: #201C16;
+  --color-bg-surface-2: #292319;
+  --color-bg-surface-3: #332B1F;
+  --color-brand-sage: #8DB08E;
+  --color-brand-sage-dark: #6D795F;
+  --color-brand-bronze: #D1A574;
+  --color-action: #8DB08E;
+  --color-action-hover: #A2C4A3;
+  --color-action-active: #B4D2B5;
+  --color-on-action: #17140F;
+  --color-text-primary: #F2EEDB;
+  --color-text-secondary: #CDBBA0;
+  --color-text-muted: #A8957D;
+  --color-border: rgba(228, 207, 181, .24);
+  --color-border-soft: rgba(228, 207, 181, .12);
+  --color-success: #8FC291;  --color-success-bg: rgba(143, 194, 145, .13);
+  --color-warning: #E0A95A;  --color-warning-bg: rgba(224, 169, 90, .13);
+  --color-danger: #E58A80;   --color-danger-bg: rgba(229, 138, 128, .13);
+  --color-info: #8FB4C9;     --color-info-bg: rgba(143, 180, 201, .13);
+  --color-selected-bg: rgba(141, 176, 142, .20);
+  --color-hover-bg: rgba(228, 207, 181, .08);
+  --color-disabled-bg: #2A241B;  --color-disabled-text: #7C6C58;
+  --color-focus-ring: #B4D2B5;
+  --overlay-modal: rgba(8, 6, 3, .62);
+  --overlay-scrim-soft: rgba(8, 6, 3, .35);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-md: 0 10px 28px -14px rgba(0, 0, 0, .6);
+  --shadow-lg: 0 24px 60px -24px rgba(0, 0, 0, .7);
+  --glow: radial-gradient(900px 520px at 12% -8%, rgba(141, 176, 142, .10), transparent 62%), radial-gradient(720px 420px at 98% 0%, rgba(209, 165, 116, .08), transparent 58%);
+}
+
+/* ================================================================== 3. legacy aliases: the older stylesheets keep working, now fed by the tokens */
+:root, :root[data-theme="light"], :root:not([data-theme]), :root[data-theme="dark"] {
+  --bg: var(--color-bg-primary);
+  --bg-glow: var(--glow);
+  --surface: var(--color-bg-surface);
+  --surface-2: var(--color-bg-surface-2);
+  --surface-3: var(--color-bg-surface-3);
+  --line: var(--color-border-soft);
+  --line-strong: var(--color-border);
+  --ink: var(--color-text-primary);
+  --ink-2: var(--color-text-secondary);
+  --muted: var(--color-text-muted);
+  --accent: var(--color-action);
+  --accent-2: var(--color-action-hover);
+  --accent-ink: var(--color-on-action);
+  --accent-soft: var(--color-selected-bg);
+  --brass: var(--color-brand-bronze);
+  --brass-soft: color-mix(in srgb, var(--color-brand-bronze) 12%, transparent);
+  --good: var(--color-success);  --good-bg: var(--color-success-bg);
+  --warn: var(--color-warning);  --warn-bg: var(--color-warning-bg);
+  --bad: var(--color-danger);    --bad-bg: var(--color-danger-bg);
+  --shadow: var(--shadow-lg);
+}
