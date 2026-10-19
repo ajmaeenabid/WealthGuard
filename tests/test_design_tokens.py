@@ -31,7 +31,7 @@ def token(blk, name):
     return m.group(1)
 
 
-LIGHT, DARK = block(":root, :root[data-theme=\"light\"]"), block(":root[data-theme=\"dark\"] {\n  color-scheme")
+LIGHT, DARK = block(":root, :root[data-theme=\"light\"]"), block(":root[data-theme=\"dark\"] {")
 
 
 def test_reference_palette_values_are_present():
@@ -56,10 +56,20 @@ def test_dark_theme_pairs_meet_aa():
         assert ratio(token(DARK, fg), token(DARK, bg)) >= 4.5, (fg, bg)
 
 
+def test_dark_theme_follows_the_reference_layout_and_scopes_every_rule():
+    dark = (STATIC / "theme-dark.css").read_text(encoding="utf-8")
+    rules = [ln for ln in dark.splitlines() if ln.strip().startswith(":root") or ln.strip().startswith("@media") or ln.strip().startswith("/*") or not ln.strip() or ln.startswith(" ") or ln.startswith("}")]
+    assert 'data-theme="dark"' in dark and ".sidebar" in dark and ".stage" in dark and "radial-gradient" in dark          # floating panels, green glow
+    assert "#62E05A" in CSS and "--color-action: #62E05A" in CSS                                                          # the one lime accent
+    for ln in dark.splitlines():
+        if ln.startswith(".") or ln.startswith("body"):                                                                   # an unscoped selector would leak into the light theme
+            raise AssertionError(ln)
+
+
 def test_theme_layer_uses_tokens_not_raw_colours():
     theme = (STATIC / "theme.css").read_text(encoding="utf-8")
     raw = re.findall(r"#[0-9A-Fa-f]{3,6}\b|rgba?\(", theme)
     assert len(raw) <= 8, raw              # a handful of deliberate exceptions (white on destructive hover, hero shadow)
     assert 'href="/static/tokens.css"' in (STATIC / "index.html").read_text(encoding="utf-8")
     html = (STATIC / "index.html").read_text(encoding="utf-8")
-    assert html.index("tokens.css") < html.index("theme.css") and "Playfair" in html and "Inter" in html
+    assert html.index("tokens.css") < html.index("theme.css") < html.index("theme-dark.css") and "Playfair" in html and "Inter" in html

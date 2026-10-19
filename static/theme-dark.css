@@ -1,0 +1,112 @@
+/* Dark theme layout and surfaces. Everything is scoped to [data-theme="dark"], so the ivory light theme is untouched.
+   Direction (after the "AI Dashboard" reference): a near-black canvas with a deep forest-green glow, three floating rounded graphite panels
+   (navigation, workspace, detail drawer), glass message bubbles with hairline borders, dim uppercase section labels, one bright lime accent. */
+
+:root[data-theme="dark"] body { background: var(--color-bg-primary); }
+:root[data-theme="dark"] h1, :root[data-theme="dark"] h2 { font-family: var(--font-ui); letter-spacing: -.015em; font-weight: 600; }
+:root[data-theme="dark"] .wordmark { font-family: var(--font-display); }
+
+/* ---------------------------------------------------------------- floating panels (desktop) */
+@media (min-width: 900px) {
+  :root[data-theme="dark"] .shell { padding: 12px; gap: 12px; background: radial-gradient(1100px 600px at 50% -12%, rgba(52, 120, 66, .22), transparent 62%), var(--color-bg-primary); }
+  :root[data-theme="dark"] .sidebar {
+    border: 1px solid var(--color-border-soft); border-radius: 26px; padding: 18px 12px 12px;
+    background: linear-gradient(165deg, rgba(255, 255, 255, .055), rgba(255, 255, 255, .012) 40%), var(--color-bg-secondary);
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, .05);
+  }
+  :root[data-theme="dark"] .stage {
+    position: relative; border: 1px solid var(--color-border-soft); border-radius: 26px; overflow: hidden;
+    background:
+      radial-gradient(1.2px 1.2px at 12% 22%, rgba(255, 255, 255, .5), transparent), radial-gradient(1px 1px at 31% 61%, rgba(255, 255, 255, .35), transparent),
+      radial-gradient(1.2px 1.2px at 68% 14%, rgba(255, 255, 255, .45), transparent), radial-gradient(1px 1px at 86% 47%, rgba(255, 255, 255, .3), transparent),
+      radial-gradient(1px 1px at 53% 82%, rgba(255, 255, 255, .3), transparent), radial-gradient(1.2px 1.2px at 22% 90%, rgba(255, 255, 255, .35), transparent),
+      radial-gradient(900px 520px at 50% -8%, rgba(60, 138, 76, .42), rgba(16, 36, 24, .12) 58%, transparent 74%),
+      linear-gradient(180deg, #0a0f0c, #070a08);
+    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, .05);
+  }
+  :root[data-theme="dark"] .drawer { top: 12px; right: 12px; bottom: 12px; border: 1px solid var(--color-border); border-radius: 26px; background: linear-gradient(165deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .01) 45%), var(--color-bg-surface); }
+}
+:root[data-theme="dark"] .topbar { background: transparent; border: 0; }
+
+/* ---------------------------------------------------------------- navigation: dim labels, bright selected item */
+:root[data-theme="dark"] .group-label { color: var(--color-text-muted); letter-spacing: .14em; }
+:root[data-theme="dark"] .nav { color: var(--color-text-muted); }
+:root[data-theme="dark"] .nav:hover { color: var(--color-text-primary); background: var(--color-hover-bg); }
+:root[data-theme="dark"] .nav[aria-pressed="true"] { color: var(--color-text-primary); background: rgba(255, 255, 255, .07); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+:root[data-theme="dark"] .nav[aria-pressed="true"] .ic { color: var(--color-action); }
+:root[data-theme="dark"] .nav::before { background: var(--color-action); }
+:root[data-theme="dark"] .nav .dot { background: var(--color-action); }
+:root[data-theme="dark"] .chat-item.active { background: rgba(255, 255, 255, .07); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+:root[data-theme="dark"] .chat-item.active::before { background: var(--color-action); }
+:root[data-theme="dark"] .tagline::before { background: linear-gradient(90deg, var(--color-action), transparent); }
+:root[data-theme="dark"] .tg-main { color: var(--color-text-secondary); }
+:root[data-theme="dark"] .userbox, :root[data-theme="dark"] .session { background: rgba(255, 255, 255, .045); border-color: var(--color-border-soft); }
+:root[data-theme="dark"] .sidebar .session { background: rgba(255, 255, 255, .035); }
+
+/* ---------------------------------------------------------------- hero and chat: glass bubbles, glass composer */
+:root[data-theme="dark"] .hero-hello b, :root[data-theme="dark"] #heroName { color: var(--color-action); }
+:root[data-theme="dark"] .hero-title, :root[data-theme="dark"] .hero h1 { font-family: var(--font-ui); font-style: normal; font-weight: 600; letter-spacing: -.02em; }
+:root[data-theme="dark"] .hero-seal img { filter: drop-shadow(0 0 22px rgba(98, 224, 90, .35)); }
+:root[data-theme="dark"] .hero .hero-seal::after { border-color: rgba(98, 224, 90, .3); }
+:root[data-theme="dark"] .msg.user {
+  background: linear-gradient(160deg, rgba(120, 200, 130, .16), rgba(255, 255, 255, .04)); border: 1px solid rgba(255, 255, 255, .13);
+  backdrop-filter: blur(10px); box-shadow: 0 10px 30px -16px rgba(0, 0, 0, .8), inset 0 1px 0 rgba(255, 255, 255, .08); border-radius: 18px;
+}
+:root[data-theme="dark"] .msg.agent::before { background: var(--color-bg-surface-2); border-color: rgba(98, 224, 90, .4); }
+:root[data-theme="dark"] .msg.agent::after { border-color: var(--color-action); }
+:root[data-theme="dark"] .composer, :root[data-theme="dark"] .fin-composer {
+  background: linear-gradient(160deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .025)); border: 1px solid rgba(255, 255, 255, .13); backdrop-filter: blur(12px); border-radius: 22px;
+}
+:root[data-theme="dark"] .composer:focus-within, :root[data-theme="dark"] .fin-composer:focus-within { border-color: rgba(98, 224, 90, .6); box-shadow: 0 0 0 4px rgba(98, 224, 90, .12), var(--shadow-md); }
+:root[data-theme="dark"] .quick button, :root[data-theme="dark"] .fin-quick button, :root[data-theme="dark"] .chips button {
+  background: rgba(255, 255, 255, .045); border-color: rgba(255, 255, 255, .12); color: var(--color-text-secondary);
+}
+:root[data-theme="dark"] .quick button:hover, :root[data-theme="dark"] .fin-quick button:hover, :root[data-theme="dark"] .chips button:hover { background: var(--color-selected-bg); border-color: rgba(98, 224, 90, .55); color: var(--color-text-primary); }
+:root[data-theme="dark"] button.send, :root[data-theme="dark"] .send { background: var(--color-action); color: var(--color-on-action); }
+
+/* ---------------------------------------------------------------- controls */
+:root[data-theme="dark"] button { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .13); }
+:root[data-theme="dark"] button:hover:not(:disabled) { background: rgba(255, 255, 255, .09); border-color: rgba(98, 224, 90, .5); }
+:root[data-theme="dark"] button.primary { background: var(--color-action); border-color: transparent; color: var(--color-on-action); box-shadow: 0 10px 28px -14px rgba(98, 224, 90, .7); }
+:root[data-theme="dark"] button.primary:hover:not(:disabled) { background: var(--color-action-hover); }
+:root[data-theme="dark"] button.ghost { background: transparent; border-color: transparent; }
+:root[data-theme="dark"] input, :root[data-theme="dark"] select, :root[data-theme="dark"] textarea { background: rgba(255, 255, 255, .04); border-color: rgba(255, 255, 255, .12); border-radius: 14px; }
+:root[data-theme="dark"] input:focus, :root[data-theme="dark"] select:focus, :root[data-theme="dark"] textarea:focus { border-color: rgba(98, 224, 90, .65); box-shadow: 0 0 0 3px rgba(98, 224, 90, .14); }
+:root[data-theme="dark"] .tag { background: rgba(255, 255, 255, .05); }
+:root[data-theme="dark"] .tag.good { background: var(--color-success-bg); }
+:root[data-theme="dark"] #llmBadge, :root[data-theme="dark"] .pill, :root[data-theme="dark"] .chip { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .13); }
+:root[data-theme="dark"] .fin-tabs button[aria-selected="true"] { background: transparent; border-color: transparent; box-shadow: inset 0 -2px 0 var(--color-text-primary); color: var(--color-text-primary); }
+:root[data-theme="dark"] .mode-switch button[aria-selected="true"], :root[data-theme="dark"] .seg button[aria-selected="true"] { background: rgba(255, 255, 255, .1); color: var(--color-text-primary); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
+
+/* ---------------------------------------------------------------- cards, tables, dialogs */
+:root[data-theme="dark"] .card, :root[data-theme="dark"] .fcard, :root[data-theme="dark"] .acc-card {
+  background: linear-gradient(165deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .015)); border: 1px solid var(--color-border-soft); border-radius: 22px; box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+:root[data-theme="dark"] .drawer .card { background: transparent; border: 0; box-shadow: none; }
+:root[data-theme="dark"] th { background: rgba(255, 255, 255, .045); color: var(--color-text-muted); }
+:root[data-theme="dark"] .md-table th { background: rgba(255, 255, 255, .07); color: var(--color-text-secondary); }
+:root[data-theme="dark"] .md-table tbody tr:nth-child(even) td { background: rgba(255, 255, 255, .02); }
+:root[data-theme="dark"] .md-table, :root[data-theme="dark"] .table-wrap { background: rgba(255, 255, 255, .025); border-color: var(--color-border-soft); }
+:root[data-theme="dark"] .auth.modal .auth-card, :root[data-theme="dark"] #settings .auth-card, :root[data-theme="dark"] .fin-modal {
+  background: linear-gradient(165deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .015)), var(--color-bg-surface); border-color: rgba(255, 255, 255, .14); border-radius: 26px;
+}
+:root[data-theme="dark"] .kpi .v { color: var(--color-text-primary); }
+:root[data-theme="dark"] .msg.sys, :root[data-theme="dark"] .fin-banner { background: var(--color-warning-bg); color: var(--color-warning); border-color: rgba(229, 198, 90, .25); }
+:root[data-theme="dark"] .vm-panel { background: linear-gradient(165deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .015)), var(--color-bg-surface); }
+:root[data-theme="dark"] .vm-orb { background: var(--color-action); box-shadow: 0 0 40px rgba(98, 224, 90, .5); }
+:root[data-theme="dark"] .think-dots i { background: var(--color-action); }
+
+/* ---------------------------------------------------------------- refinements after review */
+:root[data-theme="dark"] .nav, :root[data-theme="dark"] .ci-open, :root[data-theme="dark"] .chat-item button, :root[data-theme="dark"] .userbox button, :root[data-theme="dark"] .composer button.vbtn, :root[data-theme="dark"] .topbar button {
+  background: transparent; border-color: transparent;
+}
+:root[data-theme="dark"] .nav[aria-pressed="true"] { background: rgba(255, 255, 255, .07); }
+:root[data-theme="dark"] .nav:hover:not([aria-pressed="true"]) { background: var(--color-hover-bg); border-color: transparent; }
+:root[data-theme="dark"] .userbox { background: #181d1a; border: 1px solid var(--color-border-soft); }
+:root[data-theme="dark"] .composer textarea, :root[data-theme="dark"] .fin-composer textarea { background: transparent; border: 0; box-shadow: none; }
+:root[data-theme="dark"] .composer .vbtn, :root[data-theme="dark"] .composer-bar button { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); }
+:root[data-theme="dark"] .hero-hello { font-family: var(--font-ui); font-style: normal; font-weight: 500; color: var(--color-text-secondary); }
+:root[data-theme="dark"] .hero-hello b, :root[data-theme="dark"] #heroName { font-style: normal; font-weight: 600; }
+:root[data-theme="dark"] .mode-switch { background: rgba(255, 255, 255, .04); border-color: var(--color-border-soft); }
+:root[data-theme="dark"] .mode-switch button { background: transparent; border-color: transparent; }
+:root[data-theme="dark"] .fin-title, :root[data-theme="dark"] .card h2, :root[data-theme="dark"] .drawer h2, :root[data-theme="dark"] .auth-card h2 { font-family: var(--font-ui); font-style: normal; font-weight: 600; letter-spacing: -.02em; }
