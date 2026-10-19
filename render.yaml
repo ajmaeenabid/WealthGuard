@@ -1,23 +1,24 @@
-# Render Blueprint: one web service with a persistent disk for the SQLite database.
-# A persistent disk needs a paid instance type (starter). Secrets are entered in the Render dashboard, never here.
+# Render Blueprint (free plan): one web service, so every request reaches the same instance and sessions stay valid.
+# Free instances have no persistent disk: the database lives in /tmp, resets on a redeploy, and the service sleeps after
+# about 15 minutes idle (the first request then takes up to a minute). Demo users are re-created automatically.
+# For permanent data: set plan to starter and add
+#   disk: {name: wealthguard-data, mountPath: /var/data, sizeGB: 1}
+# and set WEALTHGUARD_DB to /var/data/wealthguard.db.
+# Secrets are entered in the Render dashboard, never here.
 services:
   - type: web
     name: wealthguard
     runtime: python
-    plan: starter
+    plan: free
     region: singapore
     buildCommand: pip install -r requirements.txt
     startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
-    disk:
-      name: wealthguard-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: WEALTHGUARD_DB
-        value: /var/data/wealthguard.db
+        value: /tmp/wealthguard.db
       - key: LLM_PROVIDER
         value: groq
       - key: GROQ_MODEL
