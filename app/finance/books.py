@@ -138,11 +138,53 @@ def create_account(user: str, name: str, type: str, opening="0", opening_date=No
     return _account_out(get_account(user, aid), opening_minor)
 
 
+def relabel_currency(user: str, currency: str, account_id: Optional[str] = None) -> dict:
+    """Change the currency LABEL on one account (or, with no account_id, on every account plus the budgets, goals and bills). Amounts are NOT converted:
+    the person is saying "these figures were in this currency all along". One database transaction; refused for a single account that has transfers
+    with an account in another currency, because both sides of a transfer must share a currency."""
+    currency = valid_currency(currency)
+    accts = _q("SELECT id, name, currency FROM fin_accounts WHERE username=?", (user,))
+    if account_id:
+        target = next((a for a in accts if a["id"] == account_id), None)
+        if not target:
+            raise FinanceError("No such account.", 404)
+        ids = {account_id}
+        others = {a["id"]: a["currency"] for a in accts if a["id"] != account_id}
+        linked = _q("SELECT account_id, to_account_id FROM fin_transactions WHERE username=? AND type='transfer' AND deleted_at IS NULL AND (account_id=? OR to_account_id=?)", (user, account_id, account_id))
+        for t in linked:
+            partner = t["to_account_id"] if t["account_id"] == account_id else t["account_id"]
+            if partner and others.get(partner) not in (None, currency):
+                raise FinanceError(f"'{target['name']}' has transfers with an account in {others[partner]}. Change both accounts together (Settings > Currency > apply to all accounts).", 409)
+    else:
+        ids = {a["id"] for a in accts}
+    n_acc = n_txn = 0
+    with db.LOCK:
+        c = db.connect()
+        try:
+            c.execute("BEGIN IMMEDIATE")
+            marks = ",".join("?" * len(ids)) or "''"
+            n_acc = c.execute(f"UPDATE fin_accounts SET currency=?, updated=? WHERE username=? AND id IN ({marks})", (currency, store.now(), user, *ids)).rowcount
+            n_txn = c.execute(f"UPDATE fin_transactions SET currency=? WHERE username=? AND (account_id IN ({marks}) OR to_account_id IN ({marks}))", (currency, user, *ids, *ids)).rowcount
+            if not account_id:
+                for table in ("fin_budgets", "fin_goals", "fin_obligations"):
+                    c.execute(f"UPDATE {table} SET currency=? WHERE username=?", (currency, user))
+            c.commit()
+        except Exception:
+            c.rollback()
+            raise
+        finally:
+            c.close()
+    _audit(user, "fin_currency_relabelled", {"currency": currency, "accounts": n_acc, "transactions": n_txn, "scope": "account" if account_id else "all"})
+    return {"currency": currency, "accounts": n_acc, "transactions": n_txn}
+
+
 def update_account(user: str, account_id: str, patch: dict) -> dict:
     r = get_account(user, account_id)
     name = (patch.get("name", r["name"]) or "").strip()[:60]
     if not name:
         raise FinanceError("The account needs a name.")
+    if patch.get("currency") and valid_currency(patch["currency"]) != r["currency"]:
+        relabel_currency(user, patch["currency"], account_id)
     try:
         opening = money.to_minor(patch["opening_balance"], allow_negative=True) if "opening_balance" in patch else r["opening_minor"]
         odate = money.parse_ts(patch["opening_date"])[:10] if patch.get("opening_date") else r["opening_date"]

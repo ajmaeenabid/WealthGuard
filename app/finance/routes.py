@@ -78,6 +78,12 @@ class AccountPatch(BaseModel):
     opening_balance: Optional[str] = Field(None, max_length=30)
     opening_date: Optional[str] = Field(None, max_length=10)
     archived: Optional[bool] = None
+    currency: Optional[str] = Field(None, max_length=3)
+
+
+class RelabelIn(BaseModel):
+    currency: str = Field(max_length=3)
+    also_total_currency: bool = True
 
 
 class ReconcileIn(BaseModel):
@@ -510,6 +516,17 @@ def import_csv(body: ImportIn, request: Request):
 
 
 # ---------------------------------------------------------------------------------------------- preferences and privacy
+@router.post("/currency/apply-to-all")
+def relabel_all(body: RelabelIn, request: Request):
+    u = _user(request)
+    def run():
+        out = books.relabel_currency(u, body.currency)
+        if body.also_total_currency:
+            books.set_base_currency(u, body.currency)
+        return out
+    return _call(run)
+
+
 @router.get("/version")
 def data_version(request: Request):
     return _call(settings.data_version, _user(request))

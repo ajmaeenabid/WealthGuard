@@ -39,7 +39,7 @@
     "Start with": "开始：",
     tagline2: "每条建议都经过核查，每一步都有记录。", newChat: "新对话", navChats: "对话记录", noChats: "还没有对话。",
     authLead: "登录后继续你的理财咨询。", signIn: "登录", signUp: "创建账户", username: "用户名", password: "密码",
-    confirmPassword: "确认密码", authHint: "演示账户：admin、li、chen、wang，密码均为 123（请在设置中修改）。", authDemo: "或使用演示账户", authPw: "密码 123", authPwNote: "适用于所有演示账户，可在设置中修改。", demoAdmin: "管理员", demoClient: "客户",
+    confirmPassword: "确认密码", authHint: "演示账户：admin、li、chen、wang，密码均为 123（请在设置中修改）。", authDemo: "或使用演示账户", currencyTitle: "币种", currencyLabel: "以此币种显示我的资金", authPw: "密码 123", authPwNote: "适用于所有演示账户，可在设置中修改。", demoAdmin: "管理员", demoClient: "客户",
     settings: "设置", changePassword: "修改密码", currentPassword: "当前密码", newPassword: "新密码", savePassword: "保存密码",
     hMem: "我记得的内容", memHint: "仅为你的账户保存，新对话可以接着上次继续。可以随时修改或删除。", memFacts: "你的资料", memNotes: "备注",
     memNotePh: "添加我应该记住的事情", memAdd: "添加", memChats: "过往对话", memDemoH: "演示资料", memDemoHint: "载入一个现成的客户资料用于演示，这会替换你已保存的资料。",

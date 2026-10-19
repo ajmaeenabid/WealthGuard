@@ -117,7 +117,7 @@
   });
 
   // ---------------------------------------------------------------- settings: change password
-  const openSettings = () => { show($("settings"), true); $("setWho").hidden = false; $("pwOld").focus(); };
+  const openSettings = () => { show($("settings"), true); window.dispatchEvent(new CustomEvent("wg:settings-open")); $("setWho").hidden = false; $("pwOld").focus(); };
   const closeSettings = () => { show($("settings"), false); $("pwForm").reset(); err($("pwMsg"), ""); };
   $("settingsBtn").onclick = openSettings;
   $("setClose").onclick = closeSettings;

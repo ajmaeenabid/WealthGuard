@@ -23,11 +23,11 @@
     }
     return data;
   }
-  const sym = () => SYMBOLS[state.currency] || state.currency + " ";
-  const money = (s, signed) => {
+  const sym = (cur) => { const c = cur || state.currency; return SYMBOLS[c] || (c ? c + " " : ""); };
+  const money = (s, signed, cur) => {
     const n = Number(s);
     if (s === null || s === undefined || !isFinite(n)) return "—";
-    const body = sym() + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const body = sym(cur) + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     return (n < 0 ? "-" : signed && n > 0 ? "+" : "") + body;
   };
   const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
@@ -113,7 +113,7 @@
     root.innerHTML = `<div class="fcard" style="max-width:560px"><h3>Choose your currency</h3><p class="muted">Pick the currency your totals are shown in. You can change it any time in Settings, and each account can have its own currency. Amounts are never converted.</p>
       <div class="demo-chips" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px">${state.meta.currencies.map((c) => `<button type="button" data-cur="${c.code}" style="padding:14px 8px"><b style="font-size:22px">${c.symbol}</b><br>${c.code}<br><span class="muted small">${esc(c.name)}</span></button>`).join("")}</div></div>`;
     root.querySelectorAll("[data-cur]").forEach((b) => (b.onclick = async () => {
-      try { await api("/settings", { base_currency: b.dataset.cur }); state.meta = await api("/meta", undefined, "GET"); state.currency = state.meta.currency; showTab(state.tab); } catch (e) { fail(e); }
+      try { await api("/settings", { base_currency: b.dataset.cur }); state.meta = await api("/meta", undefined, "GET"); await afterCurrencyChange(); } catch (e) { fail(e); }
     }));
     banner("");
     return true;
@@ -125,6 +125,7 @@
     root.innerHTML = `<p class="muted">Loading…</p>`;
     const d = await api("/dashboard?" + periodQuery(), undefined, "GET");
     state.currency = d.position.currency || state.currency;
+    if (state.meta) paintRegion(state.meta.jurisdiction);
     const s = d.summary, pos = d.position, cmp = d.comparison;
     $("finSub").textContent = `${s.start} to ${s.end} · amounts in ${state.currency} · actual records only` + (s.excluded.future_dated ? ` · ${s.excluded.future_dated} scheduled (future-dated) not counted yet` : "");
     banner(pos.accounts.length ? "" : "Add your accounts and their opening balances first (Accounts tab). Until then balances and net worth cannot be shown, and nothing is estimated for you.");
@@ -167,7 +168,7 @@
 
   function txnRow(t) {
     const sign = t.type === "income" || t.type === "refund" || (t.type === "adjustment" && t.direction === "in") ? "in" : "out";
-    const amt = t.type === "transfer" ? `↔ ${money(t.final_amount)}` : money(sign === "in" ? t.final_amount : "-" + t.final_amount, sign === "in");
+    const amt = t.type === "transfer" ? `↔ ${money(t.final_amount, false, t.currency)}` : money(sign === "in" ? t.final_amount : "-" + t.final_amount, sign === "in", t.currency);
     return `<li class="frow" data-txn="${esc(t.id)}" tabindex="0" style="cursor:pointer"><div class="main"><b>${esc(t.merchant || t.item_name || t.category || t.type)}</b><span>${esc(day(t.ts))}${t.scheduled ? " · scheduled" : ""} · ${esc(t.category || t.type)}${t.source === "voice" ? " · voice" : t.source === "assistant" ? " · assistant" : ""}</span></div><span class="amt ${sign}">${amt}</span></li>`;
   }
   function goalsList(gs) {
@@ -262,7 +263,7 @@
     if (!res.items.length) { box.innerHTML = `<div class="fcard">${emptyHtml(f.q || f.type || f.category || f.account || f.start || f.end ? "Nothing matches these filters." : "No transactions yet. Add one, import a CSV, or tell the assistant what you spent.")}</div>`; return; }
     box.innerHTML = `<div class="table-wrap"><table class="ftable"><caption class="sr-only">Transactions</caption><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account</th><th class="num">Amount</th></tr></thead><tbody>${res.items.map((t) => {
       const inflow = t.type === "income" || t.type === "refund" || (t.type === "adjustment" && t.direction === "in");
-      const amt = t.type === "transfer" ? `↔ ${money(t.final_amount)}` : money(inflow ? t.final_amount : "-" + t.final_amount, inflow);
+      const amt = t.type === "transfer" ? `↔ ${money(t.final_amount, false, t.currency)}` : money(inflow ? t.final_amount : "-" + t.final_amount, inflow, t.currency);
       const detail = [t.item_name, t.discount !== "0.00" ? "discount " + money(t.discount) : "", t.tax !== "0.00" ? "VAT " + money(t.tax) : ""].filter(Boolean).join(" · ");
       return `<tr data-txn="${esc(t.id)}" tabindex="0"><td data-label="Date">${esc(day(t.ts))}${t.scheduled ? ` <span class="chip scheduled" title="Dated in the future: not part of any balance or total yet">scheduled</span>` : ""}</td><td data-label="Description"><b>${esc(t.merchant || t.item_name || t.type)}</b>${t.has_receipt ? ` <span class="chip" title="A receipt photo is attached">receipt</span>` : ""}${detail ? `<div class="muted small">${esc(detail)}</div>` : ""}</td><td data-label="Category">${esc(t.category || t.type)}${t.essential === true ? ` <span class="chip ok">essential</span>` : ""}</td><td data-label="Account">${esc(names[t.account_id] || "")}${t.to_account_id ? " → " + esc(names[t.to_account_id] || "") : ""}</td><td class="num amt ${inflow ? "in" : "out"}" data-label="Amount">${amt}</td></tr>`;
     }).join("")}</tbody></table></div>
@@ -451,6 +452,7 @@
     const [accs, pos] = await Promise.all([api("/accounts?include_archived=true", undefined, "GET"), api("/position", undefined, "GET")]);
     state.accounts = accs.filter((a) => !a.archived);
     state.currency = pos.currency;
+    if (state.meta) paintRegion(state.meta.jurisdiction);
     $("finSub").textContent = "Balances are your opening balance plus the transactions you recorded. Check them against your bank or wallet from time to time.";
     banner(accs.length ? "" : "Add the places your money lives (cash, bank, bKash…) with today's balance. That is the starting point for everything else.");
     root.innerHTML = `
@@ -459,7 +461,7 @@
         <div class="fcard kpi"><div class="l">Liabilities</div><div class="v">${money(pos.liabilities)}</div><div class="d">cards and loans</div></div>
         <div class="fcard kpi"><div class="l">Net worth</div><div class="v">${money(pos.net_worth)}</div><div class="d">${pos.excluded_other_currency.length ? "excludes other-currency accounts: " + esc(pos.excluded_other_currency.join(", ")) : "accounts in " + esc(pos.currency)}</div></div>
       </div>
-      <div class="fin-grid fin-cols">${accs.map((a) => `<div class="fcard acc-card" style="${a.archived ? "opacity:.55" : ""}"><h3>${esc(a.type.replace("_", " "))}${a.archived ? ` <span class="chip">archived</span>` : ""}</h3><div><b>${esc(a.name)}</b></div><div class="bal ${a.balance_minor < 0 ? "neg" : ""}">${money(a.balance)}</div><div class="muted small">opening ${money(a.opening_balance)} on ${esc(a.opening_date)}</div><div class="fin-toolbar" style="margin:6px 0 0"><button type="button" data-edit="${esc(a.id)}">Edit</button><button type="button" data-rec="${esc(a.id)}">Check balance</button></div></div>`).join("") || `<div class="fcard">${emptyHtml("No accounts yet.")}</div>`}</div>`;
+      <div class="fin-grid fin-cols">${accs.map((a) => `<div class="fcard acc-card" style="${a.archived ? "opacity:.55" : ""}"><h3>${esc(a.type.replace("_", " "))}${a.archived ? ` <span class="chip">archived</span>` : ""}</h3><div><b>${esc(a.name)}</b></div><div class="bal ${a.balance_minor < 0 ? "neg" : ""}">${money(a.balance, false, a.currency)}</div><div class="muted small">opening ${money(a.opening_balance, false, a.currency)} on ${esc(a.opening_date)}</div><div class="fin-toolbar" style="margin:6px 0 0"><button type="button" data-edit="${esc(a.id)}">Edit</button><button type="button" data-rec="${esc(a.id)}">Check balance</button></div></div>`).join("") || `<div class="fcard">${emptyHtml("No accounts yet.")}</div>`}</div>`;
     root.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => openAccountForm(accs.find((a) => a.id === b.dataset.edit))));
     root.querySelectorAll("[data-rec]").forEach((b) => (b.onclick = () => openReconcile(accs.find((a) => a.id === b.dataset.rec))));
   }
@@ -472,6 +474,8 @@
       f.innerHTML = `<label>Name<input id="afName" maxlength="60" required value="${esc(a ? a.name : "")}" placeholder="e.g. Cash, bKash, City Bank"></label>
         ${a ? "" : `<label>Currency<select id="afCur" required>${state.meta.currency_chosen ? "" : `<option value="" selected disabled>Choose…</option>`}${state.meta.currencies.map((c) => `<option value="${c.code}" ${state.meta.currency_chosen && state.meta.currency === c.code ? "selected" : ""}>${c.symbol}  ${c.code} – ${esc(c.name)}</option>`).join("")}</select></label>
         <label>Type<select id="afType">${state.meta.account_types.map((t) => `<option value="${t}">${t.replace("_", " ")}</option>`).join("")}</select></label>`}
+        ${a ? `<label>Currency<select id="afCurEdit">${state.meta.currencies.map((c) => `<option value="${c.code}" ${a.currency === c.code ? "selected" : ""}>${c.symbol}  ${c.code} – ${esc(c.name)}</option>`).join("")}</select></label>
+        <p class="muted small">Changing this only relabels the account and its transactions. The numbers are not converted.</p>` : ""}
         <div class="row2"><label>${a ? "Opening balance" : "Balance today"}<input id="afOpen" inputmode="decimal" value="${esc(a ? a.opening_balance : "0")}"></label><label>As of<input id="afDate" type="date" value="${esc(a ? a.opening_date : todayStr())}"></label></div>
         <p class="muted small">For a credit card or loan, enter what you owe as a positive number. Leave 0 if you do not know yet; balances will then only reflect what you record from now on.</p>
         ${a ? `<label class="check"><input id="afArch" type="checkbox" ${a.archived ? "checked" : ""}> Archived (hidden, history kept)</label>` : ""}
@@ -480,7 +484,7 @@
       f.onsubmit = async (ev) => {
         ev.preventDefault();
         try {
-          if (a) await api("/accounts/" + a.id, { name: $("afName").value, opening_balance: $("afOpen").value, opening_date: $("afDate").value, archived: $("afArch").checked });
+          if (a) await api("/accounts/" + a.id, { name: $("afName").value, opening_balance: $("afOpen").value, opening_date: $("afDate").value, archived: $("afArch").checked, currency: $("afCurEdit").value });
           else await api("/accounts", { name: $("afName").value, type: $("afType").value, currency: $("afCur").value, opening_balance: $("afOpen").value, opening_date: $("afDate").value });
           closeModal(); toast(a ? "Account updated" : "Account added"); afterChange();
         } catch (e) { $("afErr").textContent = e.message; $("afErr").hidden = false; }
@@ -490,7 +494,7 @@
 
   function openReconcile(a) {
     modal("Check " + a.name, (body) => {
-      body.innerHTML = `<form class="fin-form"><p>The ledger says <b>${money(a.balance)}</b>. Type what the account really holds (from your bank app, wallet or the cash in your hand).</p>
+      body.innerHTML = `<form class="fin-form"><p>The ledger says <b>${money(a.balance, false, a.currency)}</b>. Type what the account really holds (from your bank app, wallet or the cash in your hand).</p>
         <label>Actual balance<input id="rcActual" inputmode="decimal" required></label><div class="fin-preview" id="rcOut" hidden></div><div class="fin-err" id="rcErr" role="alert" hidden></div>
         <div class="row2"><button type="submit" class="primary">Compare</button><button type="button" id="rcApply" disabled>Fix with an adjustment</button></div></form>`;
       const f = body.querySelector("form");
@@ -810,7 +814,7 @@
       $("finNewConvo").onclick = async () => { try { await api("/assistant/cancel", {}); } catch (e) { /* nothing open */ } A.loaded = false; A.last = null; $("finConfirm").hidden = true; loadAssistant(); };
     }
     const j = jur && state.meta && state.meta.jurisdictions && state.meta.jurisdictions[jur];
-    $("finChatJur").textContent = j ? `${j.name[(window.WGLang && window.WGLang.lang) || "en"] || j.name.en} · ${j.currency}` : (jur || "");
+    $("finChatJur").textContent = j ? (j.name[(window.WGLang && window.WGLang.lang) || "en"] || j.name.en) : (jur || "");
     $("finChatJur").title = "The jurisdiction this conversation was started under";
   }
   async function showConversations() {
@@ -878,7 +882,8 @@
         ${row("Assistant language", "Auto follows the language you write in (English, Bangla or Banglish).", `<select id="stLang" aria-label="Assistant language">${st.options.assistant_lang.map((x) => `<option value="${x}" ${st.assistant_lang === x ? "selected" : ""}>${{ auto: "Automatic", en: "English", bn: "বাংলা (Bangla)" }[x]}</option>`).join("")}</select>`)}
         ${row("Questions about discounts, VAT and service charge", "Automatic asks only when something is unclear. Always asks every time. Never assumes the amount is what you paid.", `<select id="stAdj" aria-label="Ask about discounts">${st.options.ask_adjustments.map((x) => `<option value="${x}" ${st.ask_adjustments === x ? "selected" : ""}>${{ auto: "Automatic", always: "Always ask", never: "Never ask" }[x]}</option>`).join("")}</select>`)}
         ${row("Read assistant replies aloud", "Uses your browser's speech synthesis. Nothing is uploaded for this.", `<label class="check" style="display:flex;gap:8px;align-items:center"><input id="stVoice" type="checkbox" ${st.voice_replies ? "checked" : ""}> On</label>`)}
-        ${row("Currency", st.currency_chosen ? "Totals and charts are shown in this currency. Accounts in other currencies stay listed but are never converted or added in." : "Choose the currency your totals are shown in. Nothing is converted.", `<select id="stCur" aria-label="Currency">${st.currency_chosen ? "" : `<option value="" selected disabled>Choose…</option>`}${st.currencies.map((c) => `<option value="${c.code}" ${st.currency_chosen && st.base_currency === c.code ? "selected" : ""}>${c.symbol}  ${c.code} – ${esc(c.name)}</option>`).join("")}</select>`)}
+        ${row("Currency", st.currency_chosen ? "Totals and charts are shown in this currency. Accounts in other currencies stay listed but are never converted or added in." : "Choose the currency your totals are shown in. Nothing is converted.", `<select id="stCur" aria-label="Currency">${st.currency_chosen ? "" : `<option value="" selected disabled>Choose…</option>`}${st.currencies.map((c) => `<option value="${c.code}" ${st.currency_chosen && st.base_currency === c.code ? "selected" : ""}>${c.symbol}  ${c.code} – ${esc(c.name)}</option>`).join("")}</select>`)} 
+        ${st.currency_chosen && accs.some((a) => a.currency !== st.base_currency) ? row("Apply to all accounts", `${accs.filter((a) => a.currency !== st.base_currency).length} account(s) are labelled in another currency (${esc([...new Set(accs.map((a) => a.currency))].join(", "))}), so they are left out of your totals. If all your figures are really in ${st.base_currency}, relabel them in one step. Nothing is converted.`, `<button type="button" id="stCurAll">Set all accounts to ${esc(st.base_currency)}</button>`) : ""}
         <p class="muted small" id="stMsg" role="status"></p></div>
       <div class="fcard"><h3>AI status and use <span class="tag">${meta.ai.enabled ? "on" : "off"}</span></h3>
         <p>${meta.ai.enabled ? `Language understanding and report explanations use <b>${esc(meta.ai.model)}</b> through Groq. The key stays on the server.` : "No AI key is configured, so the built-in rules understand your messages and explain your reports. Everything still works."}</p>
@@ -918,7 +923,15 @@
     $("stLang").onchange = () => save({ assistant_lang: $("stLang").value });
     $("stAdj").onchange = () => save({ ask_adjustments: $("stAdj").value });
     $("stVoice").onchange = () => save({ voice_replies: $("stVoice").checked });
-    $("stCur").onchange = async () => { await save({ base_currency: $("stCur").value }); state.meta = await api("/meta", undefined, "GET"); state.currency = state.meta.currency; state.dirty = true; loadSettings(); };
+    $("stCur").onchange = async () => { await save({ base_currency: $("stCur").value }); state.meta = await api("/meta", undefined, "GET"); state.currency = state.meta.currency; paintRegion(state.meta.jurisdiction); state.dirty = true; loadSettings(); };
+    if ($("stCurAll")) $("stCurAll").onclick = async () => {
+      const c = st.base_currency;
+      if (!confirm(`Set every account, budget, goal and bill to ${c}?
+
+Only the currency label changes. The numbers stay exactly as they are and nothing is converted. Use this only if all your figures really are in ${c}.`)) return;
+      try { const out = await api("/currency/apply-to-all", { currency: c, also_total_currency: true }); $("stMsg").textContent = `${out.accounts} accounts and ${out.transactions} transactions now use ${c}.`; state.dirty = true; state.accounts = []; loadSettings(); }
+      catch (e) { $("stMsg").textContent = e.message; }
+    };
     $("stDays").onchange = () => save({ history_days: Number($("stDays").value) });
     $("stDl").onclick = () => download("/api/fin/export/transactions.csv", "transactions.csv");
     $("stNotify").onchange = async () => {
@@ -975,14 +988,47 @@
     startSync();
   }
 
+  // The account Settings dialog (user menu) also carries the currency choice, so it is reachable from anywhere.
+  async function fillCurrencyDialog() {
+    const box = $("setCurrency");
+    if (!box || !me || me.role === "admin" || (me.permissions && me.permissions.money === false)) return;
+    try {
+      const st = await api("/settings", undefined, "GET");
+      const accs = await api("/accounts", undefined, "GET");
+      box.hidden = false;
+      $("setCurSel").innerHTML = (st.currency_chosen ? "" : `<option value="" selected disabled>Choose…</option>`) + st.currencies.map((c) => `<option value="${c.code}" ${st.currency_chosen && st.base_currency === c.code ? "selected" : ""}>${c.symbol}  ${c.code} – ${esc(c.name)}</option>`).join("");
+      const other = accs.filter((a) => a.currency !== st.base_currency);
+      $("setCurNote").textContent = "Totals are shown in this currency. Nothing is converted; accounts in another currency stay listed and are left out of totals.";
+      const btn = $("setCurAll");
+      btn.hidden = !(st.currency_chosen && other.length);
+      btn.textContent = `Set all ${accs.length} accounts to ${st.base_currency}`;
+      btn.onclick = async () => {
+        if (!confirm(`Set every account, budget, goal and bill to ${st.base_currency}?
+
+Only the label changes; the numbers stay as they are and nothing is converted.`)) return;
+        try { await api("/currency/apply-to-all", { currency: st.base_currency, also_total_currency: true }); await afterCurrencyChange(); fillCurrencyDialog(); } catch (e) { msg(e.message); }
+      };
+      const msg = (t) => { const m = $("setCurMsg"); m.textContent = t; m.hidden = !t; };
+      $("setCurSel").onchange = async () => { try { await api("/settings", { base_currency: $("setCurSel").value }); await afterCurrencyChange(); fillCurrencyDialog(); msg(""); } catch (e) { msg(e.message); } };
+    } catch (e) { /* money not available for this account */ }
+  }
+  async function afterCurrencyChange() {
+    state.meta = await api("/meta", undefined, "GET");
+    state.currency = state.meta.currency;
+    state.accounts = []; state.dirty = true;
+    paintRegion(state.meta.jurisdiction);
+    if (document.body.classList.contains("mode-money")) showTab(state.tab);
+  }
+  window.addEventListener("wg:settings-open", fillCurrencyDialog);
+
   // the active jurisdiction is always visible next to the chat and in the header
   function paintRegion(jc) {
     if (!jc) return;
     const L = window.WGLang, lg = (L && L.lang) || "en";
     let chip = $("finRegion");
     if (!chip) { chip = el("span", "tag"); chip.id = "finRegion"; chip.setAttribute("data-notr", ""); const sub = $("finSub"); if (sub && sub.parentNode) sub.parentNode.insertBefore(chip, sub.nextSibling); }
-    chip.textContent = `${jc.name[lg] || jc.name.en} · ${jc.currency}`;
-    chip.title = `Active jurisdiction ${jc.code}, configuration ${jc.version}. Amounts are shown in ${jc.currency}.`;
+    chip.textContent = `${jc.name[lg] || jc.name.en} · ${state.currency || ""}`.replace(/ · $/, "");
+    chip.title = `Active jurisdiction ${jc.code}, configuration ${jc.version}. Totals are shown in your chosen currency (${state.currency}), set in Settings.`;
   }
   window.addEventListener("wg:lang", () => { if (state.meta) paintRegion(state.meta.jurisdiction); });
 

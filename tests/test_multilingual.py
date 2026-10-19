@@ -112,3 +112,29 @@ def test_ui_offers_the_three_currencies_and_no_default_symbol():
     assert 'id="stCur"' in js and 'id="afCur"' in js and "Choose your currency" in js
     assert 'currency: "BDT"' not in js and "taka at the grocery" not in js
     assert settings.get(U)["currencies"] == [{"code": "USD", "symbol": "$", "name": "US dollar"}, {"code": "CNY", "symbol": "¥", "name": "Chinese yuan (RMB)"}, {"code": "BDT", "symbol": "৳", "name": "Bangladeshi taka"}]
+
+
+def test_relabel_all_accounts_changes_the_label_not_the_amounts():
+    books.create_account(U, "Cash", "cash", "1000", currency="BDT")
+    books.create_account(U, "Bank", "bank", "500", currency="BDT")
+    cash = books.list_accounts(U)[0]
+    books.create_transaction(U, {"type": "expense", "ts": money.today().isoformat(), "account_id": cash["id"], "amount": "100", "merchant": "x", "category": "food"}, source="manual")
+    out = books.relabel_currency(U, "USD")
+    assert out["accounts"] == 2 and out["transactions"] >= 1
+    assert {a["currency"] for a in books.list_accounts(U)} == {"USD"}
+    assert books.list_accounts(U)[0]["opening_balance"] in ("1000.00", "500.00")          # same numbers, new label
+    assert books.list_transactions(U)["items"][0]["currency"] == "USD"
+
+
+def test_one_account_can_be_relabelled_unless_a_transfer_ties_it_to_another_currency():
+    y = books.create_account(U, "Yuan", "cash", "100", currency="CNY")
+    assert books.update_account(U, y["id"], {"currency": "USD"})["currency"] == "USD"
+    a = books.create_account(U, "Dollar bank", "bank", "500", currency="USD")
+    b = books.create_account(U, "Dollar savings", "savings", "0", currency="USD")
+    books.create_transaction(U, {"type": "transfer", "account_id": a["id"], "to_account_id": b["id"], "amount": "50"})
+    with pytest.raises(Exception) as e:
+        books.update_account(U, a["id"], {"currency": "CNY"})                    # its transfer partner is still USD
+    assert "transfers" in str(e.value)
+    assert books.relabel_currency(U, "CNY")["accounts"] == 3                      # together it is fine
+    with pytest.raises(Exception):
+        books.update_account(U, a["id"], {"currency": "EUR"})

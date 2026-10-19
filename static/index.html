@@ -411,6 +411,14 @@
   <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="setTitle">
     <div class="set-head"><h2 id="setTitle" data-i18n="settings">Settings</h2><button type="button" id="setClose" class="ghost icon" aria-label="Close"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <p class="muted" id="setWho"></p>
+    <div id="setCurrency" data-for="user" hidden>
+      <h3 data-i18n="currencyTitle">Currency</h3>
+      <label for="setCurSel" data-i18n="currencyLabel">Show my money in</label>
+      <select id="setCurSel" aria-label="Currency"></select>
+      <p class="muted small" id="setCurNote"></p>
+      <button type="button" id="setCurAll" class="wide" hidden></button>
+      <p id="setCurMsg" class="auth-err" role="status" hidden></p>
+    </div>
     <h3 data-i18n="changePassword">Change password</h3>
     <form id="pwForm" autocomplete="off">
       <label for="pwOld" data-i18n="currentPassword">Current password</label>
