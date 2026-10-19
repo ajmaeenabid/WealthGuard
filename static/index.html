@@ -132,13 +132,22 @@
       <section class="admin" id="adminView" aria-label="Administration" hidden>
       <div class="admin-head">
         <h1 class="hero-title" data-i18n="adminTitle">Administration</h1>
-        <p class="hero-sub" data-i18n="adminLead">Suspend accounts, change roles and switch features on or off for each account. Chat contents stay private to their owners; every action here is written to the audit log.</p>
+        <p class="hero-sub" data-i18n="adminLead">Manage accounts, roles and feature access. Chat and finance contents stay private to their owners; every action here is written to the audit log.</p>
       </div>
+      <div id="adminStats" class="fin-grid fin-kpis" aria-live="polite"></div>
       <div id="adminAi" class="fcard admin-ai" hidden></div>
-      <div class="admin-manage"><button type="button" id="adminManage" class="primary" aria-expanded="false" aria-controls="adminUsers">Manage accounts</button><span class="muted small" id="adminCount"></span></div>
+      <div class="admin-manage"><button type="button" id="adminManage" class="primary" aria-expanded="false" aria-controls="adminUsers">Manage accounts</button><button type="button" id="adminActivityBtn">Recent activity</button><span class="muted small" id="adminCount"></span></div>
       <div id="adminUsers" class="admin-users" hidden></div>
+      <div id="adminActivity" hidden></div>
       <p id="adminMsg" class="small muted" role="status"></p>
     </section>
+
+    <div class="auth modal" id="adminModal" hidden>
+      <div class="auth-card fin-modal" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
+        <div class="set-head"><h2 id="adminModalTitle"></h2><button type="button" id="adminModalClose" class="ghost icon" aria-label="Close"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+        <div id="adminModalBody"></div>
+      </div>
+    </div>
       <section class="money" id="moneyView" aria-label="My money" hidden>
       <div class="fin-head">
         <div><h1 class="fin-title" id="finTitle">Overview</h1><p class="fin-sub muted" id="finSub"></p></div>
@@ -419,5 +428,6 @@
 <script src="/static/app.js"></script>
 <script src="/static/ui.js"></script>
 <script src="/static/finance.js"></script>
+<script src="/static/admin.js"></script>
 </body>
 </html>

@@ -156,3 +156,5 @@ html:lang(zh) .report-section h2, html:lang(zh) .fin-title { font-style: normal;
 .nav[data-tab="plan"] .dot.on { opacity: 1; transform: scale(1); animation: ping 1.8s var(--ease) infinite; }
 .admin-ai { margin-bottom: 14px; }
 .fin-receipt { display: grid; gap: 4px; }
+
+#adminModal .fin-form label.perm { display: flex; flex-direction: row; align-items: center; gap: 9px; text-transform: none; letter-spacing: 0; font-size: 13.5px; font-weight: 500; color: var(--ink-2); }

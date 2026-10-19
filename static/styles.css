@@ -484,3 +484,8 @@ html:lang(zh) .hero-hello { font-style: normal; font-weight: 600; letter-spacing
 .admin-manage { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
 
 .admin-users[hidden], .admin-ai[hidden] { display: none; }
+
+.who-cell { display: inline-flex; align-items: center; gap: 10px; }
+.avatar.sm { width: 30px; height: 30px; font-size: 15px; }
+h3.mini { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+#adminMsg.bad { color: var(--warn); }

@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS ledger_changes (
 CREATE TABLE IF NOT EXISTS users (
   username TEXT PRIMARY KEY, display_name TEXT NOT NULL, role TEXT NOT NULL, persona_id TEXT,
   salt TEXT NOT NULL, pw_hash TEXT NOT NULL, created TEXT NOT NULL,
-  banned INTEGER NOT NULL DEFAULT 0, permissions TEXT NOT NULL DEFAULT '{}');
+  banned INTEGER NOT NULL DEFAULT 0, permissions TEXT NOT NULL DEFAULT '{}',
+  last_login TEXT, login_count INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS memories (
   id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, kind TEXT NOT NULL, key TEXT NOT NULL,
   text TEXT NOT NULL, created TEXT NOT NULL, updated TEXT NOT NULL, UNIQUE (username, kind, key));
@@ -50,7 +51,8 @@ _MIGRATED: set = set()
 # Columns added after a table first shipped. Additive only (ALTER TABLE ADD COLUMN with a default), so existing rows are kept,
 # the migration is idempotent, and an older build can still read the database (it ignores columns it does not know).
 ADDED_COLUMNS = {
-    "users": {"banned": "INTEGER NOT NULL DEFAULT 0", "permissions": "TEXT NOT NULL DEFAULT '{}'"},
+    "users": {"banned": "INTEGER NOT NULL DEFAULT 0", "permissions": "TEXT NOT NULL DEFAULT '{}'", "last_login": "TEXT",
+              "login_count": "INTEGER NOT NULL DEFAULT 0"},
     "fin_settings": {"ai_reports": "INTEGER NOT NULL DEFAULT 1", "assistant_lang": "TEXT NOT NULL DEFAULT 'auto'",
                      "ask_adjustments": "TEXT NOT NULL DEFAULT 'auto'", "voice_replies": "INTEGER NOT NULL DEFAULT 0",
                      "history_days": "INTEGER NOT NULL DEFAULT 90"},

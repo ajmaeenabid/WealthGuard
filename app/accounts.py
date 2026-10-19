@@ -70,10 +70,13 @@ def _insert(username: str, display: str, role: str, persona: Optional[str], pass
 
 
 def ensure_seed() -> None:
-    """Create the demo accounts that do not exist yet. Existing accounts (and changed passwords) are never touched."""
+    """Create the demo accounts on a brand-new database only. Once any account exists the list belongs to the administrator:
+    a demo account that was deleted stays deleted, and changed passwords are never touched."""
     c = db.connect()
     have = {r["username"] for r in c.execute("SELECT username FROM users").fetchall()}
     c.close()
+    if have:
+        return
     for name, (display, role, persona) in SEED.items():
         if name not in have:
             _insert(name, display, role, persona, SEED_PASSWORD)
@@ -132,6 +135,7 @@ def login(username: str, password: str) -> dict:
     _FAILS.pop(username, None)
     if row["banned"]:
         raise AuthError("This account has been suspended. Please contact an administrator.", 403)
+    store._write("UPDATE users SET last_login=?, login_count=login_count+1 WHERE username=?", (store.now(), username))
     return {"token": _issue_token(username), "user": public(row)}
 
 
@@ -188,11 +192,77 @@ def denied_tools(username: Optional[str]) -> frozenset:
 
 # ------------------------------------------------------------------------------------------ administration
 def list_users() -> list[dict]:
+    """Every account with live figures from the database. Counts only: an administrator never sees chat or finance contents."""
     c = db.connect()
-    rows = c.execute("SELECT * FROM users ORDER BY role='admin' DESC, username").fetchall()
-    chats = {r["username"]: r["n"] for r in c.execute("SELECT username, COUNT(*) AS n FROM conversations GROUP BY username")}
-    c.close()
-    return [dict(public(r), created=r["created"], chats=chats.get(r["username"], 0)) for r in rows]
+    try:
+        rows = c.execute("SELECT * FROM users ORDER BY role='admin' DESC, username").fetchall()
+        chats = {r["username"]: r["n"] for r in c.execute("SELECT username, COUNT(*) AS n FROM conversations GROUP BY username")}
+        sessions = {r["username"]: r["n"] for r in c.execute("SELECT username, COUNT(*) AS n FROM auth_tokens WHERE expires>? GROUP BY username", (time.time(),))}
+        txns = {r["username"]: r["n"] for r in c.execute("SELECT username, COUNT(*) AS n FROM fin_transactions WHERE deleted_at IS NULL GROUP BY username")}
+    finally:
+        c.close()
+    return [dict(public(r), created=r["created"], chats=chats.get(r["username"], 0), last_login=r["last_login"], login_count=r["login_count"],
+                 active_sessions=sessions.get(r["username"], 0), finance_transactions=txns.get(r["username"], 0)) for r in rows]
+
+
+def admin_summary() -> dict:
+    from datetime import datetime, timedelta, timezone
+    now = datetime.now(timezone.utc)
+    day_ago, week_ago = (now - timedelta(days=1)).isoformat(timespec="seconds"), (now - timedelta(days=7)).isoformat(timespec="seconds")
+    us = list_users()
+    return {"total": len(us), "active": sum(1 for u in us if not u["banned"]), "suspended": sum(1 for u in us if u["banned"]),
+            "admins": sum(1 for u in us if u["role"] == "admin"), "members": sum(1 for u in us if u["role"] != "admin"),
+            "new_7_days": sum(1 for u in us if u["created"] >= week_ago), "signed_in_24h": sum(1 for u in us if u["last_login"] and u["last_login"] >= day_ago),
+            "active_sessions": sum(u["active_sessions"] for u in us), "chats": sum(u["chats"] for u in us),
+            "never_signed_in": sum(1 for u in us if not u["last_login"]), "generated": store.now()}
+
+
+def create_user(username: str, password: str, display_name: str = "", role: str = "client") -> dict:
+    if role not in ("admin", "client"):
+        raise AuthError("Role must be 'admin' or 'client'.")
+    username = (username or "").strip().lower()
+    if not USERNAME_RE.match(username):
+        raise AuthError("Username must be 3-32 characters: letters, numbers, dot, dash or underscore.")
+    if len(password or "") < MIN_PASSWORD:
+        raise AuthError(f"Password must be at least {MIN_PASSWORD} characters.")
+    ensure_seed()
+    if _user_row(username):
+        raise AuthError("That username is already taken.", 409)
+    _insert(username, (display_name or username).strip()[:40] or username, role, None, password)
+    return public(_user_row(username))
+
+
+def revoke_sessions(username: str) -> int:
+    row = _target(username)
+    n = store._one("SELECT COUNT(*) AS n FROM auth_tokens WHERE username=?", (row["username"],))["n"]
+    store._write("DELETE FROM auth_tokens WHERE username=?", (row["username"],))
+    return n
+
+
+def delete_user(actor: str, username: str, confirm: str) -> dict:
+    """Permanently remove an account and everything it owns (chats, memory, finance data). The audit log keeps ids only."""
+    row = _target(username)
+    if row["username"] == actor:
+        raise AuthError("You cannot delete your own account.", 400)
+    if (confirm or "").strip().lower() != row["username"]:
+        raise AuthError(f'To delete this account, type its username ("{row["username"]}") to confirm.', 400)
+    if row["role"] == "admin" and _active_admins(row["username"]) == 0:
+        raise AuthError("At least one active administrator must remain.", 400)
+    from app.finance import privacy
+    u = row["username"]
+    c = db.connect()
+    try:
+        client_ids = [r["client_id"] for r in c.execute("SELECT client_id FROM conversations WHERE username=?", (u,))]
+    finally:
+        c.close()
+    for cid in client_ids:
+        for table, col in (("allocations", "client_id"), ("tickets", "client_id"), ("documents", "client_id"), ("ledger", "client_id"),
+                           ("ledger_changes", "client_id"), ("messages", "client_id"), ("clients", "id")):
+            store._write(f"DELETE FROM {table} WHERE {col}=?", (cid,))
+    privacy.erase_all(u, privacy.CONFIRM_PHRASE)
+    for table in ("conversations", "memories", "auth_tokens", "users"):
+        store._write(f"DELETE FROM {table} WHERE username=?", (u,))
+    return {"deleted": u, "conversations": len(client_ids)}
 
 
 def _target(username: str):

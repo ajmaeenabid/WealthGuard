@@ -757,77 +757,11 @@ function applyAccess(me) {
   }
 }
 
-// ---------------------------------------------------------------- administration: accounts, roles, per-account access
-function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
-
-async function adminCall(path, body, done) {
-  try { await api(path, body); await adminLoad(); $("adminMsg").textContent = t(done); $("adminMsg").classList.remove("bad"); }
-  catch (e) { $("adminMsg").textContent = e.message; $("adminMsg").classList.add("bad"); await adminLoad(); }
-}
-
-function adminRender(out) {
-  const box = $("adminUsers");
-  box.innerHTML = "";
-  const me = window.WGAuth.user.username;
-  out.users.forEach((u) => {
-    const card = el("div", "u-card" + (u.banned ? " banned" : ""));
-    const head = el("div", "u-head");
-    const av = el("span", "avatar", (u.display_name || u.username).replace(/^(Ms|Mr)\.\s*/i, "").charAt(0).toUpperCase());
-    const who = el("span", "who"); who.append(el("b", "", u.display_name), el("i", "", "@" + u.username + " · " + u.chats + " " + t("chats")));
-    const badges = el("span", "u-badges");
-    badges.append(el("span", "tag", u.role === "admin" ? t("Administrator") : t("Member")));
-    if (u.banned) badges.append(el("span", "tag bad", t("Suspended")));
-    head.append(av, who, badges);
-
-    const ctl = el("div", "u-controls");
-    const role = el("select"); role.setAttribute("aria-label", t("Role"));
-    [["client", t("Member")], ["admin", t("Administrator")]].forEach(([v, l]) => { const o = el("option", "", l); o.value = v; role.appendChild(o); });
-    role.value = u.role; role.disabled = u.username === me;
-    role.onchange = () => adminCall(`/api/admin/users/${u.username}/role`, { role: role.value }, "Role updated.");
-    const ban = el("button", u.banned ? "primary" : "warn", u.banned ? t("Restore access") : t("Suspend account"));
-    ban.type = "button"; ban.disabled = u.username === me;
-    ban.onclick = () => adminCall(`/api/admin/users/${u.username}/ban`, { banned: !u.banned }, u.banned ? "Account restored." : "Account suspended.");
-    const pw = el("button", "", t("Reset password")); pw.type = "button";
-    pw.onclick = () => {
-      const v = window.prompt(t("New password for") + " @" + u.username + " (" + t("at least 6 characters") + ")");
-      if (v) adminCall(`/api/admin/users/${u.username}/password`, { new_password: v }, "Password reset. The account was signed out everywhere.");
-    };
-    ctl.append(role, ban, pw);
-
-    const perms = el("div", "u-perms");
-    if (u.role === "admin") perms.append(el("p", "small muted", t("Administrators have every feature.")));
-    else Object.entries(out.features).forEach(([f, label]) => {
-      const lab = el("label", "perm"); const cb = el("input"); cb.type = "checkbox"; cb.checked = u.permissions[f] !== false;
-      cb.onchange = () => adminCall(`/api/admin/users/${u.username}/permissions`, { permissions: { [f]: cb.checked } }, "Access updated.");
-      lab.append(cb, el("span", "", t(label)));
-      perms.append(lab);
-    });
-    card.append(head, ctl, perms);
-    box.appendChild(card);
-  });
-}
-
-async function adminLoad() {
-  const users = await api("/api/admin/users", undefined, "GET");
-  adminRender(users);
-  $("adminCount").textContent = `${users.users.length} ${t("accounts")}`;
-  try {                                   // finance assistant AI use across all accounts: counts, tokens and estimated cost, never message text
-    const u = await api("/api/admin/ai-usage", undefined, "GET");
-    const box = $("adminAi");
-    const purposes = Object.entries(u.by_purpose).map(([k, v]) => `${esc(k)}: ${v.calls} calls`).join(" · ") || "no calls yet";
-    box.hidden = false;
-    box.innerHTML = `<h3>${esc(t("AI usage (30 days)"))} <span class="tag">${esc(u.model)}</span></h3><div class="kv">
-      <div><b>${esc(t("Calls"))}</b>${u.calls}</div><div><b>${esc(t("Tokens"))}</b>${(u.prompt_tokens + u.completion_tokens).toLocaleString("en-US")}</div>
-      <div><b>${esc(t("Estimated cost"))}</b>$${Number(u.est_cost_usd).toFixed(4)}</div><div><b>${esc(t("Failed calls"))}</b>${u.failed_calls}</div>
-      <div><b>${esc(t("Average latency"))}</b>${u.avg_latency_ms} ms</div><div><b>${esc(t("By purpose"))}</b>${purposes}</div></div>
-      <p class="small muted">${esc(u.note)}</p>`;
-  } catch (e) { /* usage is informational */ }
-}
-
 async function init() {
   if (window.WGVoice) window.WGVoice.setClientIdGetter(() => clientId);
   const me = window.WGAuth.user;
   applyAccess(me);
+  if (me.role === "admin") return;           // the administration portal (admin.js) starts itself and needs nothing from the advisor screens
   setChips();
   const [ps, pr, h] = await Promise.all([api("/api/personas", undefined, "GET"), api("/api/products", undefined, "GET"), api("/api/health", undefined, "GET")]);
   pr.forEach((p) => (products[p.id] = p));
@@ -836,7 +770,7 @@ async function init() {
   $("start").onclick = newChatView;
   $("chatForm").onsubmit = (ev) => { ev.preventDefault(); send($("chatInput").value); };
   $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null).then(() => {
-    if (me.role === "admin") adminLoad(); else { paintHero(); memLoad(); refreshChats(); }
+    if (me.role === "admin") { if (window.WGAdmin) window.WGAdmin.reload(); } else { paintHero(); memLoad(); refreshChats(); }
   });
   $("rpGo").onclick = rpStart;
   $("rcDl").onclick = rcDownload;
@@ -859,16 +793,6 @@ async function init() {
   $("docAttack").onclick = () => { $("docText").value = ATTACK; $("docName").value = "novayield_brochure.txt"; };
   $("auditTag").textContent = "";
   wireMemory();
-  if (me.role === "admin") {
-    $("adminManage").onclick = () => {
-      const open = $("adminUsers").hidden;
-      $("adminUsers").hidden = !open;
-      $("adminManage").setAttribute("aria-expanded", String(open));
-      $("adminManage").textContent = open ? t("Hide accounts") : t("Manage accounts");
-    };
-    await adminLoad();
-    return;
-  }
   await memLoad();
   newChatView();          // land on the welcome page; earlier chats are one click away in the sidebar
 }

@@ -102,6 +102,17 @@ class PermsReq(BaseModel):
     permissions: dict[str, bool]
 
 
+class NewUser(BaseModel):
+    username: str = Field(max_length=64)
+    password: str = Field(max_length=200)
+    display_name: str = Field("", max_length=40)
+    role: str = Field("client", max_length=10)
+
+
+class DeleteUser(BaseModel):
+    confirm: str = Field(max_length=64)
+
+
 class NewPassword(BaseModel):
     new_password: str = Field(max_length=200)
 
@@ -183,7 +194,7 @@ def _admin(request: Request) -> dict:
 @app.get("/api/admin/users")
 def admin_users(request: Request):
     _admin(request)
-    return {"users": accounts.list_users(), "features": accounts.FEATURES}
+    return {"users": accounts.list_users(), "features": accounts.FEATURES, "summary": accounts.admin_summary()}
 
 
 @app.post("/api/admin/users/{username}/ban")
@@ -209,6 +220,39 @@ def admin_permissions(username: str, req: PermsReq, request: Request):
     audit.append("system", "admin_permissions", "T2", {"admin": me["username"], "target": out["username"],
                                                        "denied": sorted(k for k, v in out["permissions"].items() if not v)})
     return out
+
+
+@app.post("/api/admin/users")
+def admin_create(req: NewUser, request: Request):
+    me = _admin(request)
+    out = _auth_call(accounts.create_user, req.username, req.password, req.display_name, req.role)
+    audit.append("system", "admin_user_created", "T2", {"admin": me["username"], "target": out["username"], "role": out["role"]})
+    return out
+
+
+@app.post("/api/admin/users/{username}/signout")
+def admin_signout(username: str, request: Request):
+    me = _admin(request)
+    n = _auth_call(accounts.revoke_sessions, username)
+    audit.append("system", "admin_signout", "T2", {"admin": me["username"], "target": username.strip().lower(), "sessions": n})
+    return {"signed_out": n}
+
+
+@app.post("/api/admin/users/{username}/delete")
+def admin_delete(username: str, req: DeleteUser, request: Request):
+    me = _admin(request)
+    out = _auth_call(accounts.delete_user, me["username"], username, req.confirm)
+    audit.append("system", "admin_user_deleted", "T2", {"admin": me["username"], "target": out["deleted"], "conversations": out["conversations"]})
+    return out
+
+
+@app.get("/api/admin/activity")
+def admin_activity(request: Request, limit: int = Query(40, ge=1, le=200)):
+    """Recent account-level events: sign-ins, sign-ups and every administrator action (who did what to whom, never contents)."""
+    _admin(request)
+    kinds = ("login", "account_created", "password_changed")
+    rows = [e for e in audit.list_entries(None) if e["action"] in kinds or e["action"].startswith("admin_")]
+    return {"entries": [{"ts": e["ts"], "action": e["action"], "detail": e["payload"] if isinstance(e["payload"], dict) else {}} for e in rows[-limit:][::-1]]}
 
 
 @app.get("/api/admin/ai-usage")

@@ -82,8 +82,8 @@ def test_receipts_reminders_activity_and_report_language_are_wired_in_the_interf
         assert token in JS or token in HTML, token
     assert 'id="modeBadge"' in HTML and 'id="adminAi"' in HTML
     assert "only works while WealthGuard is open" in JS                                  # no pretence of server-side push
-    app = c.get("/static/app.js").text
-    assert "/api/admin/ai-usage" in app and "never message text" in app
+    admin = c.get("/static/admin.js").text
+    assert "/ai-usage" in admin and "never message text" in admin
 
 
 def test_sign_in_is_per_tab_session_and_the_admin_member_list_really_hides():

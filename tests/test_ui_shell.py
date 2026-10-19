@@ -199,7 +199,7 @@ def test_memory_panel_and_admin_console_exist_and_admins_do_not_see_the_client_s
     for el in ['id="memCard"', 'id="memFacts"', 'id="memNotes"', 'id="memSums"', 'id="memNoteAdd"', 'id="memDemo"', 'id="memClear"',
                'id="adminView"', 'id="adminUsers"']:
         assert HTML.count(el) == 1, el
-    for token in ["/api/memory", "/api/admin/users", "applyAccess", "adminRender", "memRender", "FEATURE_PANELS"]:
+    for token in ["/api/memory", "applyAccess", "memRender", "FEATURE_PANELS"]:
         assert token in APP, token
     assert '.is-admin [data-for="user"]' in CSS and ".is-admin .chat" in CSS and ".nav[hidden]" in CSS
     for pid in ["profileCard", "allocCard", "ledgerCard", "memCard", "docCard"]:
