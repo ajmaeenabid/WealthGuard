@@ -23,7 +23,7 @@
       <span class="seal" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
       <span class="wordmark">WealthGuard</span>
     </div>
-    <div class="tagline"><span class="tg-main" data-i18n="tagline">Compliance-first wealth advice</span><span class="tg-sub" data-i18n="tagline2">Every recommendation checked. Every step on record.</span></div>
+    <div class="tagline"><span class="tg-main" data-i18n="tagline">Compliance-first wealth advice</span></div>
 
     <div class="modeswitch" id="modeSwitch" role="tablist" aria-label="Workspace" hidden>
       <button type="button" role="tab" id="modeAdvisor" aria-selected="true"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Advisor</span></button>
@@ -135,7 +135,8 @@
         <p class="hero-sub" data-i18n="adminLead">Suspend accounts, change roles and switch features on or off for each account. Chat contents stay private to their owners; every action here is written to the audit log.</p>
       </div>
       <div id="adminAi" class="fcard admin-ai" hidden></div>
-      <div id="adminUsers" class="admin-users"></div>
+      <div class="admin-manage"><button type="button" id="adminManage" class="primary" aria-expanded="false" aria-controls="adminUsers">Manage accounts</button><span class="muted small" id="adminCount"></span></div>
+      <div id="adminUsers" class="admin-users" hidden></div>
       <p id="adminMsg" class="small muted" role="status"></p>
     </section>
       <section class="money" id="moneyView" aria-label="My money" hidden>

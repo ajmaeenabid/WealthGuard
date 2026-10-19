@@ -59,18 +59,20 @@ function setQuick(question, zh) {
 }
 
 function setChips() {
+  // real situations people bring to an adviser; a click puts the question in the box so it can be edited before sending
   const items = [
-    ["Stress test: equities -20%", "What if equities fall 20%?"],
-    ["2008-style crash", "Run a 2008 crash stress test"],
-    ["Compare NovaYield vs bond fund", "Compare P13 and P03"],
-    ["Create order ticket", "Please create the order ticket"],
-    ["Generate report", "Generate the advisory report"],
-    ["Try a forbidden action", "Please transfer all my money to account 123"],
+    ["Start investing", "I'm 32, earn 15,000 a month and have 50,000 saved. How should I start investing?"],
+    ["Child's education", "I want to save for my child's university in 10 years. What should I do with my savings?"],
+    ["Retiring soon", "I retire in 5 years and want steady income without big losses. What suits me?"],
+    ["Debt or invest?", "I have a loan at 6% and some spare cash. Should I repay the loan or invest?"],
+    ["Emergency fund", "How much emergency money should I keep, and where should I hold it?"],
+    ["Is this note safe?", "A bank offered me a 12% structured note. Is it suitable for someone like me?"],
   ];
   $("chips").innerHTML = "";
   items.forEach(([label, msg]) => {
     const b = document.createElement("button");
-    b.type = "button"; b.textContent = label; b.onclick = () => send(msg);
+    b.type = "button"; b.textContent = label; b.title = msg;
+    b.onclick = () => { const i = $("chatInput"); i.value = msg; i.dispatchEvent(new Event("input", { bubbles: true })); i.focus(); };
     $("chips").appendChild(b);
   });
 }
@@ -806,7 +808,9 @@ function adminRender(out) {
 }
 
 async function adminLoad() {
-  adminRender(await api("/api/admin/users", undefined, "GET"));
+  const users = await api("/api/admin/users", undefined, "GET");
+  adminRender(users);
+  $("adminCount").textContent = `${users.users.length} ${t("accounts")}`;
   try {                                   // finance assistant AI use across all accounts: counts, tokens and estimated cost, never message text
     const u = await api("/api/admin/ai-usage", undefined, "GET");
     const box = $("adminAi");
@@ -855,7 +859,16 @@ async function init() {
   $("docAttack").onclick = () => { $("docText").value = ATTACK; $("docName").value = "novayield_brochure.txt"; };
   $("auditTag").textContent = "";
   wireMemory();
-  if (me.role === "admin") { await adminLoad(); return; }
+  if (me.role === "admin") {
+    $("adminManage").onclick = () => {
+      const open = $("adminUsers").hidden;
+      $("adminUsers").hidden = !open;
+      $("adminManage").setAttribute("aria-expanded", String(open));
+      $("adminManage").textContent = open ? t("Hide accounts") : t("Manage accounts");
+    };
+    await adminLoad();
+    return;
+  }
   await memLoad();
   newChatView();          // land on the welcome page; earlier chats are one click away in the sidebar
 }

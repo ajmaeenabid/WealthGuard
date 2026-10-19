@@ -140,6 +140,7 @@
   }
 
   function describe() {
+    return;                      // the engine description line was removed on purpose; status messages still use the note
     const n = $("voiceNote");
     if (!n) return;
     const e = engine();

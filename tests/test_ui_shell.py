@@ -182,9 +182,10 @@ def test_voice_settings_no_longer_use_a_sun_icon_and_the_tagline_is_a_real_headl
     btn = re.search(r'<button[^>]*id="vsetBtn".*?</button>', HTML, re.S).group(0)
     assert "M12 2.5v3M12 18.5v3" not in btn and 'r="2"' in btn        # sun rays are gone, sliders are in
     assert HTML.count('class="vrow"') == 2
-    assert 'class="tg-main"' in HTML and 'class="tg-sub"' in HTML
+    assert 'class="tg-main"' in HTML and 'tg-sub' not in HTML and "Every recommendation checked" not in HTML      # one line, no second caption
+    assert re.search(r"\.tg-main \{[^}]*white-space: nowrap", CSS)
     size = int(re.search(r"\.tg-main \{[^}]*font:[^;]*?(\d+)px", CSS).group(1))
-    assert size >= 19
+    assert size >= 17
 
 
 def test_new_interface_words_have_chinese_translations():
