@@ -16,7 +16,7 @@ from app import accounts as auth
 import logging
 import sqlite3
 
-from app.finance import ai, analytics, assistant, books, exchange, jurisdictions, money, planning, privacy, receipts, reports, settings, taxonomy
+from app.finance import ai, analytics, assistant, books, exchange, fx, jurisdictions, money, planning, privacy, receipts, reports, settings, taxonomy
 from app.finance.books import FinanceError
 
 router = APIRouter(prefix="/api/fin")
@@ -127,6 +127,7 @@ class TxnIn(BaseModel):
     items: Optional[list[ItemIn]] = None
     idempotency_key: Optional[str] = Field(None, max_length=80)
     currency: Optional[str] = Field(None, max_length=3)
+    convert: Optional[bool] = None            # the amounts are in `currency`: convert them to the account's currency at today's exchange rate
 
 
 class TxnPatch(TxnIn):
@@ -525,6 +526,34 @@ def relabel_all(body: RelabelIn, request: Request):
             books.set_base_currency(u, body.currency)
         return out
     return _call(run)
+
+
+@router.get("/fx")
+def fx_summary(request: Request):
+    _user(request)
+    return fx.summary()
+
+
+@router.post("/fx/refresh")
+def fx_refresh(request: Request):
+    u = _user(request)
+    _limit(u, "report")
+    try:
+        fx.refresh()
+    except fx.FxError:
+        pass
+    return fx.summary()
+
+
+@router.get("/fx/convert")
+def fx_convert(amount: str, request: Request, frm: str = Query(..., alias="from", max_length=3), to: str = Query(..., max_length=3)):
+    _user(request)
+    try:
+        return fx.convert_amount(amount, frm, to)
+    except fx.FxError as e:
+        raise HTTPException(503, e.message)
+    except money.MoneyError as e:
+        raise HTTPException(400, str(e))
 
 
 @router.get("/version")

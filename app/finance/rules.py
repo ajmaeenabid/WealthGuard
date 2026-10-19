@@ -226,6 +226,58 @@ def note_of(text: str) -> Optional[str]:
     return _clean(m.group(1))[:300] if m else None
 
 
+
+# ---------------------------------------------------------------------------------------------- which currency was said
+# Only currencies the app supports. "¥" is read as the Chinese yuan (the Japanese yen is not supported). A bare number has NO currency: it is the
+# account's own, exactly as before. A word like 块 or 元 only counts right after a digit ("10块"), never inside other words.
+CURRENCY_WORDS = [
+    ("BDT", r"৳|টাকা|\b(?:taka|takas|tk|bdt)\b|塔卡|孟加拉塔卡|孟加拉国塔卡"),
+    ("CNY", r"[¥￥]|人民币|\d\s*元|\d\s*块钱|\d\s*块(?![一-鿿])|\d\s*块(?=[买吃用花付喝])|\b(?:yuan|rmb|cny|renminbi|kuai)\b|ইউয়ান"),
+    ("USD", r"\$|\b(?:usd|dollars?|bucks)\b|美元|美金|ডলার"),
+]
+
+
+def currencies_in(text: str) -> list[tuple[int, str]]:
+    t = ascii_digits(text or "").lower()
+    found = []
+    for code, pat in CURRENCY_WORDS:
+        for m in re.finditer(pat, t):
+            found.append((m.start(), code))
+    return sorted(found)
+
+
+def detect_currency(text: str) -> tuple[Optional[str], list[str]]:
+    """(the one currency mentioned, []) or (None, [several]) when the message names more than one, or (None, []) when it names none."""
+    codes = []
+    for _, c in currencies_in(text):
+        if c not in codes:
+            codes.append(c)
+    return (codes[0], []) if len(codes) == 1 else (None, codes if len(codes) > 1 else [])
+
+
+CONVERT_CUE = re.compile(r"\b(in|to|into|convert(?:ed)?|equals?|worth|exchange)\b|=|等于|折合|换成|兑换|换算|多少|কত|সমান|কনভার্ট", re.I)
+
+
+def convert_request(text: str) -> Optional[dict]:
+    """"How much is 100 yuan in taka?" / "100元是多少塔卡" / "১০০ টাকা কত ইউয়ান": {amount, from, to}. Needs a number, two different currencies and a conversion cue."""
+    t = ascii_digits(text or "").strip()
+    low = t.lower()
+    found = currencies_in(low)
+    codes = []
+    for _, c in found:
+        if c not in codes:
+            codes.append(c)
+    if len(codes) < 2 or not CONVERT_CUE.search(low):
+        return None
+    if classify_type(t) and not re.search(r"how much|what|convert|多少|কত|换", low):
+        return None                                                  # "I paid 100 yuan, which was 1800 taka" is a purchase, not a question
+    nums = _spans(low)
+    if not nums:
+        return None
+    return {"amount": nums[0][2], "from": found[0][1], "to": next(c for c in codes if c != found[0][1])}
+
+
+
 def classify_type(text: str) -> Optional[str]:
     t = ascii_digits(text).lower()
     if re.search(REFUND_WORDS, t):
@@ -280,6 +332,9 @@ def extract(text: str, today: date) -> dict:
         return {"intent": "deny"}
     if DELETE.search(low):
         return {"intent": "delete_transaction"}
+    cv = convert_request(t)
+    if cv:
+        return {"intent": "query", "query": dict(cv, kind="convert")}
     amt = amounts(t)
     typ = classify_type(t)
     # a question about the user's money, not a new entry
@@ -294,6 +349,11 @@ def extract(text: str, today: date) -> dict:
     if typ:
         tx["type"] = typ
     tx.update({k: v for k, v in amt.items()})
+    one, several = detect_currency(t)
+    if one:
+        tx["currency"] = one
+    elif several:
+        tx["currency_options"] = several                                    # two currencies in one entry: ask which one the amount was in
     basis = amount_basis(t)
     if basis:
         tx["amount_basis"] = basis
@@ -352,6 +412,12 @@ def answer_slot(slot: str, text: str, today: date, options: Optional[list] = Non
     """Interpret a short reply to the question the assistant just asked. Returns a patch for the draft (may be empty)."""
     t = ascii_digits(text or "").strip()
     low = t.lower()
+    if slot == "currency":
+        one, _ = detect_currency(t)
+        if one:
+            return {"currency": one}
+        m = re.search(r"@b(bdt|cny|usd)@b".replace("@", chr(92)), low)
+        return {"currency": m.group(1).upper()} if m else {}
     if slot == "amount_basis":
         b = amount_basis(t)
         if b:

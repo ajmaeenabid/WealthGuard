@@ -31,6 +31,13 @@
     const body = sym(cur) + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     return (n < 0 ? "-" : signed && n > 0 ? "+" : "") + body;
   };
+  // other-currency accounts, shown as a clearly labelled estimate next to (never inside) the exact totals
+  const estLine = (pos, field) => {
+    const e = pos.converted_estimate;
+    if (!e) return "";
+    if (!e.available) return `<div class="d est">${esc(e.reason)}</div>`;
+    return `<div class="d est" title="${esc(e.note)}">≈ ${money(e[field])} with other-currency accounts converted (estimate · ${esc(e.source)}, ${esc(e.provider_date)}${e.stale ? ", " + e.age_hours + " h old" : ""})</div>`;
+  };
   const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
   const pct = (x) => (x === null || x === undefined ? "—" : (x * 100).toFixed(1).replace(/\.0$/, "") + "%");
   const day = (d) => (d ? String(d).slice(0, 10) : "");
@@ -139,8 +146,8 @@
         ${kpi("Spending", money(s.spending), cmpHtml(cmp.spending, true))}
         ${kpi("Net cash flow", money(s.net_cash_flow, true), cmpHtml(cmp.net_cash_flow, false))}
         ${kpi("Savings rate", rate === null || rate === undefined ? "—" : pct(rate), `<div class="d">${s.savings_rate_actual === null || s.savings_rate_actual === undefined ? "income needed to compute" : "moved to savings: " + pct(s.savings_rate_actual)}</div>`)}
-        ${kpi("Liquid funds", pos.accounts.length ? money(pos.liquid) : "—", `<div class="d">cash ${money(pos.cash)} · bank ${money(pos.bank)} · wallets ${money(pos.wallet)}</div>`)}
-        ${kpi("Net worth", pos.accounts.length ? money(pos.net_worth) : "—", `<div class="d">${pos.liabilities !== "0.00" ? "owes " + money(pos.liabilities) : "no liabilities recorded"}</div>`)}
+        ${kpi("Liquid funds", pos.accounts.length ? money(pos.liquid) : "—", `<div class="d">cash ${money(pos.cash)} · bank ${money(pos.bank)} · wallets ${money(pos.wallet)}</div>${estLine(pos, "liquid")}`)}
+        ${kpi("Net worth", pos.accounts.length ? money(pos.net_worth) : "—", `<div class="d">${pos.liabilities !== "0.00" ? "owes " + money(pos.liabilities) : "no liabilities recorded"}</div>${estLine(pos, "net_worth")}`)}
       </div>
       <div class="fin-grid fin-cols">
         <div class="fcard"><h3>Income vs spending</h3>${chartBox("chIncExp", "Income versus spending, this period and the previous one")}</div>
@@ -265,7 +272,7 @@
     box.innerHTML = `<div class="table-wrap"><table class="ftable"><caption class="sr-only">Transactions</caption><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account</th><th class="num">Amount</th></tr></thead><tbody>${res.items.map((t) => {
       const inflow = t.type === "income" || t.type === "refund" || (t.type === "adjustment" && t.direction === "in");
       const amt = t.type === "transfer" ? `↔ ${money(t.final_amount, false, t.currency)}` : money(inflow ? t.final_amount : "-" + t.final_amount, inflow, t.currency);
-      const detail = [t.item_name, t.discount !== "0.00" ? "discount " + money(t.discount) : "", t.tax !== "0.00" ? "VAT " + money(t.tax) : ""].filter(Boolean).join(" · ");
+      const detail = [t.item_name, t.original ? "paid " + money(t.original.amount, false, t.original.currency) + " (converted)" : "", t.to_amount && t.type === "transfer" ? "received " + money(t.to_amount, false, (state.accounts.find((a) => a.id === t.to_account_id) || {}).currency) : "", t.discount !== "0.00" ? "discount " + money(t.discount) : "", t.tax !== "0.00" ? "VAT " + money(t.tax) : ""].filter(Boolean).join(" · ");
       return `<tr data-txn="${esc(t.id)}" tabindex="0"><td data-label="Date">${esc(day(t.ts))}${t.scheduled ? ` <span class="chip scheduled" title="Dated in the future: not part of any balance or total yet">scheduled</span>` : ""}</td><td data-label="Description"><b>${esc(t.merchant || t.item_name || t.type)}</b>${t.has_receipt ? ` <span class="chip" title="A receipt photo is attached">receipt</span>` : ""}${detail ? `<div class="muted small">${esc(detail)}</div>` : ""}</td><td data-label="Category">${esc(t.category || t.type)}${t.essential === true ? ` <span class="chip ok">essential</span>` : ""}</td><td data-label="Account">${esc(names[t.account_id] || "")}${t.to_account_id ? " → " + esc(names[t.to_account_id] || "") : ""}</td><td class="num amt ${inflow ? "in" : "out"}" data-label="Amount">${amt}</td></tr>`;
     }).join("")}</tbody></table></div>
       <div class="pager"><span>${res.total} transactions · page ${res.page} of ${res.pages}</span><span><button type="button" id="pgPrev" ${res.page <= 1 ? "disabled" : ""}>Previous</button> <button type="button" id="pgNext" ${res.page >= res.pages ? "disabled" : ""}>Next</button></span></div>`;
@@ -332,6 +339,8 @@
         <div class="row2"><label>Date<input id="tfDate" type="date" value="${esc(t ? day(t.ts) : todayStr())}" required></label>
           <label>Amount paid<input id="tfFinal" inputmode="decimal" placeholder="0.00" value="${esc(t ? t.final_amount : "")}" autocomplete="off"></label></div>
         <label id="tfAccL">Account<select id="tfAcc">${accOpts(t && t.account_id)}</select></label>
+        ${edit ? (t.original ? `<p class="muted small" id="tfOrig">Originally ${esc(money(t.original.amount, false, t.original.currency))}, converted at 1 ${esc(t.original.currency)} = ${esc(t.original.rate)} ${esc(t.original.converted_to)} (${esc(String(t.original.source || "").replace("@", ", "))}). Editing the amount replaces this record.</p>` : "") : `<label id="tfCurL">Paid in<select id="tfCur">${state.meta.currencies.map((c) => `<option value="${c.code}">${c.symbol}  ${c.code}</option>`).join("")}</select></label>
+        <div class="fin-preview" id="tfFx" role="status" hidden></div>`}
         <label id="tfToL" hidden>To account<select id="tfTo">${accOpts(t && t.to_account_id)}</select></label>
         <label id="tfDirL" hidden>Direction<select id="tfDir"><option value="in">Money in</option><option value="out">Money out</option></select></label>
         <details id="tfMore" ${t && (t.discount !== "0.00" || t.tax !== "0.00" || t.service_charge !== "0.00") ? "open" : ""}><summary>Discount, VAT and service charge</summary>
@@ -377,6 +386,33 @@
       ["tfGross", "tfDisc", "tfTax", "tfSvc"].forEach((id) => $(id).addEventListener("input", preview));
       preview();
       const err = (m) => { $("tfErr").textContent = m; $("tfErr").hidden = !m; };
+      // paying in a different currency than the account's: show the conversion (real rate, source, date) before saving; nothing is converted silently
+      const accCur = () => (state.accounts.find((a) => a.id === $("tfAcc").value) || {}).currency || state.currency;
+      let fxTimer = null;
+      const fxPreview = () => {
+        const box = $("tfFx"); if (!box) return;
+        clearTimeout(fxTimer);
+        fxTimer = setTimeout(async () => {
+          if (!$("tfCur") || !$("tfFinal") || !$("tfAcc")) return;               // the form was closed before the timer fired
+          const from = $("tfCur").value, to = accCur(), amt = $("tfFinal").value.trim();
+          const dest = type === "transfer" ? (state.accounts.find((a) => a.id === $("tfTo").value) || {}).currency : null;
+          const pair = from !== to ? [from, to] : (dest && dest !== to ? [to, dest] : null);
+          if (!pair) { box.hidden = true; return; }
+          box.hidden = false;
+          if (!amt || Number.isNaN(toMinor(amt))) { box.textContent = `This will be converted from ${pair[0]} to ${pair[1]} at today's exchange rate.`; return; }
+          try {
+            const r = await api(`/fx/convert?amount=${encodeURIComponent(amt)}&from=${pair[0]}&to=${pair[1]}`, undefined, "GET");
+            const q = r.quote;
+            box.textContent = `${money(r.amount, false, pair[0])} ≈ ${money(r.converted, false, pair[1])}  ·  1 ${pair[0]} = ${q.rate.replace(/(\.\d{5})\d+/, "$1")} ${pair[1]}  ·  ${q.source_name}, ${q.provider_date}${q.stale ? " (rate is " + q.age_hours + " h old)" : ""}. Indicative: your bank or wallet may use another rate.`;
+          } catch (e) { box.textContent = `I can't get a current exchange rate right now, so ${pair[0]} cannot be converted to ${pair[1]}. Enter the amount in ${pair[1]} instead.`; }
+        }, 350);
+      };
+      if ($("tfCur")) {
+        const sync = () => { $("tfCur").value = accCur(); fxPreview(); };
+        $("tfAcc").addEventListener("change", sync); $("tfCur").addEventListener("change", fxPreview); $("tfFinal").addEventListener("input", fxPreview); $("tfTo").addEventListener("change", fxPreview);
+        f.querySelectorAll("#tfType button").forEach((b) => b.addEventListener("click", fxPreview));
+        sync();
+      }
       if (edit) wireReceipt(t);
       if ($("tfCancel")) $("tfCancel").onclick = closeModal;
       if ($("tfDel")) $("tfDel").onclick = async () => {
@@ -408,6 +444,11 @@
         body2.recurring = $("tfRec").checked;
         body2.tags = $("tfTags").value.split(",").map((x) => x.trim()).filter(Boolean);
         body2.note = $("tfNote").value.trim();
+        if (!edit) {
+          if ($("tfCur") && $("tfCur").value !== accCur()) { body2.currency = $("tfCur").value; body2.convert = true; }
+          const destAcc = type === "transfer" ? state.accounts.find((a) => a.id === $("tfTo").value) : null;
+          if (destAcc && destAcc.currency !== accCur()) body2.convert = true;
+        }
         if (!edit) body2.idempotency_key = key;                           // double-clicking Save can never create two records
         $("tfSave").disabled = true;
         try { await api(edit ? "/transactions/" + t.id : "/transactions", body2); if (t && t._draft) await api("/assistant/cancel", {}); closeModal(); toast(edit ? "Transaction updated" : "Transaction saved"); afterChange(); }
@@ -458,11 +499,11 @@
     banner(accs.length ? "" : "Add the places your money lives (cash, bank, bKash…) with today's balance. That is the starting point for everything else.");
     root.innerHTML = `
       <div class="fin-grid fin-kpis">
-        <div class="fcard kpi"><div class="l">Liquid funds</div><div class="v">${money(pos.liquid)}</div><div class="d">cash, bank, wallets, savings</div></div>
+        <div class="fcard kpi"><div class="l">Liquid funds</div><div class="v">${money(pos.liquid)}</div><div class="d">cash, bank, wallets, savings</div>${estLine(pos, "liquid")}</div>
         <div class="fcard kpi"><div class="l">Liabilities</div><div class="v">${money(pos.liabilities)}</div><div class="d">cards and loans</div></div>
-        <div class="fcard kpi"><div class="l">Net worth</div><div class="v">${money(pos.net_worth)}</div><div class="d">${pos.excluded_other_currency.length ? "excludes other-currency accounts: " + esc(pos.excluded_other_currency.join(", ")) : "accounts in " + esc(pos.currency)}</div></div>
+        <div class="fcard kpi"><div class="l">Net worth</div><div class="v">${money(pos.net_worth)}</div><div class="d">${pos.excluded_other_currency.length ? "excludes other-currency accounts: " + esc(pos.excluded_other_currency.join(", ")) : "accounts in " + esc(pos.currency)}</div>${estLine(pos, "net_worth")}</div>
       </div>
-      <div class="fin-grid fin-cols">${accs.map((a) => `<div class="fcard acc-card" style="${a.archived ? "opacity:.55" : ""}"><h3>${esc(a.type.replace("_", " "))}${a.archived ? ` <span class="chip">archived</span>` : ""}</h3><div><b>${esc(a.name)}</b></div><div class="bal ${a.balance_minor < 0 ? "neg" : ""}">${money(a.balance, false, a.currency)}</div><div class="muted small">opening ${money(a.opening_balance, false, a.currency)} on ${esc(a.opening_date)}</div><div class="fin-toolbar" style="margin:6px 0 0"><button type="button" data-edit="${esc(a.id)}">Edit</button><button type="button" data-rec="${esc(a.id)}">Check balance</button></div></div>`).join("") || `<div class="fcard">${emptyHtml("No accounts yet.")}</div>`}</div>`;
+      <div class="fin-grid fin-cols">${accs.map((a) => `<div class="fcard acc-card" style="${a.archived ? "opacity:.55" : ""}"><h3>${esc(a.type.replace("_", " "))}${a.archived ? ` <span class="chip">archived</span>` : ""}</h3><div><b>${esc(a.name)}</b></div><div class="bal ${a.balance_minor < 0 ? "neg" : ""}">${money(a.balance, false, a.currency)}</div>${(() => { const e = pos.converted_estimate; const r = e && e.available && e.accounts.find((x) => x.id === a.id); return r ? `<div class="muted small est">≈ ${money(r.converted, false, pos.currency)} (estimate)</div>` : ""; })()}<div class="muted small">opening ${money(a.opening_balance, false, a.currency)} on ${esc(a.opening_date)}</div><div class="fin-toolbar" style="margin:6px 0 0"><button type="button" data-edit="${esc(a.id)}">Edit</button><button type="button" data-rec="${esc(a.id)}">Check balance</button></div></div>`).join("") || `<div class="fcard">${emptyHtml("No accounts yet.")}</div>`}</div>`;
     root.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => openAccountForm(accs.find((a) => a.id === b.dataset.edit))));
     root.querySelectorAll("[data-rec]").forEach((b) => (b.onclick = () => openReconcile(accs.find((a) => a.id === b.dataset.rec))));
   }
@@ -870,7 +911,7 @@
     const root = $("finTab-settings");
     $("finSub").textContent = "How the assistant behaves, what is sent to AI services, and what you can delete.";
     banner("");
-    const [st, usage, meta] = await Promise.all([api("/settings", undefined, "GET"), api("/ai-usage", undefined, "GET"), api("/meta", undefined, "GET")]);
+    const [st, usage, meta, rates] = await Promise.all([api("/settings", undefined, "GET"), api("/ai-usage", undefined, "GET"), api("/meta", undefined, "GET"), api("/fx", undefined, "GET").catch(() => ({ available: false, message: "Exchange rates could not be loaded." }))]);
     state.meta = meta;
     if (window.WGVoice && window.WGVoice.setSpeak) window.WGVoice.setSpeak(st.voice_replies);
     const accs = state.accounts.length ? state.accounts : await refreshAccounts();
@@ -899,6 +940,10 @@
         <p>${meta.ai.enabled ? `Language understanding and report explanations use <b>${esc(meta.ai.model)}</b> through Groq. The key stays on the server.` : "No AI key is configured, so the built-in rules understand your messages and explain your reports. Everything still works."}</p>
         <div class="kv"><div><b>Calls (30 days)</b>${usage.calls}</div><div><b>Tokens</b>${(usage.prompt_tokens + usage.completion_tokens).toLocaleString("en-US")}</div><div><b>Estimated cost</b>$${Number(usage.est_cost_usd).toFixed(4)}</div><div><b>Failed calls</b>${usage.failed_calls}</div></div>
         <p class="estimate-note">${esc(usage.note)}</p></div>
+      <div class="fcard"><h3>Exchange rates <span class="tag ${rates.available ? (rates.stale ? "bad" : "good") : "bad"}">${rates.available ? (rates.stale ? "stale" : "live") : "unavailable"}</span></h3>
+        ${rates.available ? `<p>Used when you record money in a currency other than the account's, and for the converted estimates. <b>1 USD</b> = ${["CNY", "BDT"].map((c) => `<b>${esc(rates.per_usd[c].replace(/(\.\d{4})\d+/, "$1"))} ${c}</b>`).join(" = ")}.</p>
+          <p class="estimate-note">${esc(rates.source)} · rate date ${esc(rates.provider_date)} · fetched ${esc(String(rates.fetched).replace("T", " ").slice(0, 16))} UTC (${rates.age_hours} h ago). ${esc(rates.note)} ${esc(rates.attribution)}.</p>` : `<p>${esc(rates.message || "No exchange rate is available.")} Until one is, money can only be recorded in each account's own currency; nothing is estimated or invented.</p>`}
+        <div class="fin-toolbar"><button type="button" id="stFxRefresh">Refresh rates now</button></div></div>
       <div class="fcard"><h3>What is sent where</h3>
         <ul class="flist"><li class="frow"><span>Messages to the assistant: your words, your account names and the draft being discussed go to the AI service. Card, account and phone numbers (10+ digits) are hidden first. Balances and other transactions are never sent.</span></li>
         <li class="frow"><span>Report explanations: summary figures only (totals, categories, goals), never individual transactions.</span></li>
@@ -929,6 +974,7 @@
     $("stVoiceOn").onchange = () => save({ voice_enabled: $("stVoiceOn").checked });
     $("stSpeech").onchange = () => save({ speech_lang: $("stSpeech").value });
     $("stLarge").onchange = () => { document.documentElement.classList.toggle("large-text", $("stLarge").checked); save({ large_text: $("stLarge").checked }); };
+    $("stFxRefresh").onclick = async () => { $("stFxRefresh").disabled = true; try { await api("/fx/refresh", {}); } catch (e) { /* the card below says what happened */ } loadSettings(); };
     $("stAi").onchange = () => save({ ai_reports: $("stAi").checked });
     $("stLang").onchange = () => save({ assistant_lang: $("stLang").value });
     $("stAdj").onchange = () => save({ ask_adjustments: $("stAdj").value });

@@ -89,7 +89,7 @@ def test_refunds_return_money_to_the_account_and_cannot_exceed_the_purchase():
 def test_transfers_validate_their_accounts_and_currencies():
     a, b = acct("A", "cash", "100"), acct("B", "bank", "0")
     usd = books.create_account(U, "Dollar", "bank", "0", currency="USD")
-    for bad, msg in [({"to_account_id": a["id"]}, "two different"), ({"to_account_id": usd["id"]}, "same currency"), ({}, "No such account")]:
+    for bad, msg in [({"to_account_id": a["id"]}, "two different"), ({"to_account_id": usd["id"]}, "currency conversion"), ({}, "No such account")]:
         with pytest.raises(FinanceError, match=msg):
             books.create_transaction(U, dict({"type": "transfer", "account_id": a["id"], "amount": "10"}, **bad))
     with pytest.raises(FinanceError, match="Only a transfer"):

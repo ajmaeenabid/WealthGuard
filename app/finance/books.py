@@ -15,7 +15,7 @@ import uuid
 from typing import Optional
 
 from app import db, store
-from app.finance import money, taxonomy
+from app.finance import fx, money, taxonomy
 from app.finance.money import MoneyError
 from app.security import audit
 
@@ -210,7 +210,7 @@ def balances(user: str, as_of: Optional[str] = None) -> dict[str, int]:
                   WHEN 'adjustment' THEN CASE direction WHEN 'in' THEN final_minor ELSE -final_minor END END) AS d
                   FROM fin_transactions WHERE username=? AND deleted_at IS NULL AND ts<=? GROUP BY account_id
                   UNION ALL
-                  SELECT to_account_id, SUM(final_minor) FROM fin_transactions
+                  SELECT to_account_id, SUM(COALESCE(to_final_minor, final_minor)) FROM fin_transactions
                   WHERE username=? AND deleted_at IS NULL AND ts<=? AND type='transfer' AND to_account_id IS NOT NULL
                   GROUP BY to_account_id""", (user, as_of, user, as_of))
     for m in moves:
@@ -237,13 +237,38 @@ def position(user: str, as_of: Optional[str] = None) -> dict:
         by_type[a["type"]] = by_type.get(a["type"], 0) + a["balance_minor"]
     liabilities = -sum(a["balance_minor"] for a in ins if a["liability"])
     net = sum(a["balance_minor"] for a in ins)
-    return {"currency": base, "as_of": as_of or money.iso(money.now()), "liquid": money.s(liquid), "liquid_minor": liquid,
+    converted = _converted_estimate(accts, base, liquid, net)
+    return {"currency": base, "converted_estimate": converted, "as_of": as_of or money.iso(money.now()), "liquid": money.s(liquid), "liquid_minor": liquid,
             "cash": money.s(by_type.get("cash", 0)), "bank": money.s(by_type.get("bank", 0)), "wallet": money.s(by_type.get("wallet", 0)),
             "savings": money.s(by_type.get("savings", 0)), "investments": money.s(by_type.get("investment", 0)),
             "liabilities": money.s(liabilities), "net_worth": money.s(net), "net_worth_minor": net,
             "accounts": accts, "excluded_other_currency": [a["name"] for a in accts if a["currency"] != base],
             "basis": "actual: opening balances you entered plus recorded transactions up to now",
             "has_accounts": bool(accts)}
+
+
+def _converted_estimate(accts: list, base: str, liquid: int, net: int) -> Optional[dict]:
+    """What the accounts in OTHER currencies are worth in the base currency at the latest known rate. An estimate shown next to the exact figures,
+    never mixed into them. Uses cached rates only (a screen must not wait on the network); None when there are no other-currency accounts or no rate."""
+    others = [a for a in accts if a["currency"] != base]
+    if not others:
+        return None
+    fx.ensure_fresh_async()
+    try:
+        table = fx.current(allow_fetch=False)
+    except fx.FxError:
+        return {"available": False, "reason": "No exchange rate is available yet; it will appear here once one has been fetched."}
+    rows, add_liquid, add_net = [], 0, 0
+    for a in others:
+        c, _ = fx.convert_minor(a["balance_minor"], a["currency"], base, table)
+        rows.append({"id": a["id"], "name": a["name"], "currency": a["currency"], "balance": a["balance"], "converted": money.s(c)})
+        add_net += c
+        if a["type"] in taxonomy.LIQUID_TYPES:
+            add_liquid += c
+    r = fx.rate(others[0]["currency"], base, table)
+    return {"available": True, "currency": base, "liquid": money.s(liquid + add_liquid), "net_worth": money.s(net + add_net), "accounts": rows,
+            "source": r["source_name"], "provider_date": r["provider_date"], "stale": r["stale"], "age_hours": r["age_hours"],
+            "note": "Estimate at an indicative mid-market rate; your own accounts and exact totals above are unchanged."}
 
 
 def reconcile(user: str, account_id: str, actual, as_of: Optional[str] = None, apply: bool = False) -> dict:
@@ -275,10 +300,19 @@ def _tx_out(r, items: Optional[list] = None) -> dict:
          "obligation_id": r["obligation_id"], "goal_id": r["goal_id"], "refund_of": r["refund_of"],
          "tags": json.loads(r["tags"] or "[]"), "note": r["note"], "receipt_ref": r["receipt_ref"], "source": r["source"],
          "confidence": r["confidence"], "confirmed": bool(r["confirmed"]), "created": r["created"], "updated": r["updated"],
+         "original": _original(r), "to_amount": None if r["to_final_minor"] is None else money.s(r["to_final_minor"]),
          "has_receipt": bool(r["receipt_ref"]), "scheduled": r["ts"] > money.iso(money.now())}      # dated in the future: planned, not yet part of any balance or total
     if items is not None:
         d["items"] = items
     return d
+
+
+def _original(r) -> Optional[dict]:
+    """What the person actually said/paid, when it was in a different currency from the account (with the rate that was applied)."""
+    if not r["orig_currency"]:
+        return None
+    return {"currency": r["orig_currency"], "amount": money.s(r["orig_final_minor"]), "rate": r["fx_rate"], "source": r["fx_source"], "fetched": r["fx_ts"],
+            "converted_to": r["currency"]}
 
 
 def _items(txn_id: str) -> list[dict]:
@@ -304,6 +338,16 @@ def _amount(v, label: str, allow_none: bool = True) -> Optional[int]:
         raise FinanceError(f"{label}: {e}")
 
 
+def _quote(frm: str, to: str, pinned: Optional[dict] = None) -> dict:
+    """The rate to apply. A pinned quote (the one the person confirmed) is honoured exactly; otherwise today's rate. No rate means no conversion."""
+    if pinned and pinned.get("from") == frm and pinned.get("to") == to and pinned.get("rate"):
+        return pinned
+    try:
+        return fx.rate(frm, to)
+    except fx.FxError as e:
+        raise FinanceError(f"I cannot convert {frm} to {to} right now: {e.message} Enter the amount in {to} instead.", 503)
+
+
 def _normalise(user: str, data: dict, source: str, existing=None) -> dict:
     """Validate and complete a transaction. Returns column values. Raises FinanceError with a message a person can act on."""
     g = lambda k, default=None: data.get(k, existing[k] if (existing is not None and k in existing.keys()) else default)
@@ -320,26 +364,40 @@ def _normalise(user: str, data: dict, source: str, existing=None) -> dict:
         to_acct = get_account(user, to_id)
         if to_acct["id"] == acct["id"]:
             raise FinanceError("A transfer needs two different accounts.")
-        if to_acct["currency"] != acct["currency"]:
-            raise FinanceError("Both accounts must use the same currency for a transfer.")
+        if to_acct["currency"] != acct["currency"] and not data.get("convert"):
+            raise FinanceError(f"'{acct['name']}' is in {acct['currency']} and '{to_acct['name']}' is in {to_acct['currency']}. "
+                               "Record the transfer with currency conversion so each account receives its own currency at today's exchange rate.")
         if to_acct["archived"]:
             raise FinanceError(f"The account '{to_acct['name']}' is archived.")
     elif data.get("to_account_id"):
         raise FinanceError("Only a transfer has a destination account.")
     cur = acct["currency"]
-    if data.get("currency") and data["currency"].upper() != cur:
-        raise FinanceError(f"The account '{acct['name']}' uses {cur}; the transaction cannot be in {data['currency'].upper()}.")
+    spoken = (data.get("currency") or "").upper() or None          # the currency the amounts in this request are written in
+    quote = None
+    if spoken and spoken != cur:
+        if not data.get("convert"):
+            raise FinanceError(f"The account '{acct['name']}' uses {cur}; the transaction cannot be in {spoken} unless it is converted at today's exchange rate.")
+        quote = _quote(spoken, cur, data.get("fx_quote"))
 
     # amounts: final = gross - discount + tax + service charge
     if "amount" in data and "final_amount" not in data:                       # "amount" is the amount paid
         data = dict(data, final_amount=data["amount"])
-    discount = _amount(data.get("discount", None if existing is None else money.s(existing["discount_minor"])), "Discount") or 0
-    tax = _amount(data.get("tax", None if existing is None else money.s(existing["tax_minor"])), "Tax") or 0
-    service = _amount(data.get("service_charge", None if existing is None else money.s(existing["service_minor"])), "Service charge") or 0
+    conv = (lambda v: v) if quote is None else (lambda v: None if v is None else fx.convert_minor(v, spoken, cur, quote=quote)[0])
+    discount = conv(_amount(data.get("discount", None if existing is None else money.s(existing["discount_minor"])), "Discount")) or 0
+    tax = conv(_amount(data.get("tax", None if existing is None else money.s(existing["tax_minor"])), "Tax")) or 0
+    service = conv(_amount(data.get("service_charge", None if existing is None else money.s(existing["service_minor"])), "Service charge")) or 0
     amount_keys = ("final_amount", "gross_amount", "amount")
     touched = any(k in data for k in amount_keys)
     final = _amount(data.get("final_amount"), "Final amount")
     gross = _amount(data.get("gross_amount"), "Gross amount")
+    orig_final = None
+    if quote is not None:
+        # what was actually paid, in the currency it was paid in (kept next to the converted figure)
+        if final is not None:
+            orig_final = final
+        elif gross is not None:
+            orig_final = gross - (_amount(data.get("discount"), "Discount") or 0) + (_amount(data.get("tax"), "Tax") or 0) + (_amount(data.get("service_charge"), "Service charge") or 0)
+        final, gross = conv(final), None if final is not None else conv(gross)       # converted pieces re-derive the rest, so the sums always add up
     if not touched and existing is not None:                 # editing something else: keep the stored amounts consistent
         gross, final = existing["gross_minor"], existing["final_minor"]
         if any(k in data for k in ("discount", "tax", "service_charge")):
@@ -415,7 +473,23 @@ def _normalise(user: str, data: dict, source: str, existing=None) -> dict:
     if conf is not None and not (0 <= float(conf) <= 1):
         raise FinanceError("Confidence must be between 0 and 1.")
     unit_price = _amount(data.get("unit_price"), "Unit price") if "unit_price" in data else (existing["unit_price_minor"] if existing is not None else None)
-    return {"type": typ, "ts": ts, "account_id": acct["id"], "to_account_id": to_acct["id"] if to_acct else None, "direction": direction,
+    if quote is not None and unit_price is not None:
+        unit_price = fx.convert_minor(unit_price, spoken, cur, quote=quote)[0]
+    to_final = None
+    if to_acct is not None and to_acct["currency"] != cur:                      # a transfer between currencies: the destination receives the converted amount
+        to_quote = _quote(cur, to_acct["currency"], data.get("fx_transfer_quote"))
+        to_final = fx.convert_minor(final, cur, to_acct["currency"], quote=to_quote)[0]
+        if to_final <= 0:
+            raise FinanceError("That amount is too small to convert.")
+    elif existing is not None and not touched and existing["to_final_minor"] is not None and to_acct is not None:
+        to_final = existing["to_final_minor"]
+    if quote is not None:
+        fxcols = {"orig_currency": spoken, "orig_final_minor": orig_final, "fx_rate": quote["rate"], "fx_source": f"{quote['source']}@{quote['provider_date']}", "fx_ts": quote["fetched"]}
+    elif existing is not None and not touched:
+        fxcols = {k: existing[k] for k in ("orig_currency", "orig_final_minor", "fx_rate", "fx_source", "fx_ts")}
+    else:                                                                       # amounts edited by hand: the old conversion record no longer describes them
+        fxcols = {"orig_currency": None, "orig_final_minor": None, "fx_rate": None, "fx_source": None, "fx_ts": None}
+    return {**fxcols, "to_final_minor": to_final, "type": typ, "ts": ts, "account_id": acct["id"], "to_account_id": to_acct["id"] if to_acct else None, "direction": direction,
             "merchant": (g("merchant") or None) and str(g("merchant")).strip()[:80], "item_name": (g("item_name") or None) and str(g("item_name")).strip()[:120],
             "quantity": None if g("quantity") in (None, "") else str(g("quantity"))[:20], "unit_price_minor": unit_price,
             "category": category, "subcategory": sub, "gross_minor": gross, "discount_minor": discount, "tax_minor": tax, "service_minor": service,
@@ -426,7 +500,7 @@ def _normalise(user: str, data: dict, source: str, existing=None) -> dict:
             "confidence": conf, "confirmed": 1 if g("confirmed", True) else 0}
 
 
-COLS = ["type", "ts", "account_id", "to_account_id", "direction", "merchant", "item_name", "quantity", "unit_price_minor", "category",
+COLS = ["orig_currency", "orig_final_minor", "fx_rate", "fx_source", "fx_ts", "to_final_minor", "type", "ts", "account_id", "to_account_id", "direction", "merchant", "item_name", "quantity", "unit_price_minor", "category",
         "subcategory", "gross_minor", "discount_minor", "tax_minor", "service_minor", "final_minor", "currency", "payment_method",
         "purpose", "essential", "recurring", "obligation_id", "goal_id", "refund_of", "tags", "note", "receipt_ref", "source",
         "confidence", "confirmed"]

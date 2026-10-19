@@ -33,7 +33,7 @@ def test_context_is_stored_and_follows_the_database():
 def test_prompt_uses_the_users_currency_not_a_hardcoded_one():
     settings.update(A, {"jurisdiction": "CN"})
     msgs = assistant._prompt("花了50元", money.today(), [], {}, None, A)
-    assert '"currency": "CNY"' in msgs[0]["content"] and "BDT" not in msgs[0]["content"]
+    assert '"currency": "CNY"' in msgs[0]["content"] and '"currency": "BDT"' not in msgs[0]["content"]
     assert "Never invent" in msgs[0]["content"]
 
 

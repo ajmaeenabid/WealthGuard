@@ -4,6 +4,7 @@ import pytest
 
 os.environ["WEALTHGUARD_NO_DOTENV"] = "1"  # never read a real key from .env during tests
 os.environ["USE_MOCK_LLM"] = "1"
+os.environ["FX_PROVIDER"] = "off"          # tests never touch the network; the fx_live fixture supplies fixed rates when a test needs them
 
 
 @pytest.fixture(autouse=True)
@@ -14,3 +15,23 @@ def fresh_db(tmp_path, monkeypatch):
     from app import state
     state.HISTORY.clear()
     yield
+
+
+# the two real providers' numbers as seen on 2026-10-19 (1 USD = ...); used by tests that need conversion
+FAKE_RATES = [{"source": "er-api", "date": "2026-10-19", "rates": {"CNY": 6.69274, "BDT": 123.400189}},
+              {"source": "fawaz", "date": "2026-10-19", "rates": {"CNY": 6.68315324, "BDT": 123.38683111}}]
+
+
+@pytest.fixture
+def fx_live(monkeypatch):
+    from app.finance import fx
+    monkeypatch.setenv("FX_PROVIDER", "auto")
+    calls = {"n": 0, "data": [dict(r, rates=dict(r["rates"])) for r in FAKE_RATES]}
+
+    def fake():
+        calls["n"] += 1
+        if calls["data"] is None:
+            return []
+        return [dict(r, rates=dict(r["rates"])) for r in calls["data"]]
+    monkeypatch.setattr(fx, "_fetch_all", fake)
+    return calls

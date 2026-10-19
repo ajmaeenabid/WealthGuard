@@ -60,6 +60,7 @@ ADDED_COLUMNS = {
                      "voice_enabled": "INTEGER NOT NULL DEFAULT 1", "speech_lang": "TEXT NOT NULL DEFAULT 'auto'",
                      "large_text": "INTEGER NOT NULL DEFAULT 0", "currency_set": "INTEGER NOT NULL DEFAULT 0"},
     "conversations": {"title_custom": "INTEGER NOT NULL DEFAULT 0"},
+    "fin_transactions": {"orig_currency": "TEXT", "orig_final_minor": "INTEGER", "fx_rate": "TEXT", "fx_source": "TEXT", "fx_ts": "TEXT", "to_final_minor": "INTEGER"},
     "fin_sessions": {"jurisdiction": "TEXT", "language": "TEXT", "config_version": "TEXT", "title": "TEXT"},
 }
 

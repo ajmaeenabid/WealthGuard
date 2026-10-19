@@ -181,3 +181,7 @@ html.large-text button, html.large-text select, html.large-text input { min-heig
 
 .fin-chatbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 6px 2px 8px; }
 .fin-chatbar .linkish { background: none; border: 0; padding: 4px 6px; text-decoration: underline; cursor: pointer; color: inherit; }
+
+/* converted estimates and the payment-currency preview */
+.est { color: var(--muted); font-size: 12.5px; }
+.fin-preview#tfFx { padding: 8px 12px; border-radius: 12px; border: 1px dashed var(--line-strong); }
