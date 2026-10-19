@@ -55,7 +55,11 @@ ADDED_COLUMNS = {
               "login_count": "INTEGER NOT NULL DEFAULT 0"},
     "fin_settings": {"ai_reports": "INTEGER NOT NULL DEFAULT 1", "assistant_lang": "TEXT NOT NULL DEFAULT 'auto'",
                      "ask_adjustments": "TEXT NOT NULL DEFAULT 'auto'", "voice_replies": "INTEGER NOT NULL DEFAULT 0",
-                     "history_days": "INTEGER NOT NULL DEFAULT 90"},
+                     "history_days": "INTEGER NOT NULL DEFAULT 90",
+                     "ui_lang": "TEXT NOT NULL DEFAULT 'en'", "jurisdiction": "TEXT NOT NULL DEFAULT 'BD'",
+                     "voice_enabled": "INTEGER NOT NULL DEFAULT 1", "speech_lang": "TEXT NOT NULL DEFAULT 'auto'",
+                     "large_text": "INTEGER NOT NULL DEFAULT 0"},
+    "fin_sessions": {"jurisdiction": "TEXT", "language": "TEXT", "config_version": "TEXT", "title": "TEXT"},
 }
 
 

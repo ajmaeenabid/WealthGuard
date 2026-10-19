@@ -769,7 +769,7 @@ async function init() {
   $("llmBadge").textContent = h.mock_llm ? "mock LLM" : "live LLM";
   $("start").onclick = newChatView;
   $("chatForm").onsubmit = (ev) => { ev.preventDefault(); send($("chatInput").value); };
-  $("langBtn").onclick = () => I().setLang(I().lang === "zh" ? "en" : "zh", api, clientId, clientId ? refresh : null).then(() => {
+  $("langBtn").onclick = () => window.WGLang.apply(window.WGLang.next(), { api, clientId, rerender: clientId ? refresh : null }).then(() => {
     if (me.role === "admin") { if (window.WGAdmin) window.WGAdmin.reload(); } else { paintHero(); memLoad(); refreshChats(); }
   });
   $("rpGo").onclick = rpStart;

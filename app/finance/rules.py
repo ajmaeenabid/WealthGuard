@@ -11,30 +11,71 @@ from typing import Optional
 from app.finance import taxonomy
 
 BN_DIGITS = str.maketrans("০১২৩৪৫৬৭৮৯", "0123456789")
-CUR = r"(?:taka|tk\.?|bdt|takas|৳|টাকা|টাকায়|rs\.?)"
+CUR = r"(?:taka|tk\.?|bdt|takas|৳|টাকা|টাকায়|rs\.?|元|块钱|块|¥|￥|rmb|cny|yuan|人民币)"
 NUM = r"(\d[\d,]*(?:\.\d+)?)"
 UNITS = r"(?:kg|kgs|g|gm|gram|grams|l|ltr|litre|liter|liters|pcs?|pieces?|items?|dozen|packets?|packs?|bottles?|boxes|box|km|hours?|hrs?|days?|months?|weeks?|years?|people|persons?|টা|টি|কেজি|লিটার)"
 MONTHS = {m: i + 1 for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"])}
 WEEKDAYS = {"monday": 0, "mon": 0, "tuesday": 1, "tue": 1, "tues": 1, "wednesday": 2, "wed": 2, "thursday": 3, "thu": 3, "thurs": 3,
             "friday": 4, "fri": 4, "saturday": 5, "sat": 5, "sunday": 6, "sun": 6}
 
-YES = re.compile(r"^\s*(yes|yep|yeah|y|ok|okay|sure|save( it)?|confirm(ed)?|correct|right|go ahead|do it|looks good|that'?s right|haan|ha|ji|হ্যাঁ|হ্যা|ঠিক আছে|ঠিক|সেভ( করো| কর)?|করো)\s*[.!]*\s*$", re.I)
-NO = re.compile(r"^\s*(no|nope|nah|n|na|nothing|none|not really|না|নাহ|নেই|কিছু না)\s*[.!]*\s*$", re.I)
-CANCEL = re.compile(r"^\s*(cancel( it| that| this)?|stop|never ?mind|forget it|discard|abort|বাদ( দাও)?|থাক|বাতিল)\s*[.!]*\s*$", re.I)
-SKIP = re.compile(r"^\s*(skip|save it|no note|without( a)? note|just save|save without( a)? note|leave it|none|no|nothing|না|বাদ)\s*[.!]*\s*$", re.I)
+YES = re.compile(r"^\s*(yes|yep|yeah|y|ok|okay|sure|save( it)?|confirm(ed)?|correct|right|go ahead|do it|looks good|that'?s right|haan|ha|ji|হ্যাঁ|হ্যা|ঠিক আছে|ঠিক|সেভ( করো| কর)?|করো|是的?|好的?|对|对的|确认|保存|可以|行|没错)\s*[.!。！]*\s*$", re.I)
+NO = re.compile(r"^\s*(no|nope|nah|n|na|nothing|none|not really|না|নাহ|নেই|কিছু না|不|不用|没有|无|没了)\s*[.!。！]*\s*$", re.I)
+CANCEL = re.compile(r"^\s*(cancel( it| that| this)?|stop|never ?mind|forget it|discard|abort|বাদ( দাও)?|থাক|বাতিল|取消|算了|不要了|放弃)\s*[.!。！]*\s*$", re.I)
+SKIP = re.compile(r"^\s*(skip|save it|no note|without( a)? note|just save|save without( a)? note|leave it|none|no|nothing|না|বাদ|跳过|不用备注|直接保存|不用|没有)\s*[.!。！]*\s*$", re.I)
 
-EXPENSE_WORDS = r"spent|spend|bought|buy|paid|pay|purchased|purchase|cost me|costs me|ordered|got .{0,20} for|khoroch|খরচ|কিনলাম|কিনেছি|দিলাম|দিয়েছি|কিনেছিলাম|korlam|kinlam|dilam|disi"
-INCOME_WORDS = r"received|earned|got paid|salary|got a salary|income|was paid|payment received|bonus|পেলাম|পেয়েছি|আয়|বেতন|paisi|peyechi|peyechhi"
-REFUND_WORDS = r"refund(ed)?|money back|returned the|ফেরত"
-TRANSFER_WORDS = r"transfer(red)?|moved .{0,30} to|sent .{0,30} to (my )?(savings|bank|bkash|cash)|put .{0,30} (in|into) (my )?savings|deposit(ed)?"
+EXPENSE_WORDS = r"spent|spend|bought|buy|paid|pay|purchased|purchase|cost me|costs me|ordered|got .{0,20} for|khoroch|খরচ|কিনলাম|কিনেছি|দিলাম|দিয়েছি|কিনেছিলাম|korlam|kinlam|dilam|disi|花了|花费|买了|付了|支付了|消费|支出|用了"
+INCOME_WORDS = r"received|earned|got paid|salary|got a salary|income|was paid|payment received|bonus|পেলাম|পেয়েছি|আয়|বেতন|paisi|peyechi|peyechhi|收到|收入|工资|发工资|奖金|赚了|到账"
+REFUND_WORDS = r"refund(ed)?|money back|returned the|ফেরত|退款|退了|退回"
+TRANSFER_WORDS = r"transfer(red)?|moved .{0,30} to|sent .{0,30} to (my )?(savings|bank|bkash|cash)|put .{0,30} (in|into) (my )?savings|deposit(ed)?|转账|转到|转入|存入|存到"
 
 
 def ascii_digits(text: str) -> str:
-    return (text or "").translate(BN_DIGITS)
+    return zh_numerals((text or "").translate(BN_DIGITS))
 
 
 def is_bangla(text: str) -> bool:
     return bool(re.search(r"[ঀ-৿]", text or ""))
+
+
+def is_chinese(text: str) -> bool:
+    return bool(re.search(r"[\u4e00-\u9fff]", text or ""))
+
+
+ZH_DIGIT = {"零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+ZH_UNIT = {"十": 10, "百": 100, "千": 1000}
+
+
+def zh_to_int(s: str) -> Optional[int]:
+    """Chinese numerals such as 三百五十, 两千, 一万二 to an integer; None if it is not a clean numeral."""
+    if not s:
+        return None
+    total, section, num = 0, 0, None
+    for ch in s:
+        if ch in ZH_DIGIT:
+            num = ZH_DIGIT[ch]
+        elif ch in ZH_UNIT:
+            section += (1 if num is None else num) * ZH_UNIT[ch]
+            num = None
+        elif ch == "万":
+            total += (section + (num or 0)) * 10000
+            section, num = 0, None
+        else:
+            return None
+    if num is not None and len(s) > 1 and s[-1] in ZH_DIGIT:
+        prev = s[-2]
+        if prev == "万":
+            num *= 1000                                          # 一万二 = 12000
+        elif prev in ("百", "千"):
+            num *= ZH_UNIT[prev] // 10                           # 三百五 = 350
+    return total + section + (num or 0)
+
+
+def zh_numerals(text: str) -> str:
+    """Replaces Chinese numerals with Arabic digits so the same extraction works (三百五十元 -> 350元). Display text is untouched elsewhere."""
+    def one(m):
+        v = zh_to_int(m.group(0))
+        return str(v) if v is not None else m.group(0)
+    return re.sub(r"[零〇一二两三四五六七八九十百千万]+", one, text or "")
 
 
 def _num(s: str) -> str:
@@ -44,12 +85,23 @@ def _num(s: str) -> str:
 # ---------------------------------------------------------------------------------------------- dates
 def parse_date(text: str, today: date) -> Optional[date]:
     t = ascii_digits(text).lower()
-    if re.search(r"\b(today|just now|this morning|this afternoon|this evening|tonight|aj|ajke|ajk)\b|আজ|এইমাত্র", t):
+    if re.search(r"\b(today|just now|this morning|this afternoon|this evening|tonight|aj|ajke|ajk)\b|আজ|এইমাত্র|今天|今日|刚刚|今早|今晚|今儿", t):
         return today
-    if re.search(r"day before yesterday|পরশু", t):
+    if re.search(r"day before yesterday|পরশু|前天", t):
         return today - timedelta(days=2)
-    if re.search(r"\b(yesterday|last night|gotokal|gotoikal|kal)\b|গতকাল|কাল", t):
+    if re.search(r"\b(yesterday|last night|gotokal|gotoikal|kal)\b|গতকাল|কাল|昨天|昨日|昨晚", t):
         return today - timedelta(days=1)
+    m = re.search(r"(\d{1,3})\s*天前", t)
+    if m:
+        return today - timedelta(days=int(m.group(1)))
+    m = re.search(r"(?:(\d{4})年)?\s*(\d{1,2})月\s*(\d{1,2})[日号]", t)
+    if m:
+        y = int(m.group(1)) if m.group(1) else today.year
+        try:
+            d = date(y, int(m.group(2)), int(m.group(3)))
+            return d if (d <= today or m.group(1)) else date(y - 1, d.month, d.day)
+        except ValueError:
+            return None
     m = re.search(r"\b(\d{1,2}) days? ago\b", t)
     if m:
         return today - timedelta(days=int(m.group(1)))
@@ -97,8 +149,8 @@ def amounts(text: str) -> dict:
     low = t.lower()
     out: dict = {}
     claimed = set()
-    for key, words in (("discount", r"discount|off|rebate|ছাড়|ডিসকাউন্ট"), ("tax", r"vat|tax|ভ্যাট|ট্যাক্স"),
-                       ("service_charge", r"service charge|service fee|service|সার্ভিস")):
+    for key, words in (("discount", r"discount|off|rebate|ছাড়|ডিসকাউন্ট|优惠|折扣|立减|减免"), ("tax", r"vat|tax|ভ্যাট|ট্যাক্স|增值税|税费|税"),
+                       ("service_charge", r"service charge|service fee|service|সার্ভিস|服务费")):
         for sp in _spans(low):
             s, e, v = sp
             before = low[max(0, s - 26):s]
@@ -107,9 +159,9 @@ def amounts(text: str) -> dict:
                 if sp not in claimed and key not in out:
                     out[key] = v
                     claimed.add(sp)
-    if re.search(r"\b(no|without|zero)\s+(discount|offer)\b|ছাড় নেই|ডিসকাউন্ট নেই", low):
+    if re.search(r"\b(no|without|zero)\s+(discount|offer)\b|ছাড় নেই|ডিসকাউন্ট নেই|没有优惠|无优惠|没有折扣|没打折", low):
         out["no_discount"] = True
-    if re.search(r"\b(no|without|zero)\s+(vat|tax|service( charge)?|extra( charges?)?)\b|ভ্যাট নেই|কোনো চার্জ নেই", low):
+    if re.search(r"\b(no|without|zero)\s+(vat|tax|service( charge)?|extra( charges?)?)\b|ভ্যাট নেই|কোনো চার্জ নেই|没有税|无税费|没有服务费|没有额外费用", low):
         out["no_tax"] = True
     main = None
     for sp in _spans(low):
@@ -137,9 +189,9 @@ def amounts(text: str) -> dict:
 
 def amount_basis(text: str) -> Optional[str]:
     t = ascii_digits(text).lower()
-    if re.search(r"before (the )?(discount|vat|tax|offer)|original (price|amount)|mrp|list price|ছাড়ের আগে|ডিসকাউন্টের আগে", t):
+    if re.search(r"before (the )?(discount|vat|tax|offer)|original (price|amount)|mrp|list price|ছাড়ের আগে|ডিসকাউন্টের আগে|折扣前|优惠前|打折前|原价|税前", t):
         return "before_discount"
-    if re.search(r"after (the )?(discount|vat|tax|offer)|final( amount| price| total)?|net|amount paid|i paid|actually paid|total paid|ছাড়ের পর|ডিসকাউন্টের পর|পরিশোধ", t):
+    if re.search(r"after (the )?(discount|vat|tax|offer)|final( amount| price| total)?|net|amount paid|i paid|actually paid|total paid|ছাড়ের পর|ডিসকাউন্টের পর|পরিশোধ|折扣后|优惠后|打折后|最终|实付|实际支付|税后", t):
         return "final"
     return None
 
@@ -187,30 +239,30 @@ def classify_type(text: str) -> Optional[str]:
     return None
 
 
-QUERY = re.compile(r"how much|total|spent on|spending|what('?s| is) my (balance|spending|budget|net worth)|my balance|balance|show (me )?(my )?|list (my )?|budget|goals?|report|summary|summari[sz]e|how am i doing|overview|net worth|কত খরচ|কত টাকা|ব্যালেন্স|কত আছে|হিসাব", re.I)
+QUERY = re.compile(r"余额|多少|预算|目标|总结|概况|净资产|最近的?交易|报告|how much|total|spent on|spending|what('?s| is) my (balance|spending|budget|net worth)|my balance|balance|show (me )?(my )?|list (my )?|budget|goals?|report|summary|summari[sz]e|how am i doing|overview|net worth|কত খরচ|কত টাকা|ব্যালেন্স|কত আছে|হিসাব", re.I)
 DELETE = re.compile(r"\b(delete|remove|undo|erase)\b.{0,30}\b(last|latest|previous|that|this|transactions?|expenses?|entry|entries|records?|payments?|purchases?)\b|মুছে|ডিলিট", re.I)
 UPDATE = re.compile(r"\b(change|edit|update|correct|fix|make it|set it|actually|oops|that should be|should have been|it was)\b|ঠিক করো|বদলাও|পরিবর্তন", re.I)
 
 
 def period_of(text: str, today: date) -> tuple[Optional[str], Optional[str], Optional[str]]:
     t = ascii_digits(text).lower()
-    if re.search(r"today|আজ", t):
+    if re.search(r"today|আজ|今天", t):
         return "day", today.isoformat(), today.isoformat()
-    if re.search(r"yesterday|গতকাল", t):
+    if re.search(r"yesterday|গতকাল|昨天", t):
         y = today - timedelta(days=1)
         return "day", y.isoformat(), y.isoformat()
-    if re.search(r"last week|previous week|গত সপ্তাহ", t):
+    if re.search(r"last week|previous week|গত সপ্তাহ|上周|上个星期", t):
         s = today - timedelta(days=today.weekday() + 7)
         return "week", s.isoformat(), (s + timedelta(days=6)).isoformat()
-    if re.search(r"this week|এই সপ্তাহ", t):
+    if re.search(r"this week|এই সপ্তাহ|本周|这周|这个星期", t):
         s = today - timedelta(days=today.weekday())
         return "week", s.isoformat(), (s + timedelta(days=6)).isoformat()
-    if re.search(r"last month|previous month|গত মাস", t):
+    if re.search(r"last month|previous month|গত মাস|上个月|上月", t):
         first = today.replace(day=1) - timedelta(days=1)
         return "month", first.replace(day=1).isoformat(), first.isoformat()
-    if re.search(r"this year|এই বছর", t):
+    if re.search(r"this year|এই বছর|今年", t):
         return "year", date(today.year, 1, 1).isoformat(), date(today.year, 12, 31).isoformat()
-    if re.search(r"this month|এই মাস|monthly", t):
+    if re.search(r"this month|এই মাস|monthly|本月|这个月|这月", t):
         return "month", None, None
     return None, None, None
 
@@ -232,8 +284,8 @@ def extract(text: str, today: date) -> dict:
     typ = classify_type(t)
     # a question about the user's money, not a new entry
     if QUERY.search(low) and not (typ and amt.get("amount") and re.search(r"\b(i|just|today|yesterday)\b", low) and not re.search(r"how much|what", low)):
-        kind = "balance" if re.search(r"balance|net worth|কত আছে|ব্যালেন্স", low) else "budget" if re.search(r"budget", low) else "goal" if re.search(r"goal", low) \
-            else "summary" if re.search(r"summary|summari|how am i doing|overview|report|হিসাব", low) else "spend_total" if re.search(r"how much|total|spent|spending|কত", low) else "list"
+        kind = "balance" if re.search(r"balance|net worth|কত আছে|ব্যালেন্স|余额|净资产", low) else "budget" if re.search(r"budget|预算", low) else "goal" if re.search(r"goal|目标", low) \
+            else "summary" if re.search(r"summary|summari|how am i doing|overview|report|হিসাব|总结|概况|报告", low) else "spend_total" if re.search(r"how much|total|spent|spending|কত|多少|总共", low) else "list"
         per, ps, pe = period_of(t, today)
         cat = taxonomy.guess(t)[0]
         return {"intent": "query", "query": {"kind": kind, "category": cat if cat != "other" else None, "period": per, "start": ps, "end": pe,

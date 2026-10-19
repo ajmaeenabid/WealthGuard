@@ -7,23 +7,24 @@ EXPENSE = {
              ["grocery", "groceries", "rice", "oil", "vegetable", "fish", "meat", "egg", "milk", "bazar", "bazaar", "market",
               "restaurant", "lunch", "dinner", "breakfast", "biryani", "tea", "coffee", "snack", "cafe", "pizza", "burger",
               "চাল", "তেল", "সবজি", "বাজার", "মাছ", "মাংস", "ডিম", "দুধ", "খাবার", "চা", "দোকান", "মুদি",
+              "午饭", "午餐", "晚饭", "晚餐", "早饭", "早餐", "吃饭", "外卖", "超市", "买菜", "蔬菜", "水果", "大米", "饮料", "奶茶", "咖啡",
               "shwapno", "agora", "meena bazar", "unimart", "kfc", "foodpanda", "pizza hut"]),
     "transport": (True, ["fuel", "ride share", "public transport", "vehicle upkeep"],
                   ["uber", "pathao", "rickshaw", "bus", "cng", "fuel", "petrol", "octane", "train", "taxi", "fare", "ticket",
-                   "রিকশা", "বাস", "ভাড়া", "পেট্রোল", "ট্রেন", "উবার"]),
-    "housing": (True, ["rent", "maintenance", "furniture"], ["rent", "house rent", "flat", "landlord", "ভাড়া", "বাসা", "বাড়ি"]),
+                   "地铁", "公交", "打车", "滴滴", "出租车", "油费", "加油", "高铁", "火车", "车票", "রিকশা", "বাস", "ভাড়া", "পেট্রোল", "ট্রেন", "উবার"]),
+    "housing": (True, ["rent", "maintenance", "furniture"], ["rent", "house rent", "房租", "租金", "物业费", "flat", "landlord", "ভাড়া", "বাসা", "বাড়ি"]),
     "utilities": (True, ["electricity", "gas", "water", "internet", "phone"],
-                  ["electricity", "current bill", "gas bill", "water bill", "internet", "wifi", "broadband", "recharge", "mobile bill",
+                  ["electricity", "current bill", "gas bill", "water bill", "internet", "电费", "水费", "燃气", "网费", "话费", "宽带", "wifi", "broadband", "recharge", "mobile bill",
                    "বিদ্যুৎ", "গ্যাস", "ইন্টারনেট", "রিচার্জ", "বিল"]),
     "health": (True, ["medicine", "doctor", "tests", "fitness"],
-               ["medicine", "pharmacy", "doctor", "hospital", "clinic", "test", "gym", "ওষুধ", "ঔষধ", "ডাক্তার", "হাসপাতাল"]),
+               ["药", "医院", "看病", "挂号", "体检", "medicine", "pharmacy", "doctor", "hospital", "clinic", "test", "gym", "ওষুধ", "ঔষধ", "ডাক্তার", "হাসপাতাল"]),
     "education": (True, ["tuition", "books", "courses", "exam fees"],
-                  ["tuition", "school", "college", "university", "course", "book", "exam", "fee", "coaching", "টিউশন", "স্কুল", "বই", "কোচিং"]),
+                  ["学费", "培训", "课程", "补习", "书", "tuition", "school", "college", "university", "course", "book", "exam", "fee", "coaching", "টিউশন", "স্কুল", "বই", "কোচিং"]),
     "shopping": (False, ["clothing", "electronics", "household", "gifts"],
-                 ["clothes", "shirt", "shoes", "phone", "laptop", "headphone", "gadget", "shopping", "mall", "daraz", "gift",
+                 ["衣服", "鞋", "手机", "电脑", "网购", "淘宝", "京东", "clothes", "shirt", "shoes", "phone", "laptop", "headphone", "gadget", "shopping", "mall", "daraz", "gift",
                   "জামা", "জুতা", "মোবাইল", "শপিং", "উপহার"]),
     "entertainment": (False, ["movies", "games", "subscriptions", "travel"],
-                      ["movie", "cinema", "netflix", "spotify", "youtube", "game", "concert", "trip", "tour", "hotel", "resort",
+                      ["电影", "游戏", "旅游", "旅行", "酒店", "会员", "movie", "cinema", "netflix", "spotify", "youtube", "game", "concert", "trip", "tour", "hotel", "resort",
                        "সিনেমা", "ঘুরতে", "ট্যুর", "হোটেল"]),
     "personal care": (None, ["salon", "toiletries"], ["salon", "haircut", "barber", "parlour", "soap", "shampoo", "সেলুন", "পার্লার"]),
     "family": (None, ["support", "children", "events"], ["family", "parents", "mother", "father", "wedding", "eid", "পরিবার", "মা", "বাবা", "ঈদ"]),
@@ -32,7 +33,7 @@ EXPENSE = {
     "other": (None, [], []),
 }
 INCOME = {
-    "salary": ["salary", "payroll", "wage", "বেতন"],
+    "salary": ["salary", "payroll", "wage", "工资", "薪水", "বেতন"],
     "freelance": ["freelance", "client payment", "project", "gig"],
     "business": ["sales", "business", "shop income", "ব্যবসা"],
     "gift": ["gift", "eidi", "bonus", "উপহার", "ঈদি"],
@@ -42,10 +43,10 @@ INCOME = {
 ACCOUNT_TYPES = ["cash", "bank", "savings", "wallet", "credit_card", "investment", "loan"]
 LIABILITY_TYPES = {"credit_card", "loan"}
 LIQUID_TYPES = {"cash", "bank", "wallet", "savings"}
-PAYMENT_METHODS = ["cash", "bank", "card", "bkash", "nagad", "rocket", "mobile wallet", "other"]
-PAYMENT_WORDS = {"cash": ["cash", "নগদ টাকা"], "bkash": ["bkash", "bKash", "বিকাশ"], "nagad": ["nagad", "নগদ"],
-                 "rocket": ["rocket", "রকেট"], "card": ["card", "visa", "mastercard", "কার্ড"],
-                 "bank": ["bank", "transfer", "ব্যাংক", "ব্যাঙ্ক"]}
+PAYMENT_METHODS = ["cash", "bank", "card", "bkash", "nagad", "rocket", "alipay", "wechat_pay", "mobile wallet", "other"]
+PAYMENT_WORDS = {"cash": ["cash", "নগদ টাকা", "现金"], "bkash": ["bkash", "bKash", "বিকাশ"], "nagad": ["nagad", "নগদ"],
+                 "rocket": ["rocket", "রকেট"], "alipay": ["alipay", "支付宝"], "wechat_pay": ["wechatpay", "wechat", "weixin", "微信支付", "微信"], "card": ["card", "visa", "mastercard", "কার্ড"],
+                 "bank": ["bank", "transfer", "ব্যাংক", "ব্যাঙ্ক", "银行卡", "银行"]}
 
 
 for _cat, (_e, _subs, _words) in EXPENSE.items():          # the category's own name is a keyword too ("how much on food?")
@@ -84,6 +85,9 @@ def guess(text: str) -> tuple[str, Optional[str], float]:
             if w.isascii():
                 if re.search(r"\b" + re.escape(w.lower()) + r"s?\b", t):
                     n += 1
+            elif "一" <= w[0] <= "鿿":                       # Chinese has no word boundaries: a substring is the match
+                if w in t:
+                    n += 1
             elif _bn_hit(w, t):
                 n += 1
         if n > hits:
@@ -92,7 +96,7 @@ def guess(text: str) -> tuple[str, Optional[str], float]:
         return "other", None, 0.0
     sub = None
     if best == "food":
-        sub = "groceries" if re.search(r"grocer|rice|oil|vegetable|bazar|bazaar|চাল|তেল|সবজি|বাজার|মুদি|market|fish|meat|egg|milk", t) else "dining out"
+        sub = "groceries" if re.search(r"grocer|rice|oil|vegetable|bazar|bazaar|চাল|তেল|সবজি|বাজার|মুদি|market|fish|meat|egg|milk|超市|买菜|蔬菜|水果|大米", t) else "dining out"
     elif best == "utilities":
         for k in ("electricity", "gas", "water", "internet", "phone"):
             if re.search(k if k != "phone" else r"recharge|mobile bill|phone", t):

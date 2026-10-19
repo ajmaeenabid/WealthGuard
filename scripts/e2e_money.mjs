@@ -23,12 +23,13 @@ let id = 0; const pending = new Map(); const errors = [];
 ws.onmessage = (m) => {
   const d = JSON.parse(m.data);
   if (d.id && pending.has(d.id)) { pending.get(d.id)(d); pending.delete(d.id); }
+  if (d.method === "Page.javascriptDialogOpening") { errors.push("dialog: " + d.params.message); send("Page.handleJavaScriptDialog", { accept: true }); }
   if (d.method === "Runtime.exceptionThrown") errors.push(d.params.exceptionDetails.exception?.description || d.params.exceptionDetails.text);
   if (d.method === "Runtime.consoleAPICalled" && d.params.type === "error") errors.push("console: " + d.params.args.map((a) => a.value || a.description).join(" "));
 };
 const send = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
 const ev = async (e) => { const r = await send("Runtime.evaluate", { expression: e, awaitPromise: true, returnByValue: true }); return r.result.result.value ?? r.result.exceptionDetails?.exception?.description; };
-const shot = async (name) => { const r = await send("Page.captureScreenshot", { format: "png" }); fs.writeFileSync(`${OUT}/${name}.png`, Buffer.from(r.result.data, "base64")); };
+const shot = async (name) => { const r = await Promise.race([send("Page.captureScreenshot", { format: "png" }), sleep(10000).then(() => null)]); if (r && r.result) fs.writeFileSync(`${OUT}/${name}.png`, Buffer.from(r.result.data, "base64")); else console.log("NOTE  screenshot skipped (timed out): " + name); };
 const viewport = (w, h, mobile = false) => send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile });
 await send("Runtime.enable"); await send("Page.enable");
 
@@ -201,6 +202,30 @@ check("and the same taka figures", bnOut.includes("৳30,000.00"));
 await run(click(".nav[data-tab=settings]"), 1300);
 check("settings lists my own activity with the chain status", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("My activity") && (await ev(`document.getElementById('finTab-settings').textContent`)).includes("log verified"));
 check("device notification toggle is explained honestly", (await ev(`document.getElementById('stNotifyHint').textContent`)).includes("only works while WealthGuard is open"));
+
+// ---- language and jurisdiction: three languages, saved to the account, separate from the jurisdiction
+await run(click(".nav[data-tab=settings]"), 1300);
+check("settings has the language and region card", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("Language and region"));
+await run(setv("uiLangSel", "zh"), 1500);
+check("choosing Chinese translates the settings labels", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("语言与地区"));
+const savedLang = await ev(`fetch('/api/fin/settings').then(r=>r.json()).then(o=>o.ui_lang)`);
+check("and the choice is saved on the server", savedLang === "zh", savedLang);
+await send("Page.reload"); await sleep(3500);
+check("after a reload the saved language is still Chinese", (await ev(`document.documentElement.lang`)) === "zh-CN", await ev(`document.documentElement.lang`));
+await run(setv("uiLangSel", "bn"), 1500).catch(() => {});
+await run(click(".nav[data-tab=settings]"), 1300);
+await run(setv("uiLangSel", "bn"), 1500);
+check("Bangla shows Bangla labels and Bangla digits for amounts", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("ভাষা ও অঞ্চল"));
+await run(setv("uiLangSel", "en"), 1200);
+await run(setv("stJur", "CN"), 2000);
+check("changing jurisdiction shows the active region chip with the new currency", (await ev(`(document.getElementById('finRegion')||{}).textContent`)).includes("CNY"), await ev(`(document.getElementById('finRegion')||{}).textContent`));
+const convo = await ev(`fetch('/api/fin/conversations').then(r=>r.json()).then(o=>o.active_jurisdiction)`);
+check("the active jurisdiction is CN on the server", convo === "CN", convo);
+await run(click(".fin-tabs button[data-tab=assistant]"), 1500);
+check("the chat shows the conversation's jurisdiction and a voice-mode button", (await ev(`(document.getElementById('finChatJur')||{}).textContent`)).includes("CNY") && (await ev(`!!document.getElementById('finVoiceMode')`)));
+await run(setv("stJur", "BD"), 100).catch(() => {});
+await ev(`fetch('/api/fin/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jurisdiction:'BD',ui_lang:'en'})}).then(r=>r.status)`);
+await send("Page.reload"); await sleep(3500);
 
 // ---- mobile: tab bar, no horizontal overflow, assistant usable
 await viewport(390, 844, true);

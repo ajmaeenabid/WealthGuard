@@ -711,6 +711,7 @@
 
   function handleReply(r) {
     A.last = r;
+    if (r.jurisdiction) chatBar(r.jurisdiction);
     addMsg("bot", r.reply);
     $("finAi").textContent = aiLabel(r.ai);
     showState(r);
@@ -721,11 +722,11 @@
   function syncSend() { $("finSend").disabled = A.busy || !$("finInput").value.trim(); }
   function setBusy(b) { A.busy = b; $("finInput").disabled = b; syncSend(); if (!b) $("finInput").focus(); }
 
-  async function sendMsg(textArg, retry) {
+  async function sendMsg(textArg, retry, opts) {
     const input = $("finInput");
     const text = (textArg !== undefined ? textArg : input.value).trim();
-    if (!text || A.busy) return;
-    const source = textArg === undefined && input.dataset.voice === "1" ? "voice" : "text";
+    if (!text || A.busy) return null;
+    const source = (opts && opts.source) || (textArg === undefined && input.dataset.voice === "1" ? "voice" : "text");
     // the same text keeps the same request id until it succeeds, so a retry after a lost response is never applied twice
     const id = A.pending && A.pending.text === text ? A.pending.id : uuid();
     A.pending = { id, text, source };
@@ -734,17 +735,36 @@
     setBusy(true);
     $("finQuick").innerHTML = ""; $("finConfirm").hidden = true;
     try {
-      const r = await api("/assistant/chat", { text, request_id: id, source });
+      const r = await api("/assistant/chat", Object.assign({ text, request_id: id, source }, opts && opts.lang ? { lang: opts.lang } : {}));
       A.pending = null;
       handleReply(r);
-      if (r.transaction || r.deleted) { state.dirty = true; }
+      if (r.transaction || r.deleted) { state.dirty = true; syncNow(); }
+      return r;
     } catch (e) {
       const m = addMsg("sys", e.message + (e.status ? "" : " The message was kept: "));
       const b = el("button", "", "Send again");
       b.type = "button"; b.style.marginLeft = "8px";
       b.onclick = () => { m.remove(); sendMsg(A.pending.text, true); };
       m.appendChild(b);
+      return null;
     } finally { setBusy(false); }
+  }
+
+  // ---------------------------------------------------------------- live sync: the server's data fingerprint is polled while the page is visible
+  const SYNC = { v: null, timer: null };
+  async function syncNow() {
+    try {
+      const { version } = await api("/version", undefined, "GET");
+      if (SYNC.v !== null && version !== SYNC.v && !document.hidden && !busyEditing()) { state.dirty = true; showTab(state.tab); }
+      SYNC.v = version;
+    } catch (e) { /* offline or signed out: try again on the next tick */ }
+  }
+  const busyEditing = () => { const a = document.activeElement; return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.closest("#finModal, .fin-tab")) || !$("finModal").hidden || A.busy; };
+  function startSync() {
+    if (SYNC.timer) return;
+    syncNow();
+    SYNC.timer = setInterval(() => { if (!document.hidden && money_) syncNow(); }, 6000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) syncNow(); });
   }
 
   async function loadAssistant() {
@@ -754,12 +774,43 @@
     if (A.loaded) return;
     A.loaded = true;
     const cur = await api("/assistant/session", undefined, "GET");
+    chatBar(cur.jurisdiction);
     $("finMsgs").innerHTML = "";
     if (cur.session_id && cur.messages.length) {
       cur.messages.forEach((m) => addMsg(m.role === "user" ? "user" : "bot", m.text));
       addMsg("sys", "Picked up where you left off.");
       showState(cur);
     } else emptyChat();
+  }
+
+  // Which jurisdiction the open conversation belongs to, and the history of conversations (each keeps the jurisdiction it started in).
+  function chatBar(jur) {
+    let bar = $("finChatBar");
+    if (!bar) {
+      bar = el("div", "fin-chatbar"); bar.id = "finChatBar";
+      bar.innerHTML = `<span class="tag" id="finChatJur" data-notr></span><button type="button" id="finConvos" class="linkish">Conversations</button><button type="button" id="finNewConvo" class="linkish">New conversation</button>`;
+      const chat = document.querySelector("#finTab-assistant .fin-chat"); chat.insertBefore(bar, chat.firstChild);
+      $("finConvos").onclick = showConversations;
+      $("finNewConvo").onclick = async () => { try { await api("/assistant/cancel", {}); } catch (e) { /* nothing open */ } A.loaded = false; A.last = null; $("finConfirm").hidden = true; loadAssistant(); };
+    }
+    const j = jur && state.meta && state.meta.jurisdictions && state.meta.jurisdictions[jur];
+    $("finChatJur").textContent = j ? `${j.name[(window.WGLang && window.WGLang.lang) || "en"] || j.name.en} · ${j.currency}` : (jur || "");
+    $("finChatJur").title = "The jurisdiction this conversation was started under";
+  }
+  async function showConversations() {
+    const { conversations, active_jurisdiction } = await api("/conversations", undefined, "GET");
+    modal("Conversations", (body) => {
+      if (!conversations.length) { body.innerHTML = `<p class="empty">No conversations yet.</p>`; return; }
+      body.innerHTML = `<p class="estimate-note">Each conversation keeps the jurisdiction and currency it started with. Earlier ones are read-only history; an unfinished one can be resumed, which switches back to its jurisdiction.</p><ul class="flist">${conversations.map((c) => `<li class="frow"><div class="main"><b>${esc(c.title || "(no messages)")}</b><span>${esc(c.jurisdiction)} · ${esc(c.currency)} · ${esc(c.updated.replace("T", " ").slice(0, 16))} · ${c.open ? (c.active_jurisdiction ? "open" : "paused") : esc(c.state)}</span></div>${c.open && !c.active_jurisdiction ? `<button type="button" data-resume="${esc(c.id)}">Resume</button>` : ""}<button type="button" data-view="${esc(c.id)}">View</button></li>`).join("")}</ul><div id="finConvoView"></div>`;
+      body.querySelectorAll("[data-view]").forEach((b) => (b.onclick = async () => {
+        const o = await api("/conversations/" + b.dataset.view, undefined, "GET");
+        $("finConvoView").innerHTML = `<div class="fcard">${o.messages.map((m) => `<p><b>${m.role === "user" ? "You" : "Assistant"}:</b> ${esc(m.text)}</p>`).join("") || "<p class='empty'>Empty.</p>"}</div>`;
+      }));
+      body.querySelectorAll("[data-resume]").forEach((b) => (b.onclick = async () => {
+        try { await api("/conversations/" + b.dataset.resume + "/resume", {}); state.meta = await api("/meta", undefined, "GET"); state.currency = state.meta.currency; paintRegion(state.meta.jurisdiction); closeModal(); A.loaded = false; state.dirty = true; loadAssistant(); }
+        catch (e) { body.insertAdjacentHTML("afterbegin", `<p class="warnbox">${esc(e.message)}</p>`); }
+      }));
+    });
   }
 
   async function editDraft() {
@@ -795,7 +846,17 @@
     const accs = state.accounts.length ? state.accounts : await refreshAccounts();
     const row = (title, hint, control) => `<div class="row"><div class="what"><b>${esc(title)}</b><span>${esc(hint)}</span></div>${control}</div>`;
     const act = await api("/activity?limit=25", undefined, "GET").catch(() => null);
+    const L = window.WGLang, jc = st.jurisdiction_config;
+    const cap = (o) => Object.entries(o).map(([k, v]) => `<option value="${k}" ${st.ui_lang === k ? "selected" : ""}>${esc(v)}</option>`).join("");
     root.innerHTML = `<div class="fin-set">
+      <div class="fcard"><h3>Language and region</h3>
+        ${row("Interface language", "Saved to your account, so it follows you to other devices and after you sign in again.", `<select id="uiLangSel" aria-label="Interface language">${cap(L ? L.NAMES : { en: "English" })}</select>`)}
+        ${row("Financial jurisdiction", "Sets the home currency and the payment methods offered. It is separate from the language. Changing it starts a new, separate assistant conversation; your records are not changed or converted.", `<select id="stJur" aria-label="Financial jurisdiction">${st.options.jurisdiction.map((c) => `<option value="${c}" ${st.jurisdiction === c ? "selected" : ""}>${esc((state.meta.jurisdictions[c].name[(L && L.lang) || "en"]) || c)} (${esc(state.meta.jurisdictions[c].currency)})</option>`).join("")}</select>`)}
+        <p class="estimate-note" id="jurNote">Active: ${esc(jc.name.en)} · ${esc(jc.currency)} · configuration ${esc(jc.version)}. Bank and wallet balances are never read automatically; you enter or import them. Provider lists here are unverified conventions.</p>
+        ${row("Voice mode", "Hands-free conversation: it listens, sends your words to the assistant, and reads the reply.", `<label class="check" style="display:flex;gap:8px;align-items:center"><input id="stVoiceOn" type="checkbox" ${st.voice_enabled ? "checked" : ""}> On</label>`)}
+        ${row("Speech language", "The language you speak in voice mode. Automatic follows the interface language.", `<select id="stSpeech" aria-label="Speech language">${st.options.speech_lang.map((x) => `<option value="${x}" ${st.speech_lang === x ? "selected" : ""}>${{ auto: "Automatic", zh: "简体中文", en: "English", bn: "বাংলা" }[x]}</option>`).join("")}</select>`)}
+        ${row("Large text", "Makes text and buttons bigger.", `<label class="check" style="display:flex;gap:8px;align-items:center"><input id="stLarge" type="checkbox" ${st.large_text ? "checked" : ""}> On</label>`)}
+      </div>
       <div class="fcard"><h3>AI preferences</h3>
         ${row("Explain reports with AI", "The AI only explains numbers calculated from your records. It cannot add figures, and a built-in explanation is used if it is off or unavailable.", `<label class="check" style="display:flex;gap:8px;align-items:center"><input id="stAi" type="checkbox" ${st.ai_reports ? "checked" : ""}> On</label>`)}
         ${row("Assistant language", "Auto follows the language you write in (English, Bangla or Banglish).", `<select id="stLang" aria-label="Assistant language">${st.options.assistant_lang.map((x) => `<option value="${x}" ${st.assistant_lang === x ? "selected" : ""}>${{ auto: "Automatic", en: "English", bn: "বাংলা (Bangla)" }[x]}</option>`).join("")}</select>`)}
@@ -825,6 +886,18 @@
       try { const out = await api("/settings", patch); $("stMsg").textContent = "Saved."; if (window.WGVoice && window.WGVoice.setSpeak) window.WGVoice.setSpeak(out.voice_replies); }
       catch (e) { $("stMsg").textContent = e.message; }
     };
+    $("uiLangSel").onchange = async () => { await window.WGLang.apply($("uiLangSel").value); $("stMsg").textContent = window.WGLang.t("Saved."); };
+    $("stJur").onchange = async () => {
+      try {
+        const out = await api("/settings", { jurisdiction: $("stJur").value });
+        $("stMsg").textContent = out.new_conversation ? "Jurisdiction changed. A new conversation starts with the next message; earlier ones stay in history." : "Saved.";
+        state.meta = await api("/meta", undefined, "GET"); state.currency = state.meta.currency; paintRegion(state.meta.jurisdiction); A.loaded = false; A.last = null; state.dirty = true; document.dispatchEvent(new CustomEvent("wg:jurisdiction", { detail: out.jurisdiction }));
+        loadSettings();
+      } catch (e) { $("stMsg").textContent = e.message; }
+    };
+    $("stVoiceOn").onchange = () => save({ voice_enabled: $("stVoiceOn").checked });
+    $("stSpeech").onchange = () => save({ speech_lang: $("stSpeech").value });
+    $("stLarge").onchange = () => { document.documentElement.classList.toggle("large-text", $("stLarge").checked); save({ large_text: $("stLarge").checked }); };
     $("stAi").onchange = () => save({ ai_reports: $("stAi").checked });
     $("stLang").onchange = () => save({ assistant_lang: $("stLang").value });
     $("stAdj").onchange = () => save({ ask_adjustments: $("stAdj").value });
@@ -882,8 +955,20 @@
 
   async function mount() {
     try { state.meta = await api("/meta", undefined, "GET"); state.currency = state.meta.currency; } catch (e) { fail(e); return; }
-    try { const st = await api("/settings", undefined, "GET"); if (window.WGVoice && window.WGVoice.setSpeak) window.WGVoice.setSpeak(st.voice_replies); } catch (e) { /* preferences are optional */ }
+    try { const st = await api("/settings", undefined, "GET"); if (window.WGVoice && window.WGVoice.setSpeak) window.WGVoice.setSpeak(st.voice_replies); window.WGLang && (window.WGLang.prefs = st); document.documentElement.classList.toggle("large-text", !!st.large_text); paintRegion(st.jurisdiction_config); } catch (e) { /* preferences are optional */ }
+    startSync();
   }
+
+  // the active jurisdiction is always visible next to the chat and in the header
+  function paintRegion(jc) {
+    if (!jc) return;
+    const L = window.WGLang, lg = (L && L.lang) || "en";
+    let chip = $("finRegion");
+    if (!chip) { chip = el("span", "tag"); chip.id = "finRegion"; chip.setAttribute("data-notr", ""); const sub = $("finSub"); if (sub && sub.parentNode) sub.parentNode.insertBefore(chip, sub.nextSibling); }
+    chip.textContent = `${jc.name[lg] || jc.name.en} · ${jc.currency}`;
+    chip.title = `Active jurisdiction ${jc.code}, configuration ${jc.version}. Amounts are shown in ${jc.currency}.`;
+  }
+  window.addEventListener("wg:lang", () => { if (state.meta) paintRegion(state.meta.jurisdiction); });
 
   function init(u) {
     me = u;
@@ -911,5 +996,5 @@
   }
 
   if (window.WGAuth) window.WGAuth.onReady(init);
-  window.WGFinance = { toMinor, fromMinor, money, setMode, checkReminders };
+  window.WGFinance = { toMinor, fromMinor, money, setMode, checkReminders, sendVoice: (text, lang) => sendMsg(text, false, { source: "voice", lang }) };
 })();

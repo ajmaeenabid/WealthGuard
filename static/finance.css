@@ -158,3 +158,26 @@ html:lang(zh) .report-section h2, html:lang(zh) .fin-title { font-style: normal;
 .fin-receipt { display: grid; gap: 4px; }
 
 #adminModal .fin-form label.perm { display: flex; flex-direction: row; align-items: center; gap: 9px; text-transform: none; letter-spacing: 0; font-size: 13.5px; font-weight: 500; color: var(--ink-2); }
+
+/* accessibility: larger text and buttons (Settings > Large text) */
+html.large-text { font-size: 118%; }
+html.large-text button, html.large-text select, html.large-text input { min-height: 44px; }
+
+/* voice mode: a calm overlay with a state orb; the three states differ by shape/motion as well as colour */
+.vm-panel { position: fixed; inset: auto 16px 16px 16px; max-width: 460px; margin-inline: auto; z-index: 60; background: var(--panel, #fff); color: inherit; border: 1px solid var(--line, #d6d6d6); border-radius: 16px; padding: 18px 20px; box-shadow: 0 12px 40px rgba(0,0,0,.25); text-align: center; }
+.vm-panel[hidden] { display: none; }
+.vm-orb { width: 64px; height: 64px; margin: 0 auto 8px; border-radius: 50%; background: #2f7d5b; transition: transform .2s; }
+.vm-panel[data-state="listening"] .vm-orb { animation: vm-pulse 1.6s ease-in-out infinite; }
+.vm-panel[data-state="processing"] .vm-orb { background: #b9791f; border-radius: 18px; animation: vm-spin 1.2s linear infinite; }
+.vm-panel[data-state="speaking"] .vm-orb { background: #3b6fc4; animation: vm-pulse .7s ease-in-out infinite; }
+.vm-state { font-weight: 600; }
+.vm-heard { margin: 6px 0 0; font-style: italic; min-height: 1.2em; }
+.vm-reply { margin: 6px 0 0; max-height: 7.5em; overflow: auto; text-align: start; }
+.vm-note { margin: 6px 0 0; font-size: .85em; opacity: .8; }
+.vm-actions { margin-top: 12px; }
+@keyframes vm-pulse { 50% { transform: scale(1.18); } }
+@keyframes vm-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .vm-orb { animation: none !important; } }
+
+.fin-chatbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 6px 2px 8px; }
+.fin-chatbar .linkish { background: none; border: 0; padding: 4px 6px; text-decoration: underline; cursor: pointer; color: inherit; }
