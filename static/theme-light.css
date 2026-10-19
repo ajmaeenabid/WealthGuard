@@ -155,9 +155,10 @@
 
 /* ---------------------------------------------------------------- left-side buttons: visible borders and a soft shade for depth */
 :root:not([data-theme="dark"]) .sidebar { background: linear-gradient(180deg, #FFFFFF 0%, #FBFFF1 55%, rgba(179, 249, 72, .16) 100%); }
-:root:not([data-theme="dark"]) .nav { border: 1px solid rgba(110, 185, 20, .38); background: linear-gradient(180deg, #FFFFFF, rgba(179, 249, 72, .14)); box-shadow: 0 4px 10px -6px rgba(14, 16, 18, .3), inset 0 1px 0 rgba(255, 255, 255, .9); }
-:root:not([data-theme="dark"]) .nav:hover:not([aria-pressed="true"]) { border-color: rgba(110, 185, 20, .75); background: linear-gradient(180deg, #FFFFFF, rgba(179, 249, 72, .3)); }
-:root:not([data-theme="dark"]) .nav[aria-pressed="true"] { border-color: var(--color-nav-selected-bg); background: linear-gradient(180deg, #2A2E33, var(--color-nav-selected-bg)); box-shadow: 0 8px 18px -8px rgba(14, 16, 18, .7), inset 0 1px 0 rgba(255, 255, 255, .12); }
+:root:not([data-theme="dark"]) .nav { border: 0; background: transparent; box-shadow: none; transition: background .22s, transform .22s var(--ease), box-shadow .22s; }
+:root:not([data-theme="dark"]) .nav:hover:not([aria-pressed="true"]) { background: linear-gradient(90deg, rgba(179, 249, 72, .55), rgba(179, 249, 72, .14)); color: var(--color-text-primary); transform: translateX(3px); box-shadow: 0 6px 14px -9px rgba(110, 185, 20, .85); }
+:root:not([data-theme="dark"]) .nav:active:not([aria-pressed="true"]) { transform: translateX(1px) scale(.99); }
+:root:not([data-theme="dark"]) .nav[aria-pressed="true"] { border: 0; background: linear-gradient(180deg, #2A2E33, var(--color-nav-selected-bg)); box-shadow: 0 8px 18px -8px rgba(14, 16, 18, .7), inset 0 1px 0 rgba(255, 255, 255, .12); }
 :root:not([data-theme="dark"]) .modeswitch button { border: 1px solid rgba(110, 185, 20, .4); background: linear-gradient(180deg, #FFFFFF, rgba(179, 249, 72, .14)); box-shadow: 0 4px 10px -6px rgba(14, 16, 18, .3); }
 :root:not([data-theme="dark"]) .modeswitch button[aria-selected="true"] { border-color: var(--color-nav-selected-bg); background: linear-gradient(180deg, #2A2E33, var(--color-nav-selected-bg)); }
 :root:not([data-theme="dark"]) .userbox button, :root:not([data-theme="dark"]) .chat-item .ci-ren, :root:not([data-theme="dark"]) .chat-item .ci-del { border: 1px solid rgba(110, 185, 20, .38); background: linear-gradient(180deg, #FFFFFF, rgba(179, 249, 72, .14)); box-shadow: 0 3px 8px -5px rgba(14, 16, 18, .3); }
@@ -165,3 +166,12 @@
 :root:not([data-theme="dark"]) .side-sec, :root:not([data-theme="dark"]) .navlist[data-for="money"] { background: linear-gradient(170deg, rgba(179, 249, 72, .2), rgba(255, 255, 255, .6) 55%, rgba(179, 249, 72, .1)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 -10px 18px -14px rgba(110, 185, 20, .45), 0 6px 16px -12px rgba(14, 16, 18, .25); }
 :root:not([data-theme="dark"]) .session { background: linear-gradient(170deg, rgba(179, 249, 72, .22), rgba(255, 255, 255, .6)); box-shadow: 0 6px 16px -12px rgba(14, 16, 18, .25); }
 :root:not([data-theme="dark"]) .flow .nav { padding-left: 38px; }
+
+/* the conversation area: a living green gradient behind the messages */
+:root:not([data-theme="dark"]) .stage {
+  background:
+    radial-gradient(900px 480px at 50% -10%, rgba(179, 249, 72, .42), transparent 66%),
+    radial-gradient(620px 420px at 100% 100%, rgba(179, 249, 72, .22), transparent 70%),
+    radial-gradient(520px 360px at 0% 70%, rgba(130, 210, 40, .12), transparent 70%),
+    linear-gradient(180deg, #FBFEF3, #F3F8E6);
+}
