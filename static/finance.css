@@ -158,3 +158,7 @@ html:lang(zh) .report-section h2, html:lang(zh) .fin-title { font-style: normal;
 .fin-receipt { display: grid; gap: 4px; }
 
 #adminModal .fin-form label.perm { display: flex; flex-direction: row; align-items: center; gap: 9px; text-transform: none; letter-spacing: 0; font-size: 13.5px; font-weight: 500; color: var(--ink-2); }
+
+/* accessibility: larger text and buttons (Settings > Large text) */
+html.large-text { font-size: 118%; }
+html.large-text button, html.large-text select, html.large-text input { min-height: 44px; }

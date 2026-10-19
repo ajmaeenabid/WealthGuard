@@ -17,7 +17,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict
 
 from app import store
-from app.finance import ai, analytics, bn, books, money, planning, privacy, rules, settings, taxonomy
+from app.finance import ai, analytics, bn, books, jurisdictions, money, planning, privacy, rules, settings, taxonomy
 from app.finance.books import FinanceError, new_id
 from app.security import guard
 
@@ -191,16 +191,20 @@ def _lock(user: str) -> threading.Lock:
 def _row_to_session(r) -> dict:
     pend = json.loads(r["pending"] or "{}")
     return {"id": r["id"], "user": r["username"], "state": r["state"], "intent": r["intent"], "draft": json.loads(r["draft"] or "{}"),
-            "question": r["question"], "pending": pend, "created": r["created"], "updated": r["updated"]}
+            "question": r["question"], "pending": pend, "created": r["created"], "updated": r["updated"],
+            "jurisdiction": r["jurisdiction"] or jurisdictions.DEFAULT, "language": r["language"], "config_version": r["config_version"]}
 
 
 def _new_session(user: str, intent: str) -> dict:
     sid, now = new_id("sess"), store.now()
-    store._write("UPDATE fin_sessions SET state='cancelled', updated=? WHERE username=? AND state IN ('collecting','awaiting_clarification','awaiting_confirmation')",
-                 (now, user))                                            # one open conversation at a time
-    store._write("INSERT INTO fin_sessions (id, username, state, intent, draft, missing, question, pending, created, updated) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                 (sid, user, "collecting", intent, "{}", "[]", None, "{}", now, now))
-    return {"id": sid, "user": user, "state": "collecting", "intent": intent, "draft": {}, "question": None, "pending": {}, "created": now, "updated": now}
+    pref = settings.get(user)
+    jur = pref["jurisdiction"]
+    store._write("UPDATE fin_sessions SET state='cancelled', updated=? WHERE username=? AND COALESCE(jurisdiction,?)=? AND state IN ('collecting','awaiting_clarification','awaiting_confirmation')",
+                 (now, user, jurisdictions.DEFAULT, jur))                # one open conversation at a time per jurisdiction; other jurisdictions' stay paused
+    store._write("INSERT INTO fin_sessions (id, username, state, intent, draft, missing, question, pending, created, updated, jurisdiction, language, config_version) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                 (sid, user, "collecting", intent, "{}", "[]", None, "{}", now, now, jur, pref["ui_lang"], jurisdictions.VERSION))
+    return {"id": sid, "user": user, "state": "collecting", "intent": intent, "draft": {}, "question": None, "pending": {}, "created": now, "updated": now,
+            "jurisdiction": jur, "language": pref["ui_lang"], "config_version": jurisdictions.VERSION}
 
 
 def _save(sess: dict) -> None:
@@ -211,13 +215,45 @@ def _save(sess: dict) -> None:
 
 def open_session(user: str) -> Optional[dict]:
     """The user's unfinished conversation, if any. A session untouched for 24 hours is closed rather than resumed."""
-    r = books._one("SELECT * FROM fin_sessions WHERE username=? AND state IN ('collecting','awaiting_clarification','awaiting_confirmation') ORDER BY updated DESC LIMIT 1", (user,))
+    jur = settings.get(user)["jurisdiction"]
+    r = books._one("SELECT * FROM fin_sessions WHERE username=? AND COALESCE(jurisdiction,?)=? AND state IN ('collecting','awaiting_clarification','awaiting_confirmation') ORDER BY updated DESC LIMIT 1",
+                   (user, jurisdictions.DEFAULT, jur))
     if not r:
         return None
     if datetime.fromisoformat(r["updated"].replace("Z", "+00:00")).replace(tzinfo=None) < datetime.utcnow() - STALE_AFTER:
         store._write("UPDATE fin_sessions SET state='cancelled', updated=? WHERE id=?", (store.now(), r["id"]))
         return None
     return _row_to_session(r)
+
+
+def list_sessions(user: str) -> dict:
+    """Conversation history with the jurisdiction each one belongs to. Nothing here is shared between jurisdictions."""
+    rows = books._q("SELECT * FROM fin_sessions WHERE username=? ORDER BY updated DESC LIMIT 50", (user,))
+    cur = settings.get(user)["jurisdiction"]
+    out = []
+    for r in rows:
+        first = books._one("SELECT text FROM fin_messages WHERE session_id=? AND role='user' ORDER BY id LIMIT 1", (r["id"],))
+        j = r["jurisdiction"] or jurisdictions.DEFAULT
+        out.append({"id": r["id"], "state": r["state"], "jurisdiction": j, "currency": jurisdictions.currency(j), "language": r["language"],
+                    "config_version": r["config_version"], "title": (first["text"][:60] if first else ""), "created": r["created"], "updated": r["updated"],
+                    "open": r["state"] in ("collecting", "awaiting_clarification", "awaiting_confirmation"), "active_jurisdiction": j == cur})
+    return {"active_jurisdiction": cur, "conversations": out}
+
+
+def resume(user: str, sid: str) -> dict:
+    """Explicitly continue an unfinished conversation from another jurisdiction. This switches the active jurisdiction back to the one the
+    conversation started in, so a pending entry is completed under its original configuration (the alternative is to cancel it)."""
+    r = books._one("SELECT * FROM fin_sessions WHERE id=? AND username=?", (sid, user))
+    if not r:
+        raise FinanceError("No such conversation.", 404)
+    if r["state"] not in ("collecting", "awaiting_clarification", "awaiting_confirmation"):
+        raise FinanceError("That conversation is finished, so it is read-only history. Start a new message instead.", 409)
+    j = r["jurisdiction"] or jurisdictions.DEFAULT
+    if j != settings.get(user)["jurisdiction"]:
+        settings.update(user, {"jurisdiction": j})
+    store._write("UPDATE fin_sessions SET updated=? WHERE id=?", (store.now(), sid))
+    books._audit(user, "fin_conversation_resumed", {"session": sid, "jurisdiction": j})
+    return current(user)
 
 
 def _add_message(sid: str, role: str, text: str) -> None:
@@ -665,6 +701,7 @@ def _public(sess: Optional[dict], extra: Optional[dict] = None) -> dict:
         out["question"] = {"slot": aw, "options": sess["pending"].get("options", [])} if aw and aw != "confirm" else None
         out["draft"] = {k: v for k, v in sess["draft"].items() if k in ("type", "amount", "amount_basis", "discount", "tax", "service_charge", "date", "merchant", "item_name", "category", "subcategory", "payment_method", "note", "account_id", "to_account_id")}
         out["awaiting"] = aw
+        out["jurisdiction"], out["config_version"] = sess.get("jurisdiction"), sess.get("config_version")
     return dict(out, **(extra or {}))
 
 
@@ -933,5 +970,5 @@ def current(user: str) -> dict:
     """What the page needs to resume an interrupted conversation after a refresh."""
     sess = open_session(user)
     if not sess:
-        return {"session_id": None, "state": "idle", "messages": []}
+        return {"session_id": None, "state": "idle", "messages": [], "jurisdiction": settings.get(user)["jurisdiction"]}
     return dict(_public(sess), reply=sess["question"], messages=messages(user, sess["id"]))

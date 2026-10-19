@@ -795,7 +795,17 @@
     const accs = state.accounts.length ? state.accounts : await refreshAccounts();
     const row = (title, hint, control) => `<div class="row"><div class="what"><b>${esc(title)}</b><span>${esc(hint)}</span></div>${control}</div>`;
     const act = await api("/activity?limit=25", undefined, "GET").catch(() => null);
+    const L = window.WGLang, jc = st.jurisdiction_config;
+    const cap = (o) => Object.entries(o).map(([k, v]) => `<option value="${k}" ${st.ui_lang === k ? "selected" : ""}>${esc(v)}</option>`).join("");
     root.innerHTML = `<div class="fin-set">
+      <div class="fcard"><h3>Language and region</h3>
+        ${row("Interface language", "Saved to your account, so it follows you to other devices and after you sign in again.", `<select id="uiLangSel" aria-label="Interface language">${cap(L ? L.NAMES : { en: "English" })}</select>`)}
+        ${row("Financial jurisdiction", "Sets the home currency and the payment methods offered. It is separate from the language. Changing it starts a new, separate assistant conversation; your records are not changed or converted.", `<select id="stJur" aria-label="Financial jurisdiction">${st.options.jurisdiction.map((c) => `<option value="${c}" ${st.jurisdiction === c ? "selected" : ""}>${esc((state.meta.jurisdictions[c].name[(L && L.lang) || "en"]) || c)} (${esc(state.meta.jurisdictions[c].currency)})</option>`).join("")}</select>`)}
+        <p class="estimate-note" id="jurNote">Active: ${esc(jc.name.en)} · ${esc(jc.currency)} · configuration ${esc(jc.version)}. Bank and wallet balances are never read automatically; you enter or import them. Provider lists here are unverified conventions.</p>
+        ${row("Voice mode", "Hands-free conversation: it listens, sends your words to the assistant, and reads the reply.", `<label class="check" style="display:flex;gap:8px;align-items:center"><input id="stVoiceOn" type="checkbox" ${st.voice_enabled ? "checked" : ""}> On</label>`)}
+        ${row("Speech language", "The language you speak in voice mode. Automatic follows the interface language.", `<select id="stSpeech" aria-label="Speech language">${st.options.speech_lang.map((x) => `<option value="${x}" ${st.speech_lang === x ? "selected" : ""}>${{ auto: "Automatic", zh: "简体中文", en: "English", bn: "বাংলা" }[x]}</option>`).join("")}</select>`)}
+        ${row("Large text", "Makes text and buttons bigger.", `<label class="check" style="display:flex;gap:8px;align-items:center"><input id="stLarge" type="checkbox" ${st.large_text ? "checked" : ""}> On</label>`)}
+      </div>
       <div class="fcard"><h3>AI preferences</h3>
         ${row("Explain reports with AI", "The AI only explains numbers calculated from your records. It cannot add figures, and a built-in explanation is used if it is off or unavailable.", `<label class="check" style="display:flex;gap:8px;align-items:center"><input id="stAi" type="checkbox" ${st.ai_reports ? "checked" : ""}> On</label>`)}
         ${row("Assistant language", "Auto follows the language you write in (English, Bangla or Banglish).", `<select id="stLang" aria-label="Assistant language">${st.options.assistant_lang.map((x) => `<option value="${x}" ${st.assistant_lang === x ? "selected" : ""}>${{ auto: "Automatic", en: "English", bn: "বাংলা (Bangla)" }[x]}</option>`).join("")}</select>`)}
@@ -825,6 +835,18 @@
       try { const out = await api("/settings", patch); $("stMsg").textContent = "Saved."; if (window.WGVoice && window.WGVoice.setSpeak) window.WGVoice.setSpeak(out.voice_replies); }
       catch (e) { $("stMsg").textContent = e.message; }
     };
+    $("uiLangSel").onchange = async () => { await window.WGLang.apply($("uiLangSel").value); $("stMsg").textContent = window.WGLang.t("Saved."); };
+    $("stJur").onchange = async () => {
+      try {
+        const out = await api("/settings", { jurisdiction: $("stJur").value });
+        $("stMsg").textContent = out.new_conversation ? "Jurisdiction changed. A new conversation starts with the next message; earlier ones stay in history." : "Saved.";
+        state.meta = await api("/meta", undefined, "GET"); state.currency = state.meta.currency; document.dispatchEvent(new CustomEvent("wg:jurisdiction", { detail: out.jurisdiction }));
+        loadSettings();
+      } catch (e) { $("stMsg").textContent = e.message; }
+    };
+    $("stVoiceOn").onchange = () => save({ voice_enabled: $("stVoiceOn").checked });
+    $("stSpeech").onchange = () => save({ speech_lang: $("stSpeech").value });
+    $("stLarge").onchange = () => { document.documentElement.classList.toggle("large-text", $("stLarge").checked); save({ large_text: $("stLarge").checked }); };
     $("stAi").onchange = () => save({ ai_reports: $("stAi").checked });
     $("stLang").onchange = () => save({ assistant_lang: $("stLang").value });
     $("stAdj").onchange = () => save({ ask_adjustments: $("stAdj").value });

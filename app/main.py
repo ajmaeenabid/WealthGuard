@@ -21,6 +21,8 @@ from app.security import audit, guard, tiers
 @asynccontextmanager
 async def lifespan(_app):
     print(f"WealthGuard LLM: {config.describe_llm()}", flush=True)
+    from app import envcheck
+    envcheck.enforce_at_startup()
     from app import knowledge, vectorstore
     try:
         knowledge.ensure_index()

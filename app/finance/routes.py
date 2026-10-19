@@ -16,7 +16,7 @@ from app import accounts as auth
 import logging
 import sqlite3
 
-from app.finance import ai, analytics, assistant, books, exchange, money, planning, privacy, receipts, reports, settings, taxonomy
+from app.finance import ai, analytics, assistant, books, exchange, jurisdictions, money, planning, privacy, receipts, reports, settings, taxonomy
 from app.finance.books import FinanceError
 
 router = APIRouter(prefix="/api/fin")
@@ -200,6 +200,11 @@ class SettingsIn(BaseModel):
     ask_adjustments: Optional[str] = Field(None, max_length=8)
     voice_replies: Optional[bool] = None
     history_days: Optional[int] = None
+    ui_lang: Optional[str] = Field(None, max_length=2)
+    jurisdiction: Optional[str] = Field(None, max_length=2)
+    voice_enabled: Optional[bool] = None
+    speech_lang: Optional[str] = Field(None, max_length=4)
+    large_text: Optional[bool] = None
 
 
 class EraseIn(BaseModel):
@@ -234,10 +239,12 @@ def _dump(model: BaseModel) -> dict:
 @router.get("/meta")
 def meta(request: Request):
     u = _user(request)
-    return {"currency": books.base_currency(u), "expense_categories": {c: taxonomy.subcategories(c) for c in taxonomy.categories("expense")},
+    pref = settings.get(u)
+    return {"jurisdiction": pref["jurisdiction_config"], "jurisdictions": {c: jurisdictions.summary(c) for c in jurisdictions.codes()},
+            "currency": books.base_currency(u), "expense_categories": {c: taxonomy.subcategories(c) for c in taxonomy.categories("expense")},
             "income_categories": taxonomy.categories("income"), "account_types": taxonomy.ACCOUNT_TYPES, "payment_methods": taxonomy.PAYMENT_METHODS,
             "transaction_types": list(books.TYPES), "ai": {"enabled": ai.enabled(), "model": ai.model_name() if ai.enabled() else None},
-            "assistant_languages": ["en", "bn"]}
+            "assistant_languages": ["en", "bn"], "ui_languages": list(settings.UI_LANGS)}
 
 
 @router.get("/ai-usage")
@@ -537,6 +544,21 @@ def assistant_chat(body: ChatIn, request: Request):
 @router.get("/assistant/session")
 def assistant_session(request: Request):
     return _call(assistant.current, _user(request))
+
+
+@router.get("/conversations")
+def conversations(request: Request):
+    return _call(assistant.list_sessions, _user(request))
+
+
+@router.get("/conversations/{sid}")
+def conversation_messages(sid: str, request: Request):
+    return _call(lambda: {"id": sid, "messages": assistant.messages(_user(request), sid)})
+
+
+@router.post("/conversations/{sid}/resume")
+def conversation_resume(sid: str, request: Request):
+    return _call(assistant.resume, _user(request), sid)
 
 
 @router.post("/assistant/cancel")
