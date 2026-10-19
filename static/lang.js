@@ -13,7 +13,7 @@
   const P = {
     zh: {
       "My money": "我的资金", "Overview": "概览", "Transactions": "交易", "Accounts": "账户", "Plan": "计划", "Reports": "报告", "Assistant": "助手", "Settings": "设置",
-      "Language and region": "语言与地区", "Interface language": "界面语言", "Financial jurisdiction": "金融辖区", "Active jurisdiction": "当前辖区", "Currency": "币种",
+      "Language and region": "语言与地区", "Language, region and currency": "语言、地区与币种", "Currency": "币种", "Apply to all accounts": "应用到所有账户", "Interface language": "界面语言", "Financial jurisdiction": "金融辖区", "Active jurisdiction": "当前辖区", "Currency": "币种",
       "Bangladesh": "孟加拉国", "China (mainland)": "中国大陆", "Automatic": "自动", "Save": "保存", "Saved.": "已保存。", "Cancel": "取消", "Delete": "删除", "Edit": "编辑", "Create": "创建",
       "Add bill": "添加账单", "Add budget": "添加预算", "Add goal": "添加目标", "Add savings": "添加储蓄", "Amount": "金额", "Date": "日期", "Category": "类别", "Subcategory": "子类别",
       "Account": "账户", "Description": "说明", "Note": "备注", "Type": "类型", "Status": "状态", "Name": "名称", "Period": "期间", "Goal": "目标", "Goals": "目标", "Limit": "限额",
@@ -27,14 +27,14 @@
       "Voice mode": "语音模式", "Start voice mode": "开启语音模式", "Stop voice mode": "结束语音模式", "Listening…": "正在聆听…", "Processing…": "处理中…", "Speaking…": "正在朗读…",
       "Say something": "请说话", "Back to text chat": "返回文字聊天", "Voice preferences": "语音偏好", "Enable voice mode": "启用语音模式", "Speech language": "语音语言",
       "Read replies aloud automatically": "自动朗读回复", "Large text": "大号文字", "Microphone": "麦克风", "Conversations": "对话记录", "New conversation": "新对话", "Resume": "继续",
-      "View": "查看", "Conversations": "对话记录", "No conversations yet.": "还没有对话。", "Or try a demo account": "或使用演示账户", "Administrator": "管理员", "Client": "客户", "Password 123": "密码 123", "for every demo account. Change it in Settings.": "适用于所有演示账户，可在设置中修改。", "Recorded": "已记录", "Estimate": "估算", "Pending": "待确认", "Forecasted": "预测值", "Scheduled": "已安排",
+      "View": "查看", "Conversations": "对话记录", "No conversations yet.": "还没有对话。", "Or try a demo account": "或使用演示账户", "Administrator": "管理员", "Client": "客户", "Password 123": "密码 123", "for every demo account. Change it in Settings.": "适用于所有演示账户，可在设置中修改。", "Region": "地区", "Recorded": "已记录", "Estimate": "估算", "Pending": "待确认", "Forecasted": "预测值", "Scheduled": "已安排",
       "Compliance-first wealth advice": "合规优先的财富顾问", "New chat": "新对话", "Chats": "对话", "No chats yet.": "暂无对话。",
       "Food": "餐饮", "Transport": "交通", "Housing": "住房", "Utilities": "水电费", "Health": "医疗健康", "Education": "教育", "Shopping": "购物", "Entertainment": "娱乐", "Savings": "储蓄",
       "Salary": "工资", "Other": "其他", "Cash": "现金", "Bank": "银行", "Card": "银行卡"
     },
     bn: {
       "My money": "আমার টাকা", "Overview": "সারসংক্ষেপ", "Transactions": "লেনদেন", "Accounts": "অ্যাকাউন্ট", "Plan": "পরিকল্পনা", "Reports": "প্রতিবেদন", "Assistant": "সহকারী", "Settings": "সেটিংস",
-      "Language and region": "ভাষা ও অঞ্চল", "Interface language": "ইন্টারফেসের ভাষা", "Financial jurisdiction": "আর্থিক এখতিয়ার", "Active jurisdiction": "বর্তমান এখতিয়ার", "Currency": "মুদ্রা",
+      "Language and region": "ভাষা ও অঞ্চল", "Language, region and currency": "ভাষা, অঞ্চল ও মুদ্রা", "Apply to all accounts": "সব অ্যাকাউন্টে প্রয়োগ করুন", "Interface language": "ইন্টারফেসের ভাষা", "Financial jurisdiction": "আর্থিক এখতিয়ার", "Active jurisdiction": "বর্তমান এখতিয়ার", "Currency": "মুদ্রা",
       "Bangladesh": "বাংলাদেশ", "China (mainland)": "চীন (মূল ভূখণ্ড)", "Automatic": "স্বয়ংক্রিয়", "Save": "সংরক্ষণ", "Saved.": "সংরক্ষিত হয়েছে।", "Cancel": "বাতিল", "Delete": "মুছুন", "Edit": "সম্পাদনা", "Create": "তৈরি করুন",
       "Add bill": "বিল যোগ করুন", "Add budget": "বাজেট যোগ করুন", "Add goal": "লক্ষ্য যোগ করুন", "Add savings": "সঞ্চয় যোগ করুন", "Amount": "পরিমাণ", "Date": "তারিখ", "Category": "বিভাগ", "Subcategory": "উপবিভাগ",
       "Account": "অ্যাকাউন্ট", "Description": "বিবরণ", "Note": "নোট", "Type": "ধরন", "Status": "অবস্থা", "Name": "নাম", "Period": "সময়কাল", "Goal": "লক্ষ্য", "Goals": "লক্ষ্যসমূহ", "Limit": "সীমা",
@@ -48,7 +48,7 @@
       "Voice mode": "ভয়েস মোড", "Start voice mode": "ভয়েস মোড চালু করুন", "Stop voice mode": "ভয়েস মোড বন্ধ করুন", "Listening…": "শুনছি…", "Processing…": "প্রক্রিয়া চলছে…", "Speaking…": "বলছি…",
       "Say something": "কিছু বলুন", "Back to text chat": "টেক্সট চ্যাটে ফিরুন", "Voice preferences": "ভয়েস পছন্দ", "Enable voice mode": "ভয়েস মোড চালু রাখুন", "Speech language": "কথার ভাষা",
       "Read replies aloud automatically": "উত্তর নিজে থেকে পড়ে শোনান", "Large text": "বড় লেখা", "Microphone": "মাইক্রোফোন", "Conversations": "কথোপকথন", "New conversation": "নতুন কথোপকথন", "Resume": "আবার শুরু",
-      "View": "দেখুন", "No conversations yet.": "এখনও কোনো কথোপকথন নেই।", "Or try a demo account": "অথবা ডেমো অ্যাকাউন্ট দেখুন", "Administrator": "অ্যাডমিন", "Client": "ক্লায়েন্ট", "Password 123": "পাসওয়ার্ড 123", "for every demo account. Change it in Settings.": "সব ডেমো অ্যাকাউন্টের জন্য। সেটিংসে বদলানো যায়।", "Recorded": "লিপিবদ্ধ", "Estimate": "আনুমানিক", "Pending": "অপেক্ষমাণ", "Forecasted": "পূর্বাভাসিত", "Scheduled": "নির্ধারিত",
+      "View": "দেখুন", "No conversations yet.": "এখনও কোনো কথোপকথন নেই।", "Or try a demo account": "অথবা ডেমো অ্যাকাউন্ট দেখুন", "Administrator": "অ্যাডমিন", "Client": "ক্লায়েন্ট", "Password 123": "পাসওয়ার্ড 123", "for every demo account. Change it in Settings.": "সব ডেমো অ্যাকাউন্টের জন্য। সেটিংসে বদলানো যায়।", "Region": "অঞ্চল", "Recorded": "লিপিবদ্ধ", "Estimate": "আনুমানিক", "Pending": "অপেক্ষমাণ", "Forecasted": "পূর্বাভাসিত", "Scheduled": "নির্ধারিত",
       "Compliance-first wealth advice": "নিয়ম মেনে সম্পদ পরামর্শ", "New chat": "নতুন চ্যাট", "Chats": "চ্যাট", "No chats yet.": "এখনও কোনো চ্যাট নেই।",
       "Risk profile": "ঝুঁকির প্রোফাইল", "Allocation": "বিনিয়োগ বণ্টন", "Compliance": "নিয়ম পালন", "Stress test": "চাপ পরীক্ষা", "Approvals": "অনুমোদন", "Purchase history": "কেনাকাটার ইতিহাস",
       "Memory": "স্মৃতি", "Audit log": "অডিট লগ", "Advice receipt": "পরামর্শের রসিদ",

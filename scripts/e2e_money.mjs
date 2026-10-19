@@ -208,9 +208,9 @@ check("device notification toggle is explained honestly", (await ev(`document.ge
 
 // ---- language and jurisdiction: three languages, saved to the account, separate from the jurisdiction
 await run(click(".nav[data-tab=settings]"), 1300);
-check("settings has the language and region card", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("Language and region"));
+check("settings has the language and region card", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("Language, region and currency"));
 await run(setv("uiLangSel", "zh"), 1500);
-check("choosing Chinese translates the settings labels", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("语言与地区"));
+check("choosing Chinese translates the settings labels", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("语言、地区与币种"));
 const savedLang = await ev(`fetch('/api/fin/settings').then(r=>r.json()).then(o=>o.ui_lang)`);
 check("and the choice is saved on the server", savedLang === "zh", savedLang);
 await send("Page.reload"); await sleep(3500);
@@ -218,7 +218,7 @@ check("after a reload the saved language is still Chinese", (await ev(`document.
 await run(setv("uiLangSel", "bn"), 1500).catch(() => {});
 await run(click(".nav[data-tab=settings]"), 1300);
 await run(setv("uiLangSel", "bn"), 1500);
-check("Bangla shows Bangla labels and Bangla digits for amounts", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("ভাষা ও অঞ্চল"));
+check("Bangla shows Bangla labels and Bangla digits for amounts", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("ভাষা, অঞ্চল ও মুদ্রা"));
 await run(setv("uiLangSel", "en"), 1200);
 await run(setv("stJur", "CN"), 2000);
 check("changing jurisdiction shows the active region chip (region name, your chosen currency)", (await ev(`(document.getElementById('finRegion')||{}).textContent`)).includes("China") && (await ev(`(document.getElementById('finRegion')||{}).textContent`)).includes("BDT"), await ev(`(document.getElementById('finRegion')||{}).textContent`));

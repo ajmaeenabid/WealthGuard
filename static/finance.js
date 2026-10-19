@@ -814,7 +814,7 @@
       $("finNewConvo").onclick = async () => { try { await api("/assistant/cancel", {}); } catch (e) { /* nothing open */ } A.loaded = false; A.last = null; $("finConfirm").hidden = true; loadAssistant(); };
     }
     const j = jur && state.meta && state.meta.jurisdictions && state.meta.jurisdictions[jur];
-    $("finChatJur").textContent = j ? (j.name[(window.WGLang && window.WGLang.lang) || "en"] || j.name.en) : (jur || "");
+    $("finChatJur").textContent = j ? `${window.WGLang ? window.WGLang.t("Region") : "Region"}: ${j.name[(window.WGLang && window.WGLang.lang) || "en"] || j.name.en}` : (jur || "");
     $("finChatJur").title = "The jurisdiction this conversation was started under";
   }
   async function showConversations() {
@@ -869,7 +869,9 @@
     const L = window.WGLang, jc = st.jurisdiction_config;
     const cap = (o) => Object.entries(o).map(([k, v]) => `<option value="${k}" ${st.ui_lang === k ? "selected" : ""}>${esc(v)}</option>`).join("");
     root.innerHTML = `<div class="fin-set">
-      <div class="fcard"><h3>Language and region</h3>
+      <div class="fcard"><h3>Language, region and currency</h3>
+        ${row("Currency", st.currency_chosen ? "Totals and charts are shown in this currency. Accounts in other currencies stay listed but are never converted or added in." : "Choose the currency your totals are shown in. Nothing is converted.", `<select id="stCur" aria-label="Currency">${st.currency_chosen ? "" : `<option value="" selected disabled>Choose…</option>`}${st.currencies.map((c) => `<option value="${c.code}" ${st.currency_chosen && st.base_currency === c.code ? "selected" : ""}>${c.symbol}  ${c.code} – ${esc(c.name)}</option>`).join("")}</select>`)} 
+        ${st.currency_chosen && accs.some((a) => a.currency !== st.base_currency) ? row("Apply to all accounts", `${accs.filter((a) => a.currency !== st.base_currency).length} account(s) are labelled in another currency (${esc([...new Set(accs.map((a) => a.currency))].join(", "))}), so they are left out of your totals. If all your figures are really in ${st.base_currency}, relabel them in one step. Nothing is converted.`, `<button type="button" id="stCurAll">Set all accounts to ${esc(st.base_currency)}</button>`) : ""}
         ${row("Interface language", "Saved to your account, so it follows you to other devices and after you sign in again.", `<select id="uiLangSel" aria-label="Interface language">${cap(L ? L.NAMES : { en: "English" })}</select>`)}
         ${row("Financial jurisdiction", "Sets the home currency and the payment methods offered. It is separate from the language. Changing it starts a new, separate assistant conversation; your records are not changed or converted.", `<select id="stJur" aria-label="Financial jurisdiction">${st.options.jurisdiction.map((c) => `<option value="${c}" ${st.jurisdiction === c ? "selected" : ""}>${esc((state.meta.jurisdictions[c].name[(L && L.lang) || "en"]) || c)} (${esc(state.meta.jurisdictions[c].currency)})</option>`).join("")}</select>`)}
         <p class="estimate-note" id="jurNote">Active: ${esc(jc.name.en)} · ${esc(jc.currency)} · configuration ${esc(jc.version)}. Bank and wallet balances are never read automatically; you enter or import them. Provider lists here are unverified conventions.</p>
@@ -882,8 +884,6 @@
         ${row("Assistant language", "Auto follows the language you write in (English, Bangla or Banglish).", `<select id="stLang" aria-label="Assistant language">${st.options.assistant_lang.map((x) => `<option value="${x}" ${st.assistant_lang === x ? "selected" : ""}>${{ auto: "Automatic", en: "English", bn: "বাংলা (Bangla)" }[x]}</option>`).join("")}</select>`)}
         ${row("Questions about discounts, VAT and service charge", "Automatic asks only when something is unclear. Always asks every time. Never assumes the amount is what you paid.", `<select id="stAdj" aria-label="Ask about discounts">${st.options.ask_adjustments.map((x) => `<option value="${x}" ${st.ask_adjustments === x ? "selected" : ""}>${{ auto: "Automatic", always: "Always ask", never: "Never ask" }[x]}</option>`).join("")}</select>`)}
         ${row("Read assistant replies aloud", "Uses your browser's speech synthesis. Nothing is uploaded for this.", `<label class="check" style="display:flex;gap:8px;align-items:center"><input id="stVoice" type="checkbox" ${st.voice_replies ? "checked" : ""}> On</label>`)}
-        ${row("Currency", st.currency_chosen ? "Totals and charts are shown in this currency. Accounts in other currencies stay listed but are never converted or added in." : "Choose the currency your totals are shown in. Nothing is converted.", `<select id="stCur" aria-label="Currency">${st.currency_chosen ? "" : `<option value="" selected disabled>Choose…</option>`}${st.currencies.map((c) => `<option value="${c.code}" ${st.currency_chosen && st.base_currency === c.code ? "selected" : ""}>${c.symbol}  ${c.code} – ${esc(c.name)}</option>`).join("")}</select>`)} 
-        ${st.currency_chosen && accs.some((a) => a.currency !== st.base_currency) ? row("Apply to all accounts", `${accs.filter((a) => a.currency !== st.base_currency).length} account(s) are labelled in another currency (${esc([...new Set(accs.map((a) => a.currency))].join(", "))}), so they are left out of your totals. If all your figures are really in ${st.base_currency}, relabel them in one step. Nothing is converted.`, `<button type="button" id="stCurAll">Set all accounts to ${esc(st.base_currency)}</button>`) : ""}
         <p class="muted small" id="stMsg" role="status"></p></div>
       <div class="fcard"><h3>AI status and use <span class="tag">${meta.ai.enabled ? "on" : "off"}</span></h3>
         <p>${meta.ai.enabled ? `Language understanding and report explanations use <b>${esc(meta.ai.model)}</b> through Groq. The key stays on the server.` : "No AI key is configured, so the built-in rules understand your messages and explain your reports. Everything still works."}</p>
@@ -1027,8 +1027,9 @@ Only the label changes; the numbers stay as they are and nothing is converted.`)
     const L = window.WGLang, lg = (L && L.lang) || "en";
     let chip = $("finRegion");
     if (!chip) { chip = el("span", "tag"); chip.id = "finRegion"; chip.setAttribute("data-notr", ""); const sub = $("finSub"); if (sub && sub.parentNode) sub.parentNode.insertBefore(chip, sub.nextSibling); }
-    chip.textContent = `${jc.name[lg] || jc.name.en} · ${state.currency || ""}`.replace(/ · $/, "");
-    chip.title = `Active jurisdiction ${jc.code}, configuration ${jc.version}. Totals are shown in your chosen currency (${state.currency}), set in Settings.`;
+    const T = (x) => (L ? L.t(x) : x);
+    chip.textContent = `${T("Region")}: ${jc.name[lg] || jc.name.en}` + (state.currency ? ` · ${T("Currency")}: ${state.currency}` : "");
+    chip.title = `Region (jurisdiction) ${jc.code}, configuration ${jc.version}. Active jurisdiction ${jc.code}, configuration ${jc.version}. Totals are shown in your chosen currency (${state.currency}), set in Settings.`;
   }
   window.addEventListener("wg:lang", () => { if (state.meta) paintRegion(state.meta.jurisdiction); });
 
