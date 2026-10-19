@@ -45,3 +45,9 @@ def test_i18n_keys_in_html_exist_in_dictionary():
 def test_chinese_banner_keeps_disclaimer():
     js = c.get("/static/i18n.js").text
     assert js.count("不构成真实的投资建议") >= 2  # banner and footer
+
+
+def test_pages_and_scripts_are_revalidated_so_browsers_never_run_stale_code():
+    for path in ["/", "/static/app.js", "/static/finance.js", "/static/styles.css"]:
+        assert c.get(path).headers["cache-control"] == "no-cache", path
+    assert "no-cache" not in c.get("/api/health").headers.get("cache-control", "")

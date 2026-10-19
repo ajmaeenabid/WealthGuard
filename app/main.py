@@ -61,7 +61,10 @@ async def auth_gate(request: Request, call_next):
             if feat and not me["permissions"].get(feat, True):
                 return JSONResponse({"detail": f"Your account does not have access to {accounts.FEATURES[feat].lower()}. "
                                                "Ask an administrator."}, status_code=403)
-    return await call_next(request)
+    response = await call_next(request)
+    if not path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-cache"      # the page and its scripts are re-validated on every load, so an update is never masked by a stale copy
+    return response
 
 
 def _me(request: Request) -> dict:
