@@ -146,3 +146,19 @@ a:hover { color: var(--color-action-hover); }
 .hero .hero-seal { background: none; border: 0; box-shadow: none; border-radius: 50%; }
 .hero .hero-seal::before { display: none; }
 .hero .hero-seal::after { border-radius: 50%; inset: -8px; border-color: color-mix(in srgb, var(--color-brand-bronze) 35%, transparent); }
+
+/* ---------------------------------------------------------------- greeting: one design in BOTH themes (same fonts, same gradient logic; only the token colours change) */
+.hero-hello { font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: clamp(1.4rem, 2vw + .8rem, 2rem); color: var(--color-text-secondary); margin: 0; }
+.hero-hello b, #heroName {
+  font-style: italic; font-weight: 700;
+  background: linear-gradient(90deg, var(--color-action) 0%, var(--color-brand-bronze) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+}
+.hero-title, .hero h1 {
+  font-family: var(--font-display); font-style: italic; font-weight: 500; letter-spacing: var(--tracking-display);
+  background: linear-gradient(100deg, var(--color-text-primary) 0%, var(--color-text-primary) 52%, var(--color-action) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+}
+.hero-sub { color: var(--color-text-primary); opacity: .82; font-weight: 450; max-width: 52ch; }
+.tg-main { background: linear-gradient(90deg, var(--color-action), var(--color-brand-bronze)); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; font-weight: 600; }
+:root[data-theme="dark"] .hero-sub { color: #EAF2EC; opacity: .94; text-shadow: 0 1px 14px rgba(0, 0, 0, .6); }
+:root[data-theme="dark"] .tg-main { background: linear-gradient(90deg, #8CF083, #E8D87A); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 10px rgba(98, 224, 90, .25)); }
+.hero-title, .hero h1, .hero-hello { line-height: 1.28; padding-bottom: .12em; overflow: visible; }   /* gradient text is clipped to its box: leave room for descenders (y, g, p) */

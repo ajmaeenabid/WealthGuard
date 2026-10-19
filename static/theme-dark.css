@@ -3,7 +3,6 @@
    (navigation, workspace, detail drawer), glass message bubbles with hairline borders, dim uppercase section labels, one bright lime accent. */
 
 :root[data-theme="dark"] body { background: var(--color-bg-primary); }
-:root[data-theme="dark"] h1, :root[data-theme="dark"] h2 { font-family: var(--font-ui); letter-spacing: -.015em; font-weight: 600; }
 :root[data-theme="dark"] .wordmark { font-family: var(--font-display); }
 
 /* ---------------------------------------------------------------- floating panels (desktop) */
@@ -44,8 +43,6 @@
 :root[data-theme="dark"] .sidebar .session { background: rgba(255, 255, 255, .035); }
 
 /* ---------------------------------------------------------------- hero and chat: glass bubbles, glass composer */
-:root[data-theme="dark"] .hero-hello b, :root[data-theme="dark"] #heroName { color: var(--color-action); }
-:root[data-theme="dark"] .hero-title, :root[data-theme="dark"] .hero h1 { font-family: var(--font-ui); font-style: normal; font-weight: 600; letter-spacing: -.02em; }
 :root[data-theme="dark"] .hero-seal img { filter: drop-shadow(0 0 22px rgba(98, 224, 90, .35)); }
 :root[data-theme="dark"] .hero .hero-seal::after { border-color: rgba(98, 224, 90, .3); }
 :root[data-theme="dark"] .msg.user {
@@ -105,11 +102,8 @@
 :root[data-theme="dark"] .userbox { background: #181d1a; border: 1px solid var(--color-border-soft); }
 :root[data-theme="dark"] .composer textarea, :root[data-theme="dark"] .fin-composer textarea { background: transparent; border: 0; box-shadow: none; }
 :root[data-theme="dark"] .composer .vbtn, :root[data-theme="dark"] .composer-bar button { background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); }
-:root[data-theme="dark"] .hero-hello { font-family: var(--font-ui); font-style: normal; font-weight: 500; color: var(--color-text-secondary); }
-:root[data-theme="dark"] .hero-hello b, :root[data-theme="dark"] #heroName { font-style: normal; font-weight: 600; }
 :root[data-theme="dark"] .mode-switch { background: rgba(255, 255, 255, .04); border-color: var(--color-border-soft); }
 :root[data-theme="dark"] .mode-switch button { background: transparent; border-color: transparent; }
-:root[data-theme="dark"] .fin-title, :root[data-theme="dark"] .card h2, :root[data-theme="dark"] .drawer h2, :root[data-theme="dark"] .auth-card h2 { font-family: var(--font-ui); font-style: normal; font-weight: 600; letter-spacing: -.02em; }
 
 /* ---------------------------------------------------------------- sidebar sections as green-edged cards, workspace switch, send button, richer green bubbles */
 :root[data-theme="dark"] .modeswitch { border: 1px solid rgba(98, 224, 90, .38); background: rgba(98, 224, 90, .05); border-radius: 18px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04); }
