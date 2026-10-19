@@ -154,10 +154,20 @@
     radial-gradient(980px 640px at 82% 8%, rgba(60, 138, 76, .55), rgba(16, 36, 24, .15) 60%, transparent 76%),
     radial-gradient(720px 520px at 8% 104%, rgba(98, 224, 90, .16), transparent 64%), #050807;
 }
-:root[data-theme="dark"] #auth::after {                      /* the emblem as a quiet watermark: large, soft, behind everything */
-  content: ""; position: absolute; right: 8vw; top: 50%; width: min(34vw, 460px); aspect-ratio: 1; transform: translateY(-50%); pointer-events: none;
-  background: radial-gradient(circle, rgba(98, 224, 90, .22), transparent 66%); filter: blur(30px);
+:root[data-theme="dark"] #auth::before {                    /* the same artwork as the light page, darkened and faded into the dark canvas */
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: url("/static/login-bg-taka.jpg") right center / cover no-repeat;
+  filter: brightness(.55) contrast(1.12) saturate(1.25);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .25) 28%, rgba(0, 0, 0, .85) 62%, #000 100%);
+          mask-image: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .25) 28%, rgba(0, 0, 0, .85) 62%, #000 100%);
 }
+:root[data-theme="dark"] #auth::after {                      /* green tint over the artwork so it belongs to the dark theme */
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(900px 600px at 78% 40%, rgba(40, 110, 60, .38), transparent 70%), linear-gradient(180deg, rgba(5, 8, 7, .25), rgba(5, 8, 7, .45));
+  mix-blend-mode: multiply;
+}
+:root[data-theme="dark"] #auth .auth-card, :root[data-theme="dark"] #auth .auth-tools { position: relative; z-index: 1; }
+:root[data-theme="dark"] #auth .auth-tools { position: absolute; }
 :root[data-theme="dark"] #auth .auth-card {
   --ink: #F3F6F3; --ink-2: #B9C1BC; --muted: #8E9993; --surface: #161a18; --surface-2: #1d2320; --surface-3: #28302c; --line-strong: rgba(255, 255, 255, .14);
   background: linear-gradient(165deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .02)), rgba(14, 18, 16, .82); border: 1px solid rgba(98, 224, 90, .28);

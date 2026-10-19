@@ -115,3 +115,40 @@
 :root:not([data-theme="dark"]) #auth .demo-tip { color: var(--color-text-secondary); }
 :root:not([data-theme="dark"]) .auth-tool { background: rgba(255, 255, 255, .92); border-color: var(--color-border); color: var(--color-text-primary); }
 :root:not([data-theme="dark"]) .auth-tool:hover:not(:disabled) { border-color: var(--color-link); background: #fff; }
+
+/* ---------------------------------------------------------------- green edges and richer green, as in the dark theme */
+:root:not([data-theme="dark"]) .sidebar, :root:not([data-theme="dark"]) .stage { border-color: var(--color-green-edge); }
+@media (min-width: 900px) { :root:not([data-theme="dark"]) .drawer { border-color: var(--color-green-edge); } }
+:root:not([data-theme="dark"]) .modeswitch { border: 1px solid var(--color-green-edge); background: linear-gradient(165deg, var(--color-green-soft), rgba(255, 255, 255, .6)); }
+:root:not([data-theme="dark"]) .modeswitch button[aria-selected="true"] { box-shadow: 0 0 0 1px rgba(70, 190, 66, .55), 0 8px 20px -12px rgba(14, 16, 18, .6); }
+:root:not([data-theme="dark"]) .session { border-color: var(--color-green-edge); background: linear-gradient(165deg, var(--color-green-soft), rgba(255, 255, 255, .5)); }
+:root:not([data-theme="dark"]) .side-sec, :root:not([data-theme="dark"]) .navlist[data-for="money"] { border: 1px solid var(--color-green-edge); background: linear-gradient(165deg, var(--color-green-soft), rgba(255, 255, 255, .55) 60%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8); }
+:root:not([data-theme="dark"]) .side-sec .group-label::before, :root:not([data-theme="dark"]) .navlist[data-for="money"] .group-label::before { background: var(--p-green); box-shadow: 0 0 10px rgba(70, 190, 66, .7); }
+:root:not([data-theme="dark"]) .side-sec .group-label::after, :root:not([data-theme="dark"]) .navlist[data-for="money"] .group-label::after { background: linear-gradient(90deg, var(--color-green-edge), transparent); }
+:root:not([data-theme="dark"]) .chat-item:not(:last-child)::after { background: linear-gradient(90deg, transparent, rgba(70, 190, 66, .55), transparent); }
+:root:not([data-theme="dark"]) .chat-item.active { box-shadow: inset 0 0 0 1px var(--color-green-edge), var(--shadow-sm); }
+:root:not([data-theme="dark"]) .chat-item.active::before { background: var(--p-green); }
+:root:not([data-theme="dark"]) .userbox { border-color: var(--color-green-edge); }
+:root:not([data-theme="dark"]) .card, :root:not([data-theme="dark"]) .fcard, :root:not([data-theme="dark"]) .acc-card { border-color: var(--color-green-edge); }
+:root:not([data-theme="dark"]) .drawer .card { border: 0; }
+:root:not([data-theme="dark"]) #llmBadge, :root:not([data-theme="dark"]) .pill, :root:not([data-theme="dark"]) .chip { border-color: var(--color-green-edge); }
+
+/* the message box: one clean green outline, no inner borders */
+:root:not([data-theme="dark"]) .composer, :root:not([data-theme="dark"]) .fin-composer { border: 1px solid var(--color-green-edge); background: linear-gradient(180deg, #fff, rgba(240, 252, 238, .9)); }
+:root:not([data-theme="dark"]) .composer:focus-within, :root:not([data-theme="dark"]) .fin-composer:focus-within { border-color: rgba(70, 190, 66, .85); box-shadow: 0 0 0 4px rgba(98, 224, 90, .2), var(--shadow-md); }
+:root:not([data-theme="dark"]) .composer textarea, :root:not([data-theme="dark"]) .fin-composer textarea, :root:not([data-theme="dark"]) .composer textarea:focus, :root:not([data-theme="dark"]) .fin-composer textarea:focus { border: 0; outline: none; box-shadow: none; background: transparent; }
+:root:not([data-theme="dark"]) .voice-dock { border: 0; background: transparent; padding: 0; }
+:root:not([data-theme="dark"]) .composer .vbtn, :root:not([data-theme="dark"]) .composer-bar button, :root:not([data-theme="dark"]) .composer .voice-dock button { border: 0; background: transparent; box-shadow: none; }
+:root:not([data-theme="dark"]) .composer .vbtn:hover:not(:disabled), :root:not([data-theme="dark"]) .composer .voice-dock button:hover:not(:disabled) { background: var(--color-green-soft); }
+:root:not([data-theme="dark"]) #sendBtn, :root:not([data-theme="dark"]) .composer .send, :root:not([data-theme="dark"]) .fin-composer .send { background: rgba(98, 224, 90, .2); border: 1px solid rgba(70, 190, 66, .55); color: #2D8A2A; }
+:root:not([data-theme="dark"]) #sendBtn:disabled, :root:not([data-theme="dark"]) .composer .send:disabled, :root:not([data-theme="dark"]) .fin-composer .send:disabled { background: rgba(98, 224, 90, .1); border-color: rgba(70, 190, 66, .3); color: rgba(45, 138, 42, .6); }
+:root:not([data-theme="dark"]) #sendBtn:not(:disabled), :root:not([data-theme="dark"]) .composer .send:not(:disabled), :root:not([data-theme="dark"]) .fin-composer .send:not(:disabled) { background: linear-gradient(160deg, #7AE873, #4FD04A); border-color: transparent; color: var(--color-on-action); box-shadow: 0 10px 24px -8px rgba(70, 190, 66, .85); }
+
+/* your messages: a rich green glass bubble */
+:root:not([data-theme="dark"]) .msg.user { background: linear-gradient(150deg, rgba(98, 224, 90, .5), rgba(150, 240, 130, .3) 60%, rgba(98, 224, 90, .16)); border: 1px solid rgba(70, 190, 66, .6); color: var(--color-text-primary); box-shadow: 0 12px 28px -14px rgba(70, 190, 66, .6), inset 0 1px 0 rgba(255, 255, 255, .6); }
+:root:not([data-theme="dark"]) .msg.agent::before { border-color: var(--color-green-edge); }
+:root:not([data-theme="dark"]) .msg.agent::after { border-color: var(--p-green); }
+:root:not([data-theme="dark"]) .quick button:hover, :root:not([data-theme="dark"]) .fin-quick button:hover, :root:not([data-theme="dark"]) .chips button:hover { background: var(--color-green-soft); border-color: rgba(70, 190, 66, .7); }
+:root:not([data-theme="dark"]) button.primary { box-shadow: 0 10px 24px -12px rgba(70, 190, 66, .9); }
+:root:not([data-theme="dark"]) #auth .primary { box-shadow: 0 14px 28px -14px rgba(70, 190, 66, .95); }
+:root:not([data-theme="dark"]) .md-table th { background: var(--color-action); }
