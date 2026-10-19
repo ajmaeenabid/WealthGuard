@@ -35,22 +35,46 @@ LIGHT, DARK = block(":root, :root[data-theme=\"light\"]"), block(":root[data-the
 
 
 def test_reference_palette_values_are_present():
-    for hexv in ("#F2EEDB", "#E4CFB5", "#FAF7ED", "#81A482", "#6D795F", "#815B3D", "#29251F", "#D5C4AA"):
+    for hexv in ("#F1F2EE", "#FFFFFF", "#0E1012", "#43484E", "#E3E5E0", "#D4E85E", "#1D2024", "#2F6B21"):
         assert hexv in CSS
 
 
 def test_light_theme_pairs_meet_aa():
-    pairs = [("color-text-primary", "color-bg-primary"), ("color-text-primary", "color-bg-surface"), ("color-text-primary", "color-bg-secondary"),
-             ("color-text-secondary", "color-bg-primary"), ("color-text-secondary", "color-bg-secondary"), ("color-text-muted", "color-bg-surface"),
-             ("color-on-action", "color-action"), ("color-action", "color-bg-primary"), ("color-success", "color-bg-primary"),
-             ("color-warning", "color-bg-primary"), ("color-danger", "color-bg-primary"), ("color-info", "color-bg-primary")]
+    pairs = [("color-text-primary", "color-bg-primary"), ("color-text-primary", "color-bg-surface"), ("color-text-primary", "color-bg-surface-2"),
+             ("color-text-secondary", "color-bg-primary"), ("color-text-secondary", "color-bg-surface-2"), ("color-text-muted", "color-bg-surface"),
+             ("color-on-action", "color-action"), ("color-on-action", "color-action-hover"), ("color-nav-selected-text", "color-nav-selected-bg"),
+             ("color-link", "color-bg-primary"), ("color-link", "color-bg-surface"), ("color-on-link", "color-link"),
+             ("color-success", "color-bg-primary"), ("color-warning", "color-bg-primary"), ("color-danger", "color-bg-primary"), ("color-info", "color-bg-primary")]
     for fg, bg in pairs:
         assert ratio(token(LIGHT, fg), token(LIGHT, bg)) >= 4.5, (fg, bg)
 
 
+def test_light_text_stays_black():
+    assert token(LIGHT, "color-text-primary").upper() == "#0E1012" and ratio(token(LIGHT, "color-text-primary"), "#FFFFFF") > 15
+
+
+def test_light_theme_scopes_every_rule_and_buttons_have_their_own_colour():
+    light = (STATIC / "theme-light.css").read_text(encoding="utf-8")
+    scoped = ':root:not([data-theme="dark"])'
+    depth = 0
+    for ln in light.splitlines():
+        t = ln.strip()
+        if t.startswith("@media"):
+            depth += 1
+        elif t == "}" and depth:
+            depth -= 1
+        elif (t.startswith(".") or t.startswith("body") or t.startswith("button")) and depth == 0:
+            raise AssertionError(ln)                        # an unscoped selector would leak into the dark theme
+        elif depth and (t.startswith(".") or t.startswith("body")):
+            raise AssertionError(ln)
+    assert scoped in light and "button.primary" in light and "var(--color-action)" in light
+    assert token(LIGHT, "color-action").upper() == "#D4E85E"           # the button colour is its own token, separate from text and links
+    assert token(LIGHT, "color-action") != token(LIGHT, "color-link")
+
+
 def test_dark_theme_pairs_meet_aa():
     pairs = [("color-text-primary", "color-bg-primary"), ("color-text-secondary", "color-bg-surface"), ("color-text-muted", "color-bg-surface"),
-             ("color-on-action", "color-action"), ("color-action", "color-bg-primary"), ("color-success", "color-bg-primary"),
+             ("color-on-action", "color-action"), ("color-link", "color-bg-primary"), ("color-success", "color-bg-primary"),
              ("color-warning", "color-bg-primary"), ("color-danger", "color-bg-primary"), ("color-info", "color-bg-primary")]
     for fg, bg in pairs:
         assert ratio(token(DARK, fg), token(DARK, bg)) >= 4.5, (fg, bg)
@@ -72,4 +96,4 @@ def test_theme_layer_uses_tokens_not_raw_colours():
     assert len(raw) <= 8, raw              # a handful of deliberate exceptions (white on destructive hover, hero shadow)
     assert 'href="/static/tokens.css"' in (STATIC / "index.html").read_text(encoding="utf-8")
     html = (STATIC / "index.html").read_text(encoding="utf-8")
-    assert html.index("tokens.css") < html.index("theme.css") < html.index("theme-dark.css") and "Playfair" in html and "Inter" in html
+    assert html.index("tokens.css") < html.index("theme.css") < html.index("theme-light.css") < html.index("theme-dark.css") and "Playfair" in html and "Inter" in html

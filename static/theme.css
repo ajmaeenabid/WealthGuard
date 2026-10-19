@@ -18,7 +18,7 @@ code, pre, .hash { font-family: var(--font-mono); }
 .group-label { color: var(--color-text-secondary); font-size: 11px; letter-spacing: .12em; }
 .nav { color: var(--color-text-secondary); border-radius: var(--r-control); min-height: 40px; }
 .nav:hover { background: var(--color-hover-bg); color: var(--color-text-primary); transform: none; }
-.nav[aria-pressed="true"] { background: var(--color-selected-bg); color: var(--color-text-primary); font-weight: 600; }
+.nav[aria-pressed="true"] { background: var(--color-nav-selected-bg); color: var(--color-nav-selected-text); font-weight: 600; }
 .nav::before { background: var(--color-brand-bronze); }
 .nav .dot { background: var(--color-brand-bronze); }
 .chat-item:hover { background: var(--color-hover-bg); }
@@ -26,7 +26,7 @@ code, pre, .hash { font-family: var(--font-mono); }
 .chat-item.active::before { background: var(--color-brand-bronze); }
 .userbox { background: color-mix(in srgb, var(--color-bg-surface) 92%, var(--color-bg-secondary)); }
 .userbox, .session { background: color-mix(in srgb, var(--color-bg-surface) 70%, var(--color-bg-secondary)); border: 1px solid var(--color-border-soft); border-radius: var(--r-card); }
-.avatar, .userbox .av { background: var(--color-action); color: var(--color-on-action); }
+.avatar, .userbox .av { background: var(--color-action); color: var(--color-on-action); border: 1px solid color-mix(in srgb, var(--color-text-primary) 12%, transparent); }
 
 /* ---------------------------------------------------------------- top bar chips */
 .topbar .ghost, .chip, #llmBadge { color: var(--color-text-secondary); }
@@ -123,16 +123,16 @@ select option { background: var(--color-bg-surface); color: var(--color-text-pri
 /* ---------------------------------------------------------------- finance workspace and admin */
 .fin-tabs { border-bottom: 1px solid var(--color-border); }
 .fin-tabs button { background: transparent; border-color: transparent; color: var(--color-text-secondary); border-radius: var(--r-control) var(--r-control) 0 0; }
-.fin-tabs button[aria-selected="true"] { color: var(--color-text-primary); background: var(--color-bg-surface); border-color: var(--color-border); border-bottom-color: var(--color-bg-surface); box-shadow: inset 0 -2px 0 var(--color-action); }
+.fin-tabs button[aria-selected="true"] { color: var(--color-text-primary); background: var(--color-bg-surface); border-color: var(--color-border); border-bottom-color: var(--color-bg-surface); box-shadow: inset 0 -2px 0 var(--color-link); }
 .fin-title { font-family: var(--font-display); font-size: var(--fs-page); font-weight: 600; }
-.mode-switch button[aria-selected="true"], .seg button[aria-selected="true"] { background: var(--color-action); color: var(--color-on-action); border-color: transparent; }
+.mode-switch button[aria-selected="true"], .seg button[aria-selected="true"] { background: var(--color-nav-selected-bg); color: var(--color-nav-selected-text); border-color: transparent; }
 .admin-users, .admin-stats .kpi { border-color: var(--color-border); }
 
 /* ---------------------------------------------------------------- scrollbars and small details */
 * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--color-brand-bronze) 40%, transparent) transparent; }
 hr { border: 0; border-top: 1px solid var(--color-border-soft); }
-a { color: var(--color-action); text-decoration-color: color-mix(in srgb, var(--color-action) 40%, transparent); text-underline-offset: 3px; }
-a:hover { color: var(--color-action-hover); }
+a { color: var(--color-link); text-decoration-color: color-mix(in srgb, var(--color-link) 40%, transparent); text-underline-offset: 3px; }
+a:hover { color: var(--color-link-hover); }
 
 @media (max-width: 760px) {
   .auth.modal .auth-card, #settings .auth-card, .fin-modal { width: calc(100vw - 24px); max-width: 100%; padding: var(--sp-4); }
@@ -151,11 +151,11 @@ a:hover { color: var(--color-action-hover); }
 .hero-hello { font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: clamp(1.4rem, 2vw + .8rem, 2rem); color: var(--color-text-secondary); margin: 0; }
 .hero-hello b, #heroName {
   font-style: italic; font-weight: 700;
-  background: linear-gradient(90deg, var(--color-action) 0%, var(--color-brand-bronze) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+  background: linear-gradient(90deg, var(--color-link) 0%, var(--color-brand-bronze) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
 }
 .hero-title, .hero h1 {
   font-family: var(--font-display); font-style: italic; font-weight: 500; letter-spacing: var(--tracking-display);
-  background: linear-gradient(100deg, var(--color-text-primary) 0%, var(--color-text-primary) 52%, var(--color-action) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+  background: linear-gradient(100deg, var(--color-text-primary) 0%, var(--color-text-primary) 52%, var(--color-link) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
 }
 .hero-sub { color: var(--color-hero-sub); opacity: var(--hero-sub-opacity); font-weight: 450; max-width: 52ch; }
 .tg-main { background: linear-gradient(90deg, var(--tagline-a), var(--tagline-b)); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; font-weight: 600; }
