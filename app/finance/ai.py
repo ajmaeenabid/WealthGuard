@@ -118,7 +118,11 @@ class GroqClient:
             raise AIError("disabled", "The AI service is not configured.", correlation_id=cid)
         started = time.monotonic()
         retries, repaired, dropped = 0, False, set()
-        msgs = list(messages)
+        from app.finance import tokens
+        msgs, cut = tokens.fit_messages(list(messages))               # keep the request inside the input budget; the cut is logged, never silent
+        if cut["dropped_turns"] or cut["truncated_messages"]:
+            log.warning("prompt trimmed purpose=%s %s", purpose, cut)
+        max_tokens = tokens.clamp_output(max_tokens)
         max_retries = int(_env_num("FIN_AI_MAX_RETRIES", 3))
         timeout = _env_num("FIN_AI_TIMEOUT", 30)
         status_label = "ok"

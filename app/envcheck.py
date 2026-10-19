@@ -69,6 +69,8 @@ REGISTRY = [
     Var("FIN_AI_CONCURRENCY", "Simultaneous AI calls", "Money assistant", "app/finance/ai.py", "optional", False, _num(1, 16)),
     Var("FIN_AI_RPM", "AI calls per minute the app allows itself (0 turns pacing off); keep below your account limit", "Money assistant", "app/finance/ai.py", "optional", False, _num(0, 10000)),
     Var("FIN_AI_MAX_WAIT", "Longest wait (seconds) for a rate-limit reset before falling back to the built-in rules", "Money assistant", "app/finance/ai.py", "optional", False, _num(0, 600)),
+    Var("FIN_AI_MAX_INPUT_TOKENS", "Most estimated tokens sent to the model per request; older turns and long text are trimmed to fit (default 3500)", "Money assistant", "app/finance/tokens.py", "optional", False, _num(500, 100000)),
+    Var("FIN_AI_MAX_OUTPUT_TOKENS", "Most tokens the model may write per reply (default 1200)", "Money assistant", "app/finance/tokens.py", "optional", False, _num(64, 8000)),
     Var("FIN_REASONING_EFFORT", "Reasoning effort for gpt-oss: low, medium or high", "Money assistant", "app/finance/ai.py", "optional", False, _one_of("low", "medium", "high")),
     Var("GROQ_PRICE_INPUT_PER_M", "USD per million input tokens for the cost estimate", "AI usage view", "app/finance/ai.py", "optional", False, _num(0, 1000)),
     Var("GROQ_PRICE_OUTPUT_PER_M", "USD per million output tokens for the cost estimate", "AI usage view", "app/finance/ai.py", "optional", False, _num(0, 1000)),

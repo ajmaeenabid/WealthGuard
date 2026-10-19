@@ -71,6 +71,7 @@ def erase_all(user: str, confirm: str) -> dict:
             c.execute("BEGIN IMMEDIATE")
             def run(label, sql, args):
                 counts[label] = c.execute(sql, args).rowcount
+            run("context", "DELETE FROM fin_user_context WHERE username=?", (user,)) if c.execute("SELECT 1 FROM sqlite_master WHERE name='fin_user_context'").fetchone() else None
             run("payments", "DELETE FROM fin_obligation_payments WHERE obligation_id IN (SELECT id FROM fin_obligations WHERE username=?)", (user,))
             run("receipts", "DELETE FROM fin_receipts WHERE username=?", (user,))
             run("items", "DELETE FROM fin_items WHERE txn_id IN (SELECT id FROM fin_transactions WHERE username=?)", (user,))
