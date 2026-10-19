@@ -35,7 +35,7 @@ LIGHT, DARK = block(":root, :root[data-theme=\"light\"]"), block(":root[data-the
 
 
 def test_reference_palette_values_are_present():
-    for hexv in ("#F1F2EE", "#FFFFFF", "#0E1012", "#43484E", "#E3E5E0", "#D4E85E", "#1D2024", "#2F6B21"):
+    for hexv in ("#F1F2EE", "#FFFFFF", "#0E1012", "#43484E", "#E3E5E0", "#B3F948", "#1D2024", "#2F6B21"):
         assert hexv in CSS
 
 
@@ -68,7 +68,7 @@ def test_light_theme_scopes_every_rule_and_buttons_have_their_own_colour():
         elif depth and (t.startswith(".") or t.startswith("body")):
             raise AssertionError(ln)
     assert scoped in light and "button.primary" in light and "var(--color-action)" in light
-    assert token(LIGHT, "color-action").upper() == "#D4E85E"           # the button colour is its own token, separate from text and links
+    assert token(LIGHT, "color-action").upper() == "#B3F948"           # the button colour is its own token, separate from text and links
     assert token(LIGHT, "color-action") != token(LIGHT, "color-link")
 
 
