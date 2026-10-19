@@ -38,10 +38,13 @@
       <button id="start" class="primary wide" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="newChat">New chat</span></button>
     </div>
 
+    <section class="side-sec" data-for="user" aria-label="Chats">
     <div class="group-label chats-label" data-for="user" data-i18n="navChats">Chats</div>
     <div id="chatList" data-for="user" class="chat-list" role="list" aria-label="Saved chats"><p class="chat-empty muted" data-i18n="noChats">No chats yet.</p></div>
+    </section>
 
     <nav class="navlist" aria-label="Features">
+      <div class="side-sec" data-for="user">
       <div class="group-label" data-for="user" data-i18n="navFlow">Advice flow</div>
       <div class="flow">
           <button type="button" class="nav" data-panel="profileCard" data-for="user" aria-controls="profileCard" aria-pressed="false"><span class="node" aria-hidden="true"></span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c0-3.6 3-6 7-6s7 2.4 7 6"/></svg><span class="lbl" data-i18n="nProfile">Risk profile</span><span class="dot" aria-hidden="true"></span></button>
@@ -50,17 +53,22 @@
           <button type="button" class="nav" data-panel="stressCard" data-for="user" aria-controls="stressCard" aria-pressed="false"><span class="node" aria-hidden="true"></span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span class="lbl" data-i18n="nStress">Stress test</span><span class="dot" aria-hidden="true"></span></button>
           <button type="button" class="nav" data-panel="approvalCard" data-for="user" aria-controls="approvalCard" aria-pressed="false"><span class="node" aria-hidden="true"></span><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg><span class="lbl" data-i18n="nApprove">Approvals</span><span class="dot" aria-hidden="true"></span></button>
       </div>
+      </div>
+      <div class="side-sec" data-for="user">
       <div class="group-label" data-for="user" data-i18n="navTools">Insights</div>
           <button type="button" class="nav" data-panel="ledgerCard" data-for="user" aria-controls="ledgerCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M16 15h2"/></svg><span class="lbl" data-i18n="nLedger">Purchase history</span><span class="dot" aria-hidden="true"></span></button>
           <button type="button" class="nav" data-panel="rpCard" data-for="user" aria-controls="rpCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg><span class="lbl" data-i18n="nReplay">History replay</span><span class="dot" aria-hidden="true"></span></button>
           <button type="button" class="nav" data-panel="kbCard" data-for="user" aria-controls="kbCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg><span class="lbl" data-i18n="nSearch">Regulation search</span><span class="dot" aria-hidden="true"></span></button>
           <button type="button" class="nav" data-panel="memCard" data-for="user" aria-controls="memCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.2 1.1 2.2h5c0-1 .5-1.7 1.1-2.2A6 6 0 0 0 12 3z"/></svg><span class="lbl" data-i18n="nMemory">Memory</span><span class="dot" aria-hidden="true"></span></button>
+      </div>
+      <div class="side-sec">
       <div class="group-label" data-i18n="navTrust">Trust and evidence</div>
           <button type="button" class="nav" data-panel="rcCard" data-for="user" aria-controls="rcCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><span class="lbl" data-i18n="nReceipt">Advice receipt</span><span class="dot" aria-hidden="true"></span></button>
           <button type="button" class="nav" data-panel="rtCard" aria-controls="rtCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span class="lbl" data-i18n="nRedteam">Red-team arena</span><span class="dot" aria-hidden="true"></span></button>
           <button type="button" class="nav" data-panel="siCard" aria-controls="siCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg><span class="lbl" data-i18n="nSelf">Self-inspection</span><span class="dot" aria-hidden="true"></span></button>
           <button type="button" class="nav" data-panel="docCard" data-for="user" aria-controls="docCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><span class="lbl" data-i18n="nDocs">Upload a document</span><span class="dot" aria-hidden="true"></span></button>
           <button type="button" class="nav" data-panel="auditCard" aria-controls="auditCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg><span class="lbl" data-i18n="nAudit">Audit log</span><span class="dot" aria-hidden="true"></span></button>
+          </div>
     </nav>
 
     <nav class="navlist" data-for="money" aria-label="My money">

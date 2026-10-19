@@ -110,3 +110,43 @@
 :root[data-theme="dark"] .mode-switch { background: rgba(255, 255, 255, .04); border-color: var(--color-border-soft); }
 :root[data-theme="dark"] .mode-switch button { background: transparent; border-color: transparent; }
 :root[data-theme="dark"] .fin-title, :root[data-theme="dark"] .card h2, :root[data-theme="dark"] .drawer h2, :root[data-theme="dark"] .auth-card h2 { font-family: var(--font-ui); font-style: normal; font-weight: 600; letter-spacing: -.02em; }
+
+/* ---------------------------------------------------------------- sidebar sections as green-edged cards, workspace switch, send button, richer green bubbles */
+:root[data-theme="dark"] .modeswitch { border: 1px solid rgba(98, 224, 90, .38); background: rgba(98, 224, 90, .05); border-radius: 18px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04); }
+:root[data-theme="dark"] .modeswitch button { background: transparent; border: 1px solid transparent; color: var(--color-text-secondary); border-radius: 14px; }
+:root[data-theme="dark"] .modeswitch button[aria-selected="true"] { background: linear-gradient(160deg, rgba(98, 224, 90, .26), rgba(98, 224, 90, .1)); border-color: rgba(98, 224, 90, .6); color: var(--color-text-primary); box-shadow: 0 0 18px -6px rgba(98, 224, 90, .6); }
+:root[data-theme="dark"] .modeswitch button[aria-selected="true"] .ic { color: var(--color-action); }
+
+:root[data-theme="dark"] .side-sec, :root[data-theme="dark"] .navlist[data-for="money"] {
+  margin-top: 12px; padding: 10px 8px 8px; border-radius: 20px; border: 1px solid rgba(98, 224, 90, .2);
+  background: linear-gradient(165deg, rgba(98, 224, 90, .075), rgba(255, 255, 255, .015) 55%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+:root[data-theme="dark"] .side-sec .group-label, :root[data-theme="dark"] .navlist[data-for="money"] .group-label {
+  display: flex; align-items: center; gap: 8px; margin: 2px 6px 8px; color: var(--color-text-secondary);
+}
+:root[data-theme="dark"] .side-sec .group-label::after, :root[data-theme="dark"] .navlist[data-for="money"] .group-label::after {
+  content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(98, 224, 90, .45), transparent);
+}
+:root[data-theme="dark"] .side-sec .group-label::before, :root[data-theme="dark"] .navlist[data-for="money"] .group-label::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--color-action); box-shadow: 0 0 10px rgba(98, 224, 90, .8);
+}
+/* a luminous hairline between saved chats */
+:root[data-theme="dark"] .chat-item:not(:last-child)::after {
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(98, 224, 90, .38), transparent);
+}
+:root[data-theme="dark"] .chat-list { gap: 4px; }
+:root[data-theme="dark"] .flow .nav, :root[data-theme="dark"] .side-sec .nav { border-radius: 14px; }
+
+:root[data-theme="dark"] .composer textarea, :root[data-theme="dark"] .fin-composer textarea { padding: 2px 4px 2px 6px; border-radius: 0; }
+:root[data-theme="dark"] #sendBtn, :root[data-theme="dark"] .composer .send, :root[data-theme="dark"] .fin-composer .send {
+  background: rgba(98, 224, 90, .16); border: 1px solid rgba(98, 224, 90, .5); color: var(--color-action); opacity: 1;
+}
+:root[data-theme="dark"] #sendBtn:disabled, :root[data-theme="dark"] .composer .send:disabled, :root[data-theme="dark"] .fin-composer .send:disabled { background: rgba(98, 224, 90, .08); border-color: rgba(98, 224, 90, .3); color: rgba(98, 224, 90, .6); }
+:root[data-theme="dark"] #sendBtn:not(:disabled), :root[data-theme="dark"] .composer .send:not(:disabled), :root[data-theme="dark"] .fin-composer .send:not(:disabled) {
+  background: linear-gradient(160deg, #7AE873, #4FD04A); border-color: transparent; color: #06110A; box-shadow: 0 8px 22px -6px rgba(98, 224, 90, .75);
+}
+:root[data-theme="dark"] .msg.user {
+  background: linear-gradient(150deg, rgba(98, 224, 90, .38), rgba(34, 130, 72, .32) 58%, rgba(98, 224, 90, .14)); border: 1px solid rgba(130, 245, 120, .45);
+  box-shadow: 0 12px 34px -14px rgba(98, 224, 90, .45), inset 0 1px 0 rgba(255, 255, 255, .16); color: #F4FFF2;
+}
