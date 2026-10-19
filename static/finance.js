@@ -7,7 +7,7 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const SYMBOLS = { BDT: "৳", CNY: "¥", USD: "$", EUR: "€", GBP: "£", INR: "₹" };
   const TITLES = { overview: "Overview", transactions: "Transactions", accounts: "Accounts", plan: "Budgets, goals and bills", reports: "Reports", assistant: "Money assistant", settings: "Settings and privacy" };
-  const state = { tab: "overview", period: "month", mounted: false, charts: {}, meta: null, accounts: [], currency: "BDT", txn: { page: 1, q: "", type: "", category: "", account: "", start: "", end: "", sort: "ts", dir: "desc" }, report: null };
+  const state = { tab: "overview", period: "month", mounted: false, charts: {}, meta: null, accounts: [], currency: "", txn: { page: 1, q: "", type: "", category: "", account: "", start: "", end: "", sort: "ts", dir: "desc" }, report: null };
   let me = null;
 
   // ------------------------------------------------------------------------------------------ helpers
@@ -106,8 +106,22 @@
     return `<div class="d ${cls}">${flat ? "no change" : (up ? "▲ " : "▼ ") + pct(Math.abs(c.change_pct))} vs previous period</div>`;
   };
 
+  // First run: no currency is assumed. The person picks one (or simply creates their first account in a currency) before any amount is shown.
+  async function currencyGate(root) {
+    if (!state.meta) state.meta = await api("/meta", undefined, "GET");
+    if (state.meta.currency_chosen) return false;
+    root.innerHTML = `<div class="fcard" style="max-width:560px"><h3>Choose your currency</h3><p class="muted">Pick the currency your totals are shown in. You can change it any time in Settings, and each account can have its own currency. Amounts are never converted.</p>
+      <div class="demo-chips" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px">${state.meta.currencies.map((c) => `<button type="button" data-cur="${c.code}" style="padding:14px 8px"><b style="font-size:22px">${c.symbol}</b><br>${c.code}<br><span class="muted small">${esc(c.name)}</span></button>`).join("")}</div></div>`;
+    root.querySelectorAll("[data-cur]").forEach((b) => (b.onclick = async () => {
+      try { await api("/settings", { base_currency: b.dataset.cur }); state.meta = await api("/meta", undefined, "GET"); state.currency = state.meta.currency; showTab(state.tab); } catch (e) { fail(e); }
+    }));
+    banner("");
+    return true;
+  }
+
   async function loadOverview() {
     const root = $("finTab-overview");
+    if (await currencyGate(root)) return;
     root.innerHTML = `<p class="muted">Loading…</p>`;
     const d = await api("/dashboard?" + periodQuery(), undefined, "GET");
     state.currency = d.position.currency || state.currency;
@@ -433,6 +447,7 @@
   // ------------------------------------------------------------------------------------------ ACCOUNTS
   async function loadAccounts() {
     const root = $("finTab-accounts");
+    if (await currencyGate(root)) return;
     const [accs, pos] = await Promise.all([api("/accounts?include_archived=true", undefined, "GET"), api("/position", undefined, "GET")]);
     state.accounts = accs.filter((a) => !a.archived);
     state.currency = pos.currency;
@@ -455,7 +470,8 @@
       const f = document.createElement("form");
       f.className = "fin-form";
       f.innerHTML = `<label>Name<input id="afName" maxlength="60" required value="${esc(a ? a.name : "")}" placeholder="e.g. Cash, bKash, City Bank"></label>
-        ${a ? "" : `<label>Type<select id="afType">${state.meta.account_types.map((t) => `<option value="${t}">${t.replace("_", " ")}</option>`).join("")}</select></label>`}
+        ${a ? "" : `<label>Currency<select id="afCur" required>${state.meta.currency_chosen ? "" : `<option value="" selected disabled>Choose…</option>`}${state.meta.currencies.map((c) => `<option value="${c.code}" ${state.meta.currency_chosen && state.meta.currency === c.code ? "selected" : ""}>${c.symbol}  ${c.code} – ${esc(c.name)}</option>`).join("")}</select></label>
+        <label>Type<select id="afType">${state.meta.account_types.map((t) => `<option value="${t}">${t.replace("_", " ")}</option>`).join("")}</select></label>`}
         <div class="row2"><label>${a ? "Opening balance" : "Balance today"}<input id="afOpen" inputmode="decimal" value="${esc(a ? a.opening_balance : "0")}"></label><label>As of<input id="afDate" type="date" value="${esc(a ? a.opening_date : todayStr())}"></label></div>
         <p class="muted small">For a credit card or loan, enter what you owe as a positive number. Leave 0 if you do not know yet; balances will then only reflect what you record from now on.</p>
         ${a ? `<label class="check"><input id="afArch" type="checkbox" ${a.archived ? "checked" : ""}> Archived (hidden, history kept)</label>` : ""}
@@ -465,7 +481,7 @@
         ev.preventDefault();
         try {
           if (a) await api("/accounts/" + a.id, { name: $("afName").value, opening_balance: $("afOpen").value, opening_date: $("afDate").value, archived: $("afArch").checked });
-          else await api("/accounts", { name: $("afName").value, type: $("afType").value, opening_balance: $("afOpen").value, opening_date: $("afDate").value });
+          else await api("/accounts", { name: $("afName").value, type: $("afType").value, currency: $("afCur").value, opening_balance: $("afOpen").value, opening_date: $("afDate").value });
           closeModal(); toast(a ? "Account updated" : "Account added"); afterChange();
         } catch (e) { $("afErr").textContent = e.message; $("afErr").hidden = false; }
       };
@@ -677,7 +693,7 @@
 
   // ------------------------------------------------------------------------------------------ ASSISTANT
   const A = { busy: false, pending: null, loaded: false };
-  const EXAMPLES = ["I spent 850 taka at the grocery store today on rice, oil and vegetables", "আজ ৮৫০ টাকা বাজার করলাম", "ajk 300 taka rickshaw bhara dilam", "Received 25000 salary today", "How much did I spend on food this month?", "What is my balance?"];
+  const EXAMPLES = ["I spent 850 at the grocery store today on rice, oil and vegetables", "আজ ৮৫০ টাকা বাজার করলাম", "ajk 300 rickshaw bhara dilam", "今天在超市花了 85 元买菜", "Received 25000 salary today", "How much did I spend on food this month?", "What is my balance?"];
 
   function addMsg(role, text) {
     const box = $("finMsgs");
@@ -763,7 +779,7 @@
   function startSync() {
     if (SYNC.timer) return;
     syncNow();
-    SYNC.timer = setInterval(() => { if (!document.hidden && money_) syncNow(); }, 6000);
+    SYNC.timer = setInterval(() => { if (!document.hidden && document.body.classList.contains("mode-money")) syncNow(); }, 6000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) syncNow(); });
   }
 
@@ -862,7 +878,7 @@
         ${row("Assistant language", "Auto follows the language you write in (English, Bangla or Banglish).", `<select id="stLang" aria-label="Assistant language">${st.options.assistant_lang.map((x) => `<option value="${x}" ${st.assistant_lang === x ? "selected" : ""}>${{ auto: "Automatic", en: "English", bn: "বাংলা (Bangla)" }[x]}</option>`).join("")}</select>`)}
         ${row("Questions about discounts, VAT and service charge", "Automatic asks only when something is unclear. Always asks every time. Never assumes the amount is what you paid.", `<select id="stAdj" aria-label="Ask about discounts">${st.options.ask_adjustments.map((x) => `<option value="${x}" ${st.ask_adjustments === x ? "selected" : ""}>${{ auto: "Automatic", always: "Always ask", never: "Never ask" }[x]}</option>`).join("")}</select>`)}
         ${row("Read assistant replies aloud", "Uses your browser's speech synthesis. Nothing is uploaded for this.", `<label class="check" style="display:flex;gap:8px;align-items:center"><input id="stVoice" type="checkbox" ${st.voice_replies ? "checked" : ""}> On</label>`)}
-        ${row("Main currency", accs.length ? "Fixed once you have added accounts, so balances are never mislabelled." : "All totals are shown in this currency.", `<input id="stCur" maxlength="3" value="${esc(st.base_currency)}" style="width:90px" ${accs.length ? "disabled" : ""} aria-label="Main currency">`)}
+        ${row("Currency", st.currency_chosen ? "Totals and charts are shown in this currency. Accounts in other currencies stay listed but are never converted or added in." : "Choose the currency your totals are shown in. Nothing is converted.", `<select id="stCur" aria-label="Currency">${st.currency_chosen ? "" : `<option value="" selected disabled>Choose…</option>`}${st.currencies.map((c) => `<option value="${c.code}" ${st.currency_chosen && st.base_currency === c.code ? "selected" : ""}>${c.symbol}  ${c.code} – ${esc(c.name)}</option>`).join("")}</select>`)}
         <p class="muted small" id="stMsg" role="status"></p></div>
       <div class="fcard"><h3>AI status and use <span class="tag">${meta.ai.enabled ? "on" : "off"}</span></h3>
         <p>${meta.ai.enabled ? `Language understanding and report explanations use <b>${esc(meta.ai.model)}</b> through Groq. The key stays on the server.` : "No AI key is configured, so the built-in rules understand your messages and explain your reports. Everything still works."}</p>
@@ -902,7 +918,7 @@
     $("stLang").onchange = () => save({ assistant_lang: $("stLang").value });
     $("stAdj").onchange = () => save({ ask_adjustments: $("stAdj").value });
     $("stVoice").onchange = () => save({ voice_replies: $("stVoice").checked });
-    $("stCur").onchange = () => save({ base_currency: $("stCur").value });
+    $("stCur").onchange = async () => { await save({ base_currency: $("stCur").value }); state.meta = await api("/meta", undefined, "GET"); state.currency = state.meta.currency; state.dirty = true; loadSettings(); };
     $("stDays").onchange = () => save({ history_days: Number($("stDays").value) });
     $("stDl").onclick = () => download("/api/fin/export/transactions.csv", "transactions.csv");
     $("stNotify").onchange = async () => {

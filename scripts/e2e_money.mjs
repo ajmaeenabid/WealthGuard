@@ -52,6 +52,9 @@ await sleep(3500);
 await run(setv("authUser", "li") + ";" + setv("authPass", "123") + ";document.getElementById('authGo').click(); 'x'", 3500);
 check("signed in, workspace switch visible", await ev(`!document.getElementById('modeSwitch').hidden`));
 await run(click("#modeMoney"), 1800);
+check("a new member is asked to choose a currency, none is assumed", (await ev(`document.getElementById('finTab-overview').textContent`)).includes("Choose your currency") && (await ev(`document.querySelectorAll('#finTab-overview .kpi').length`)) === 0);
+check("the three choices are dollar, yuan and taka", await ev(`[...document.querySelectorAll('[data-cur]')].map(b=>b.dataset.cur).join(',')`) === "USD,CNY,BDT");
+await run(click("[data-cur=BDT]"), 1800);
 check("money mode hides the advisor chat", await ev(`getComputedStyle(document.querySelector('.chat')).display==='none' && getComputedStyle(document.getElementById('moneyView')).display!=='none'`));
 check("empty state asks for accounts instead of showing fake numbers", (await ev(`document.getElementById('finBanner').textContent`)).includes("Add your accounts"));
 check("no demo data on an empty ledger", await ev(`[...document.querySelectorAll('.kpi .v')].slice(0,2).every(v=>v.textContent.includes('0.00'))`));
@@ -60,7 +63,7 @@ check("no demo data on an empty ledger", await ev(`[...document.querySelectorAll
 await run(click(".nav[data-tab=accounts]"), 900);
 for (const [name, type, open] of [["Cash", "cash", "5000"], ["bKash", "wallet", "1000"], ["Savings", "savings", "0"]]) {
   await run(click("#finAdd"), 500);
-  await run(setv("afName", name) + ";" + setv("afType", type) + ";" + setv("afOpen", open) + ";" + submit("#finModalBody form"), 1000);
+  await run(setv("afCur", "BDT") + ";" + setv("afName", name) + ";" + setv("afType", type) + ";" + setv("afOpen", open) + ";" + submit("#finModalBody form"), 1000);
 }
 check("three accounts with their balances", (await ev(`[...document.querySelectorAll('.acc-card')].map(c=>c.querySelector('b').textContent+c.querySelector('.bal').textContent).join('|')`)) === "Cash৳5,000.00|Savings৳0.00|bKash৳1,000.00");
 

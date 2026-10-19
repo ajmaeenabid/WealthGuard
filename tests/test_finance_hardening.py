@@ -41,9 +41,13 @@ def test_settings_defaults_validation_and_audit():
     assert settings.get("bob")["assistant_lang"] == "auto"                      # preferences are per account
 
 
-def test_the_main_currency_is_locked_once_accounts_exist(cash):
-    with pytest.raises(books.FinanceError, match="before you add accounts"):
-        settings.update(U, {"base_currency": "USD"})
+def test_the_currency_can_change_any_time_without_touching_records_and_only_three_are_offered(cash):
+    before = books.list_accounts(U)[0]
+    assert settings.update(U, {"base_currency": "USD"})["base_currency"] == "USD"
+    after = books.list_accounts(U)[0]
+    assert (after["currency"], after["opening_balance"]) == (before["currency"], before["opening_balance"])     # the account is not converted or relabelled
+    with pytest.raises(books.FinanceError, match="Choose one of"):
+        settings.update(U, {"base_currency": "EUR"})
     assert settings.update("fresh", {"base_currency": "usd"})["base_currency"] == "USD"
 
 

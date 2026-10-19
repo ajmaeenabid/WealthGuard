@@ -67,30 +67,48 @@ def test_saved_interface_language_is_the_default_for_ambiguous_text():
     assert say("help")["language"] == "zh"
 
 
-def test_language_and_jurisdiction_are_independent_and_base_currency_follows_jurisdiction():
+def test_currency_follows_jurisdiction_until_the_person_chooses_then_stays_fixed():
+    assert settings.update(U, {"jurisdiction": "CN"})["base_currency"] == "CNY" and not settings.get(U)["currency_chosen"]
+    assert settings.update(U, {"jurisdiction": "BD"})["base_currency"] == "BDT"
+    s = settings.update(U, {"base_currency": "USD"})
+    assert s["base_currency"] == "USD" and s["currency_chosen"]
+    assert settings.update(U, {"jurisdiction": "CN"})["base_currency"] == "USD"          # a deliberate choice is never overridden
+    assert settings.update(U, {"base_currency": "cny"})["base_currency"] == "CNY"       # and can be changed any time
+    with pytest.raises(Exception):
+        settings.update(U, {"base_currency": "EUR"})
+
+
+def test_language_and_jurisdiction_are_independent():
     for lang in ("en", "bn", "zh"):
-        for jur, cur in (("BD", "BDT"), ("CN", "CNY")):
+        for jur in ("BD", "CN"):
             s = settings.update(U, {"ui_lang": lang, "jurisdiction": jur})
-            assert s["ui_lang"] == lang and s["jurisdiction"] == jur and s["base_currency"] == cur
+            assert s["ui_lang"] == lang and s["jurisdiction"] == jur
 
 
-def test_other_currency_accounts_are_kept_but_not_mixed_into_totals():
-    books.create_account(U, "Cash", "cash", "1000")                       # BDT
-    settings.update(U, {"jurisdiction": "CN"})
-    books.create_account(U, "Alipay", "wallet", "200")                    # CNY
+def test_each_account_has_its_own_currency_and_totals_follow_the_chosen_one():
+    settings.update(U, {"base_currency": "USD"})
+    books.create_account(U, "Dollar cash", "cash", "100", currency="USD")
+    books.create_account(U, "Yuan wallet", "wallet", "700", currency="CNY")
+    books.create_account(U, "Taka bKash", "wallet", "5000", currency="BDT")
     pos = books.position(U)
-    assert pos["excluded_other_currency"] == ["Cash"] and pos["liquid"] == "200.00"
-    settings.update(U, {"jurisdiction": "BD"})
+    assert pos["currency"] == "USD" and pos["liquid"] == "100.00" and sorted(pos["excluded_other_currency"]) == ["Taka bKash", "Yuan wallet"]
+    settings.update(U, {"base_currency": "CNY"})
     pos = books.position(U)
-    assert pos["excluded_other_currency"] == ["Alipay"] and pos["liquid"] == "1000.00"
+    assert pos["currency"] == "CNY" and pos["liquid"] == "700.00"                       # nothing was converted, only the view changed
+    with pytest.raises(Exception):
+        books.create_account(U, "Euro", "cash", "1", currency="EUR")
 
 
-def test_chinese_answers_use_the_same_figures():
-    settings.update(U, {"ui_lang": "zh", "jurisdiction": "CN"})
-    books.create_account(U, "支付宝", "wallet", "1000", opening_date=(money.today() - timedelta(days=30)).isoformat())
-    say("今天在超市花了三百五十元买菜，用支付宝")
-    say("是")
-    r = say("我的余额是多少")
-    assert r["language"] == "zh" and "¥650.00" in r["reply"] and "流动资金" in r["reply"]
-    r = say("这个月我花了多少")
-    assert "¥350.00" in r["reply"] and "本月" in r["reply"]
+def test_the_first_account_sets_the_currency_when_none_was_chosen():
+    assert not settings.get(U)["currency_chosen"]
+    books.create_account(U, "Alipay", "wallet", "10", currency="CNY")
+    s = settings.get(U)
+    assert s["currency_chosen"] and s["base_currency"] == "CNY"
+
+
+def test_ui_offers_the_three_currencies_and_no_default_symbol():
+    from pathlib import Path
+    js = (Path(__file__).resolve().parent.parent / "static" / "finance.js").read_text(encoding="utf-8")
+    assert 'id="stCur"' in js and 'id="afCur"' in js and "Choose your currency" in js
+    assert 'currency: "BDT"' not in js and "taka at the grocery" not in js
+    assert settings.get(U)["currencies"] == [{"code": "USD", "symbol": "$", "name": "US dollar"}, {"code": "CNY", "symbol": "¥", "name": "Chinese yuan (RMB)"}, {"code": "BDT", "symbol": "৳", "name": "Bangladeshi taka"}]

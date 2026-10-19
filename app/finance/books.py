@@ -53,21 +53,42 @@ def _audit(user: str, action: str, payload: dict) -> None:
 
 
 # ---------------------------------------------------------------------------------------------- settings
+def currency_chosen(user: str) -> bool:
+    """True once the person picked a currency (Settings or first account). People who already have accounts count as having chosen."""
+    r = _one("SELECT currency_set FROM fin_settings WHERE username=?", (user,))
+    if r and r["currency_set"]:
+        return True
+    if _one("SELECT 1 FROM fin_accounts WHERE username=?", (user,)):
+        store._write("UPDATE fin_settings SET currency_set=1 WHERE username=?", (user,))
+        return True
+    return False
+
+
 def base_currency(user: str) -> str:
-    r = _one("SELECT base_currency FROM fin_settings WHERE username=?", (user,))
-    if r:
+    """The currency totals are shown in: the person's choice, or (until they choose) the one for their active jurisdiction."""
+    r = _one("SELECT base_currency, jurisdiction FROM fin_settings WHERE username=?", (user,))
+    if not r:
+        store._write("INSERT OR IGNORE INTO fin_settings (username, base_currency, created) VALUES (?,?,?)", (user, money.DEFAULT_CURRENCY, store.now()))
+        r = _one("SELECT base_currency, jurisdiction FROM fin_settings WHERE username=?", (user,))
+    if currency_chosen(user):
         return r["base_currency"]
-    store._write("INSERT OR IGNORE INTO fin_settings (username, base_currency, created) VALUES (?,?,?)",
-                 (user, money.DEFAULT_CURRENCY, store.now()))
-    return money.DEFAULT_CURRENCY
+    from app.finance import jurisdictions
+    return jurisdictions.currency(r["jurisdiction"])
+
+
+def valid_currency(currency: Optional[str]) -> str:
+    c = (currency or "").strip().upper()
+    if c not in money.CURRENCIES:
+        raise FinanceError("Choose one of: " + ", ".join(money.CURRENCIES) + ".")
+    return c
 
 
 def set_base_currency(user: str, currency: str) -> str:
-    currency = (currency or "").strip().upper()
-    if len(currency) != 3 or not currency.isalpha():
-        raise FinanceError("Currency must be a 3-letter code such as BDT.")
+    """Totals are shown in this currency. Existing records are untouched and nothing is converted; accounts in other currencies stay listed."""
+    currency = valid_currency(currency)
     base_currency(user)
-    store._write("UPDATE fin_settings SET base_currency=? WHERE username=?", (currency, user))
+    store._write("UPDATE fin_settings SET base_currency=?, currency_set=1 WHERE username=?", (currency, user))
+    _audit(user, "fin_currency_set", {"currency": currency})
     return currency
 
 
@@ -95,7 +116,9 @@ def create_account(user: str, name: str, type: str, opening="0", opening_date=No
         raise FinanceError("The account needs a name.")
     if type not in taxonomy.ACCOUNT_TYPES:
         raise FinanceError("Account type must be one of: " + ", ".join(taxonomy.ACCOUNT_TYPES) + ".")
-    cur = (currency or base_currency(user)).upper()
+    cur = valid_currency(currency) if currency else base_currency(user)
+    if not currency_chosen(user):
+        set_base_currency(user, cur)                       # the first account's currency becomes the person's currency
     try:
         opening_minor = money.to_minor(opening or "0", allow_negative=True)
         odate = (money.parse_ts(opening_date)[:10] if opening_date else money.today().isoformat())

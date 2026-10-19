@@ -58,7 +58,7 @@ ADDED_COLUMNS = {
                      "history_days": "INTEGER NOT NULL DEFAULT 90",
                      "ui_lang": "TEXT NOT NULL DEFAULT 'en'", "jurisdiction": "TEXT NOT NULL DEFAULT 'BD'",
                      "voice_enabled": "INTEGER NOT NULL DEFAULT 1", "speech_lang": "TEXT NOT NULL DEFAULT 'auto'",
-                     "large_text": "INTEGER NOT NULL DEFAULT 0"},
+                     "large_text": "INTEGER NOT NULL DEFAULT 0", "currency_set": "INTEGER NOT NULL DEFAULT 0"},
     "fin_sessions": {"jurisdiction": "TEXT", "language": "TEXT", "config_version": "TEXT", "title": "TEXT"},
 }
 

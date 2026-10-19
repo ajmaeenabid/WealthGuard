@@ -6,7 +6,9 @@ from typing import Optional
 SCALE = 100
 MAX_MINOR = 10**14            # 1 trillion units; anything above is a typo
 SYMBOLS = {"BDT": "৳", "CNY": "¥", "USD": "$", "EUR": "€", "GBP": "£", "INR": "₹"}
-DEFAULT_CURRENCY = "BDT"
+DEFAULT_CURRENCY = "BDT"            # only the fallback before a person picks one (see books.base_currency); the interface asks them to choose
+CURRENCIES = ("USD", "CNY", "BDT")   # the currencies a person can choose; nothing is ever converted between them
+CURRENCY_NAMES = {"USD": "US dollar", "CNY": "Chinese yuan (RMB)", "BDT": "Bangladeshi taka"}
 
 
 class MoneyError(ValueError):

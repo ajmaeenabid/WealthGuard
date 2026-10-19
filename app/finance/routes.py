@@ -241,7 +241,7 @@ def _dump(model: BaseModel) -> dict:
 def meta(request: Request):
     u = _user(request)
     pref = settings.get(u)
-    return {"jurisdiction": pref["jurisdiction_config"], "jurisdictions": {c: jurisdictions.summary(c) for c in jurisdictions.codes()},
+    return {"currencies": pref["currencies"], "currency_chosen": pref["currency_chosen"], "jurisdiction": pref["jurisdiction_config"], "jurisdictions": {c: jurisdictions.summary(c) for c in jurisdictions.codes()},
             "currency": books.base_currency(u), "expense_categories": {c: taxonomy.subcategories(c) for c in taxonomy.categories("expense")},
             "income_categories": taxonomy.categories("income"), "account_types": taxonomy.ACCOUNT_TYPES, "payment_methods": taxonomy.PAYMENT_METHODS,
             "transaction_types": list(books.TYPES), "ai": {"enabled": ai.enabled(), "model": ai.model_name() if ai.enabled() else None},

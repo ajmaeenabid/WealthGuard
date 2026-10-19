@@ -1,6 +1,6 @@
 """Per-user preferences for the finance module (AI explanations, assistant language, how often to ask about discounts, retention)."""
 from app import store
-from app.finance import books, jurisdictions
+from app.finance import books, jurisdictions, money
 from app.finance.books import FinanceError
 
 LANGS = ("auto", "en", "bn", "zh")
@@ -13,10 +13,10 @@ HISTORY_RANGE = (7, 730)
 def get(user: str) -> dict:
     books.base_currency(user)                                  # makes sure the row exists
     r = books._one("SELECT * FROM fin_settings WHERE username=?", (user,))
-    return {"base_currency": r["base_currency"], "ai_reports": bool(r["ai_reports"]), "assistant_lang": r["assistant_lang"],
+    return {"base_currency": books.base_currency(user), "ai_reports": bool(r["ai_reports"]), "assistant_lang": r["assistant_lang"],
             "ask_adjustments": r["ask_adjustments"], "voice_replies": bool(r["voice_replies"]), "history_days": r["history_days"],
             "ui_lang": r["ui_lang"], "jurisdiction": r["jurisdiction"], "voice_enabled": bool(r["voice_enabled"]), "speech_lang": r["speech_lang"],
-            "large_text": bool(r["large_text"]), "jurisdiction_config": jurisdictions.summary(r["jurisdiction"]),
+            "large_text": bool(r["large_text"]), "currency_chosen": books.currency_chosen(user), "currencies": [{"code": c, "symbol": money.SYMBOLS[c], "name": money.CURRENCY_NAMES[c]} for c in money.CURRENCIES], "jurisdiction_config": jurisdictions.summary(r["jurisdiction"]),
             "options": {"assistant_lang": list(LANGS), "ask_adjustments": list(ADJUSTMENT_POLICIES), "history_days": list(HISTORY_RANGE), "ui_lang": list(UI_LANGS), "speech_lang": list(SPEECH_LANGS),
                                                                  "jurisdiction": jurisdictions.codes()}}
 
@@ -60,10 +60,8 @@ def update(user: str, patch: dict) -> dict:
             raise FinanceError(str(e))
         jur_changed = new_j != cur["jurisdiction"]
         out["jurisdiction"] = new_j
-    if "base_currency" in patch and patch["base_currency"].upper() != cur["base_currency"]:
-        if books._one("SELECT 1 FROM fin_accounts WHERE username=?", (user,)):
-            raise FinanceError("The main currency can only be changed before you add accounts, so balances are never mislabelled.", 409)
-        books.set_base_currency(user, patch["base_currency"])
+    if "base_currency" in patch and (not cur["currency_chosen"] or books.valid_currency(patch["base_currency"]) != cur["base_currency"]):
+        books.set_base_currency(user, patch["base_currency"])                  # allowed any time: records are untouched and never converted
     out.setdefault("ui_lang", cur["ui_lang"]); out.setdefault("speech_lang", cur["speech_lang"]); out.setdefault("jurisdiction", cur["jurisdiction"])
     out.setdefault("voice_enabled", cur["voice_enabled"]); out.setdefault("large_text", cur["large_text"])
     store._write("UPDATE fin_settings SET ai_reports=?, assistant_lang=?, ask_adjustments=?, voice_replies=?, history_days=?, ui_lang=?, jurisdiction=?, voice_enabled=?, speech_lang=?, large_text=? WHERE username=?",
@@ -73,7 +71,6 @@ def update(user: str, patch: dict) -> dict:
     res = get(user)
     if jur_changed:
         # Financial records are untouched. Open conversations stay filed under the jurisdiction they started in; the next message opens a fresh one.
-        books.set_base_currency(user, jurisdictions.currency(out["jurisdiction"]))     # totals follow the active jurisdiction; no record is converted
         res = get(user)
         books._audit(user, "fin_jurisdiction_changed", {"from": cur["jurisdiction"], "to": out["jurisdiction"], "config_version": jurisdictions.VERSION})
         res["new_conversation"] = True
