@@ -38,12 +38,13 @@ FEATURES = {
     "knowledge": "Regulation search",
     "receipt": "Advice receipt",
     "insights": "Red-team arena and self-inspection",
+    "money": "Personal finance",
 }
 # (route prefix, feature) checked by the API gate; tools are checked in the tier engine (see denied_tools)
 ROUTE_FEATURES = [("/api/chat", "chat"), ("/api/ledger", "ledger"), ("/api/replay", "replay"), ("/api/documents", "documents"),
                   ("/api/approve", "orders"), ("/api/reject", "orders"), ("/api/transcribe", "voice"),
                   ("/api/knowledge", "knowledge"), ("/api/receipt", "receipt"), ("/api/redteam", "insights"),
-                  ("/api/selfinspection", "insights")]
+                  ("/api/selfinspection", "insights"), ("/api/fin", "money")]
 TOOL_FEATURES = {"create_order_ticket": "orders", "generate_report": "orders", "search_knowledge": "knowledge",
                  "get_behaviour_insights": "ledger"}
 

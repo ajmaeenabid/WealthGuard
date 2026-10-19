@@ -19,9 +19,14 @@ def new_id(prefix: str) -> str:
 def _write(sql: str, params: tuple) -> None:
     with db.LOCK:
         c = db.connect()
-        c.execute(sql, params)
-        c.commit()
-        c.close()
+        try:
+            c.execute(sql, params)
+            c.commit()
+        except Exception:
+            c.rollback()          # a failed statement must not leave the write lock held
+            raise
+        finally:
+            c.close()
 
 
 def _one(sql: str, params: tuple):

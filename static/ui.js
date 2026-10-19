@@ -46,7 +46,7 @@
     syncScrim();
   }
 
-  qa(".nav").forEach((b) => (b.onclick = () => (openId === b.dataset.panel ? closePanel() : openPanel(b.dataset.panel))));
+  qa(".nav[data-panel]").forEach((b) => (b.onclick = () => (openId === b.dataset.panel ? closePanel() : openPanel(b.dataset.panel))));
   $("drawerClose").onclick = closePanel;
   scrim.onclick = () => { closePanel(); sidebar.classList.remove("open"); syncScrim(); };
   $("menuBtn").onclick = () => { sidebar.classList.toggle("open"); syncScrim(); };

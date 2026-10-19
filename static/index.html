@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/static/styles.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/static/finance.css">
 </head>
 <body>
 
@@ -23,6 +24,11 @@
       <span class="wordmark">WealthGuard</span>
     </div>
     <div class="tagline"><span class="tg-main" data-i18n="tagline">Compliance-first wealth advice</span><span class="tg-sub" data-i18n="tagline2">Every recommendation checked. Every step on record.</span></div>
+
+    <div class="modeswitch" id="modeSwitch" role="tablist" aria-label="Workspace" hidden>
+      <button type="button" role="tab" id="modeAdvisor" aria-selected="true"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Advisor</span></button>
+      <button type="button" role="tab" id="modeMoney" aria-selected="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M16 15h2"/></svg><span>My money</span></button>
+    </div>
 
     <div class="session" data-for="user">
       <button id="start" class="primary wide" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="newChat">New chat</span></button>
@@ -51,6 +57,17 @@
           <button type="button" class="nav" data-panel="siCard" aria-controls="siCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg><span class="lbl" data-i18n="nSelf">Self-inspection</span><span class="dot" aria-hidden="true"></span></button>
           <button type="button" class="nav" data-panel="docCard" data-for="user" aria-controls="docCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><span class="lbl" data-i18n="nDocs">Upload a document</span><span class="dot" aria-hidden="true"></span></button>
           <button type="button" class="nav" data-panel="auditCard" aria-controls="auditCard" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg><span class="lbl" data-i18n="nAudit">Audit log</span><span class="dot" aria-hidden="true"></span></button>
+    </nav>
+
+    <nav class="navlist" data-for="money" aria-label="My money">
+      <div class="group-label">My money</div>
+      <button type="button" class="nav" data-tab="overview" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="lbl">Overview</span></button>
+      <button type="button" class="nav" data-tab="transactions" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg><span class="lbl">Transactions</span></button>
+      <button type="button" class="nav" data-tab="accounts" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18M16 15h2"/></svg><span class="lbl">Accounts</span></button>
+      <button type="button" class="nav" data-tab="plan" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg><span class="lbl">Budgets and goals</span></button>
+      <button type="button" class="nav" data-tab="reports" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg><span class="lbl">Reports</span></button>
+      <button type="button" class="nav" data-tab="assistant" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><span class="lbl">Money assistant</span></button>
+      <button type="button" class="nav" data-tab="settings" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l1.7-1.3-1.7-3-2 .7a7.6 7.6 0 0 0-2.6-1.5L14.4 3h-3.4l-.4 2.4a7.6 7.6 0 0 0-2.6 1.5l-2-.7-1.7 3 1.7 1.3a7.6 7.6 0 0 0 0 3l-1.7 1.3 1.7 3 2-.7a7.6 7.6 0 0 0 2.6 1.5l.4 2.4h3.4l.4-2.4a7.6 7.6 0 0 0 2.6-1.5l2 .7 1.7-3z"/></svg><span class="lbl">Settings and privacy</span></button>
     </nav>
 
     <div class="userbox" id="userBox" hidden>
@@ -99,7 +116,7 @@
                   <div class="vrow"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg><label class="small muted" for="voiceEngine" data-i18n="veLabel">Engine</label></div>
                   <select id="voiceEngine" aria-label="Voice engine"><option value="auto" data-i18n="veAuto">Voice: auto</option><option value="whisper">Whisper</option><option value="browser" data-i18n="veBrowser">Browser</option></select>
                   <div class="vrow"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"/></svg><label class="small muted" for="voiceLang" data-i18n="vlLabel">Language</label></div>
-                  <select id="voiceLang" aria-label="Voice language"><option value="en-US">English</option><option value="zh-CN">Chinese</option></select>
+                  <select id="voiceLang" aria-label="Voice language"><option value="en-US">English</option><option value="zh-CN">Chinese</option><option value="bn-BD">Bangla (বাংলা)</option></select>
                 </div>
               </div>
             </div>
@@ -120,6 +137,56 @@
       <div id="adminUsers" class="admin-users"></div>
       <p id="adminMsg" class="small muted" role="status"></p>
     </section>
+      <section class="money" id="moneyView" aria-label="My money" hidden>
+      <div class="fin-head">
+        <div><h1 class="fin-title" id="finTitle">Overview</h1><p class="fin-sub muted" id="finSub"></p></div>
+        <div class="fin-actions">
+          <select id="finPeriod" aria-label="Period"><option value="month">This month</option><option value="lastmonth">Last month</option><option value="week">This week</option><option value="year">This year</option><option value="custom">Custom range</option></select>
+          <span id="finCustom" class="fin-custom" hidden><input type="date" id="finFrom" aria-label="From"><input type="date" id="finTo" aria-label="To"></span>
+          <button type="button" id="finAdd" class="primary"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Add</span></button>
+        </div>
+      </div>
+      <div class="fin-tabs" role="tablist" aria-label="Sections"><button type="button" role="tab" data-tab="overview" aria-selected="false">Overview</button><button type="button" role="tab" data-tab="transactions" aria-selected="false">Transactions</button><button type="button" role="tab" data-tab="accounts" aria-selected="false">Accounts</button><button type="button" role="tab" data-tab="plan" aria-selected="false">Budgets and goals</button><button type="button" role="tab" data-tab="reports" aria-selected="false">Reports</button><button type="button" role="tab" data-tab="assistant" aria-selected="false">Money assistant</button><button type="button" role="tab" data-tab="settings" aria-selected="false">Settings and privacy</button></div>
+      <div class="fin-banner" id="finBanner" role="status" hidden></div>
+
+      <div class="fin-tab" id="finTab-overview"></div>
+      <div class="fin-tab" id="finTab-transactions" hidden></div>
+      <div class="fin-tab" id="finTab-accounts" hidden></div>
+      <div class="fin-tab" id="finTab-plan" hidden></div>
+      <div class="fin-tab" id="finTab-reports" hidden></div>
+      <div class="fin-tab" id="finTab-settings" hidden></div>
+
+      <div class="fin-tab fin-assist" id="finTab-assistant" hidden>
+        <div class="fin-chat">
+          <div class="fin-msgs" id="finMsgs" aria-live="polite"></div>
+          <div class="fin-draft" id="finDraft" hidden></div>
+          <div class="fin-quick" id="finQuick"></div>
+          <div class="fin-confirm" id="finConfirm" hidden>
+            <button type="button" id="finYes" class="primary">Save it</button>
+            <button type="button" id="finEdit">Edit details</button>
+            <button type="button" id="finNo">Cancel</button>
+            <span class="muted small">Or type what to change, for example "make it 900" or "add note: monthly shop".</span>
+          </div>
+          <form id="finForm" class="fin-composer" autocomplete="off">
+            <textarea id="finInput" rows="1" maxlength="1000" placeholder="Tell me what you spent or earned, in English, Bangla or Banglish..." aria-label="Message the money assistant"></textarea>
+            <div class="fin-composer-bar">
+              <button type="button" id="finMic" class="vbtn" aria-pressed="false" title="Speak" aria-label="Speak your message" data-stop-html='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>'><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button>
+              <span id="finNote" class="muted small" aria-live="polite"></span>
+              <span class="fin-ai" id="finAi" title="How the last message was understood"></span>
+              <button type="submit" id="finSend" class="send" aria-label="Send" title="Send" disabled><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
+            </div>
+          </form>
+          <p class="muted small fin-fine">Nothing is saved until you say yes. Spoken text appears in the box first so you can correct it. Voice and AI features send your words to the speech and language services you configured.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="auth modal" id="finModal" hidden>
+      <div class="auth-card fin-modal" role="dialog" aria-modal="true" aria-labelledby="finModalTitle">
+        <div class="set-head"><h2 id="finModalTitle"></h2><button type="button" id="finModalClose" class="ghost icon" aria-label="Close"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+        <div id="finModalBody"></div>
+      </div>
+    </div>
   </main>
 
   <aside class="drawer" id="drawer" aria-label="Feature panel" aria-hidden="true">
@@ -349,5 +416,6 @@
 <script src="/static/voice.js"></script>
 <script src="/static/app.js"></script>
 <script src="/static/ui.js"></script>
+<script src="/static/finance.js"></script>
 </body>
 </html>

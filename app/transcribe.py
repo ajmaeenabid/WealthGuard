@@ -22,7 +22,7 @@ GROQ_MODEL_DEFAULT = "whisper-large-v3-turbo"
 LOCAL_MODEL_DEFAULT = "base"
 MAX_BYTES = 2_000_000          # about 2 minutes of speech as webm/opus; Vercel bodies are limited to 4.5 MB
 MAX_TEXT_CHARS = 1000
-LANGUAGES = {"en", "zh"}
+LANGUAGES = {"en", "zh", "bn"}
 RATE_LIMIT = 20                # requests per client per minute
 TIMEOUT = 30.0
 _TRANSPORT = None              # tests inject httpx.MockTransport here
@@ -33,6 +33,7 @@ _HITS: dict = defaultdict(deque)
 PROMPTS = {  # a short vocabulary hint: Whisper spells product and regulator names correctly when it has seen them
     "en": "WealthGuard, NovaYield Note, CSRC, CNY, yuan, RMB, stress test, order ticket, risk bucket, purchase history.",
     "zh": "以下是普通话的句子。WealthGuard，NovaYield，证监会，压力测试，订单，风险档位，购买记录。",
+    "bn": "আজ ৮৫০ টাকা বাজার করলাম। খরচ, আয়, বিকাশ, নগদ, ব্যাংক, বেতন, ভাড়া, বিদ্যুৎ বিল, রিকশা ভাড়া, ছাড়, ভ্যাট।",
 }
 # What Whisper tends to output for silence or noise. A transcript consisting only of these is treated as empty.
 HALLUCINATIONS = [

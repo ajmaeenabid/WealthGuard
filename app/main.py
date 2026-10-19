@@ -33,6 +33,8 @@ async def lifespan(_app):
 
 
 app = FastAPI(title="WealthGuard", description=config.DISCLAIMER, lifespan=lifespan)
+from app.finance.routes import router as finance_router  # noqa: E402
+app.include_router(finance_router)
 STATIC = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
 
 
@@ -204,6 +206,14 @@ def admin_permissions(username: str, req: PermsReq, request: Request):
     audit.append("system", "admin_permissions", "T2", {"admin": me["username"], "target": out["username"],
                                                        "denied": sorted(k for k, v in out["permissions"].items() if not v)})
     return out
+
+
+@app.get("/api/admin/ai-usage")
+def admin_ai_usage(request: Request, days: int = Query(30, ge=1, le=365)):
+    """Token use and estimated cost of the finance assistant across all accounts (no message contents)."""
+    _admin(request)
+    from app.finance import ai
+    return ai.usage_summary(None, days)
 
 
 @app.post("/api/admin/users/{username}/password")

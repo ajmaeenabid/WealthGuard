@@ -70,7 +70,7 @@ def test_off_in_mock_mode_and_without_a_key(monkeypatch):
 
 def test_groq_is_the_default_when_a_key_exists_and_the_model_is_configurable(groq, monkeypatch):
     s = transcribe.status()
-    assert s == {"available": True, "provider": "groq", "model": "whisper-large-v3-turbo", "max_bytes": transcribe.MAX_BYTES, "languages": ["en", "zh"]}
+    assert s == {"available": True, "provider": "groq", "model": "whisper-large-v3-turbo", "max_bytes": transcribe.MAX_BYTES, "languages": ["bn", "en", "zh"]}
     monkeypatch.setenv("WHISPER_MODEL", "whisper-large-v3")
     assert transcribe.model() == "whisper-large-v3"
     monkeypatch.setenv("WHISPER_PROVIDER", "off")
