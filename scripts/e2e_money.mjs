@@ -170,6 +170,38 @@ await run(click(".nav[data-tab=settings]"), 1200);
 check("privacy page explains what is sent where", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("never sent"));
 await shot("e2e_03_settings");
 
+// ---- receipt photo: stored with metadata removed, shown in the edit form, marked in the list
+const PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+const rc = await ev(`(async()=>{const t=(await (await fetch('/api/fin/transactions?q=Shwapno')).json()).items[0]; const bytes=Uint8Array.from(atob('${PNG_B64}'),c=>c.charCodeAt(0)); const r=await fetch('/api/fin/transactions/'+t.id+'/receipt',{method:'POST',headers:{'Content-Type':'image/png'},body:bytes}); const bad=await fetch('/api/fin/transactions/'+t.id+'/receipt',{method:'POST',headers:{'Content-Type':'image/png'},body:new TextEncoder().encode('<script>alert(1)</script>')}); return {ok:r.status, bad:bad.status, id:t.id}})()`);
+check("a real photo is accepted and a script disguised as one is refused", rc.ok === 200 && rc.bad === 415);
+await run(click(".nav[data-tab=transactions]"), 1200);
+await run(setv("tqQ", "Shwapno"), 1200);
+check("the list marks the transaction with a receipt", await ev(`document.querySelector('#tqList .chip[title*="receipt"]') !== null`));
+await run(click("#tqList tbody tr"), 1200);
+check("the edit form shows the attached photo", await ev(`document.querySelector('#tfRcpView img') !== null`));
+await run(click("#tfRcpDel"), 900);
+check("removing the photo clears it", (await ev(`fetch('/api/fin/transactions/${rc.id}').then(r=>r.json()).then(t=>t.has_receipt)`)) === false);
+await run(`document.getElementById('finModalClose').click(); 'ok'`, 300);
+await run(setv("tqQ", ""), 600);
+
+// ---- bill reminders: a bill due tomorrow lights the badge on the workspace switch
+await ev(`fetch('/api/fin/obligations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Gas',amount:'500',next_due:'${new Date(Date.now()+86400000).toISOString().slice(0,10)}',recurrence:'monthly'})}).then(r=>r.status)`);
+await run(`WGFinance.checkReminders(false); 'ok'`, 1200);
+check("the badge counts urgent reminders", (await ev(`!document.getElementById('modeBadge').hidden && Number(document.getElementById('modeBadge').textContent) >= 1`)));
+
+// ---- Bangla report: same figures, Bangla narrative and labels
+await run(click(".nav[data-tab=reports]"), 900);
+await run(setv("rpLang", "bn"), 200);
+await run(click("#rpGo"), 3500);
+const bnOut = await ev(`document.getElementById('rpOut').textContent`);
+check("the Bangla report has Bangla section labels and narrative", bnOut.includes("ক · আর্থিক পরিস্থিতি") && bnOut.includes("এআই সেবা ছাড়াই"));
+check("and the same taka figures", bnOut.includes("৳30,000.00"));
+
+// ---- activity log in settings
+await run(click(".nav[data-tab=settings]"), 1300);
+check("settings lists my own activity with the chain status", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("My activity") && (await ev(`document.getElementById('finTab-settings').textContent`)).includes("log verified"));
+check("device notification toggle is explained honestly", (await ev(`document.getElementById('stNotifyHint').textContent`)).includes("only works while WealthGuard is open"));
+
 // ---- mobile: tab bar, no horizontal overflow, assistant usable
 await viewport(390, 844, true);
 await send("Page.reload"); await sleep(3500);

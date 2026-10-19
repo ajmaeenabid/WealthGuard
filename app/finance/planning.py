@@ -410,22 +410,25 @@ def alerts(user: str) -> list[dict]:
             continue
         if b["status"] == "over":
             out.append({"kind": "budget_over", "severity": "high", "title": f"{b['name']} is over budget",
-                        "body": f"{money.fmt(b['spent_minor'], b['currency'])} spent of {money.fmt(money.to_minor(b['limit']), b['currency'])}.", "ref": b["id"]})
+                        "body": f"{money.fmt(b['spent_minor'], b['currency'])} spent of {money.fmt(money.to_minor(b['limit']), b['currency'])}.", "ref": b["id"],
+                        "key": f"budget_over:{b['id']}:{b['window']['start']}"})
         elif b["status"] == "warning":
             out.append({"kind": "budget_warning", "severity": "medium", "title": f"{b['name']} is at {round(b['utilization'] * 100)}%",
-                        "body": f"{b['remaining']} {b['currency']} left with {_days(b['days_left'])} to go.", "ref": b["id"]})
+                        "body": f"{b['remaining']} {b['currency']} left with {_days(b['days_left'])} to go.", "ref": b["id"],
+                        "key": f"budget_warning:{b['id']}:{b['window']['start']}"})
         elif b["projected_over"]:
             out.append({"kind": "budget_projected", "severity": "low", "title": f"{b['name']} may run over",
-                        "body": f"At the current pace you would spend about {b['projected_total']} {b['currency']} against a limit of {b['limit']}.", "ref": b["id"]})
+                        "body": f"At the current pace you would spend about {b['projected_total']} {b['currency']} against a limit of {b['limit']}.", "ref": b["id"],
+                        "key": f"budget_projected:{b['id']}:{b['window']['start']}"})
     for o in list_obligations(user, include_inactive=False):
         if o["status"] == "overdue":
-            out.append({"kind": "bill_overdue", "severity": "high", "title": f"{o['name']} is overdue", "body": f"{o['amount']} {o['currency']} was due {o['next_due']}.", "ref": o["id"]})
+            out.append({"kind": "bill_overdue", "severity": "high", "title": f"{o['name']} is overdue", "body": f"{o['amount']} {o['currency']} was due {o['next_due']}.", "ref": o["id"], "key": f"bill_overdue:{o['id']}:{o['next_due']}"})
         elif o["status"] == "due":
-            out.append({"kind": "bill_due", "severity": "medium", "title": f"{o['name']} is due soon", "body": f"{o['amount']} {o['currency']} due {o['next_due']} (in {_days(o['days_until_due'])}).", "ref": o["id"]})
+            out.append({"kind": "bill_due", "severity": "medium", "title": f"{o['name']} is due soon", "body": f"{o['amount']} {o['currency']} due {o['next_due']} (in {_days(o['days_until_due'])}).", "ref": o["id"], "key": f"bill_due:{o['id']}:{o['next_due']}"})
     for g in list_goals(user):
         if g["status"] == "active" and g.get("on_track") is False:
             out.append({"kind": "goal_off_track", "severity": "low", "title": f"{g['name']} is behind schedule",
-                        "body": f"Needs about {g['required_monthly']} {g['currency']} a month to reach {g['target']} by {g['target_date']}.", "ref": g["id"]})
+                        "body": f"Needs about {g['required_monthly']} {g['currency']} a month to reach {g['target']} by {g['target_date']}.", "ref": g["id"], "key": f"goal_off_track:{g['id']}:{money.today().strftime('%Y-%m')}"})
     order = {"high": 0, "medium": 1, "low": 2}
     return sorted(out, key=lambda a: order[a["severity"]])
 

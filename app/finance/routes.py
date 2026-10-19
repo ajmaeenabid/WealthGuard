@@ -8,6 +8,7 @@ from collections import defaultdict, deque
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel, Field
 
@@ -15,7 +16,7 @@ from app import accounts as auth
 import logging
 import sqlite3
 
-from app.finance import ai, analytics, assistant, books, exchange, money, planning, privacy, reports, settings, taxonomy
+from app.finance import ai, analytics, assistant, books, exchange, money, planning, privacy, receipts, reports, settings, taxonomy
 from app.finance.books import FinanceError
 
 router = APIRouter(prefix="/api/fin")
@@ -211,6 +212,7 @@ class ReportIn(BaseModel):
     start: Optional[str] = Field(None, max_length=10)
     end: Optional[str] = Field(None, max_length=10)
     ai: Optional[bool] = None            # None: use the account's AI preference
+    lang: Optional[str] = Field(None, pattern="^(en|bn)$")       # None: the account's assistant language (English when "auto")
 
 
 class ChatIn(BaseModel):
@@ -305,6 +307,31 @@ def delete_txn(txn_id: str, request: Request):
     return _call(books.void_transaction, _user(request), txn_id)
 
 
+# ---------------------------------------------------------------------------------------------- receipt photos
+@router.post("/transactions/{txn_id}/receipt")
+async def upload_receipt(txn_id: str, request: Request):
+    """Raw image bytes in the body (JPEG, PNG or WebP). The type is decided by the bytes, not by the header or file name."""
+    u = _user(request)
+    _limit(u, "write")
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > receipts.MAX_BYTES + 1024:
+        raise HTTPException(413, "The photo is too large.")
+    data = await request.body()
+    return await run_in_threadpool(_call, receipts.attach, u, txn_id, data, request.headers.get("content-type"))
+
+
+@router.get("/transactions/{txn_id}/receipt")
+def view_receipt(txn_id: str, request: Request):
+    mime, data = _call(receipts.get, _user(request), txn_id)
+    return Response(data, media_type=mime, headers={"X-Content-Type-Options": "nosniff", "Content-Security-Policy": "default-src 'none'; sandbox",
+                                                    "Cache-Control": "private, no-store", "Content-Disposition": f'inline; filename="receipt.{receipts.TYPES[mime]}"'})
+
+
+@router.post("/transactions/{txn_id}/receipt/delete")
+def delete_receipt(txn_id: str, request: Request):
+    return _call(receipts.remove, _user(request), txn_id)
+
+
 # ---------------------------------------------------------------------------------------------- planning
 @router.get("/budgets")
 def get_budgets(request: Request):
@@ -386,6 +413,16 @@ def get_alerts(request: Request):
     return _call(planning.alerts, _user(request))
 
 
+@router.get("/activity")
+def activity(request: Request, limit: int = Query(50, ge=1, le=200)):
+    """This account's own finance actions from the tamper-evident audit log (ids and amounts, never names or notes)."""
+    from app.security import audit
+    u = _user(request)
+    rows = [e for e in audit.list_entries(None) if isinstance(e.get("payload"), dict) and e["payload"].get("user") == u]
+    return {"entries": [{"ts": e["ts"], "action": e["action"], "detail": {k: v for k, v in e["payload"].items() if k != "user"}} for e in rows[-limit:][::-1]],
+            "chain": audit.verify()}
+
+
 @router.get("/forecast")
 def get_forecast(request: Request, reduce: Optional[str] = Query(None, max_length=200, description="category:percent,category:percent")):
     reductions = {}
@@ -423,10 +460,12 @@ def dashboard(request: Request, kind: str = Query("month", pattern="^(day|week|m
 @router.post("/reports")
 def make_report(body: ReportIn, request: Request):
     u = _user(request)
-    use_ai = settings.get(u)["ai_reports"] if body.ai is None else body.ai
+    pref = settings.get(u)
+    use_ai = pref["ai_reports"] if body.ai is None else body.ai
+    lang = body.lang or (pref["assistant_lang"] if pref["assistant_lang"] in ("en", "bn") else "en")
     if use_ai:
         _limit(u, "report")
-    return _call(reports.generate, u, body.kind, body.ref, body.start, body.end, use_ai)
+    return _call(reports.generate, u, body.kind, body.ref, body.start, body.end, use_ai, lang)
 
 
 @router.get("/reports")

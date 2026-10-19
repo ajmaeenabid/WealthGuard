@@ -17,7 +17,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict
 
 from app import store
-from app.finance import ai, analytics, books, money, planning, privacy, rules, settings, taxonomy
+from app.finance import ai, analytics, bn, books, money, planning, privacy, rules, settings, taxonomy
 from app.finance.books import FinanceError, new_id
 from app.security import guard
 
@@ -246,6 +246,8 @@ def _rules_suffice(text: str, base: dict, sess: Optional[dict], today: date) -> 
     words = len(text.split())
     if base["intent"] in ("cancel", "confirm", "deny") and words <= 4:
         return True
+    if base["intent"] == "query" and base.get("query", {}).get("kind") in ("balance", "budget", "goal"):
+        return True                                        # "what is my balance?" has one meaning: no model call needed
     if sess and words <= 6:
         pend = sess.get("pending", {})
         aw = pend.get("awaiting")
@@ -581,49 +583,75 @@ def _period_bounds(q: dict, today: date) -> tuple[date, date, str]:
     return s, e, {"day": "today", "week": "this week", "month": "this month", "year": "this year"}.get(per, "this month")
 
 
-def answer_query(user: str, q: dict) -> dict:
+def answer_query(user: str, q: dict, lang: str = "en") -> dict:
+    """Answers about the user's own money, computed from the ledger. Bangla uses the same figures with Bangla wording."""
     today = money.today()
     cur = books.base_currency(user)
     kind = q.get("kind") or "summary"
+    bn_ = lang == "bn"
+    T = bn.query_texts(cur)
+    C = (lambda c: bn.cat(c)) if bn_ else (lambda c: c)
     if kind == "balance":
         pos = books.position(user)
         if not pos["accounts"]:
-            return {"text": "You have not added any accounts yet, so I cannot show a balance. Add one in Accounts (with its opening balance) and I will keep it up to date.", "data": pos}
+            return {"text": T["no_accounts"] if bn_ else "You have not added any accounts yet, so I cannot show a balance. Add one in Accounts (with its opening balance) and I will keep it up to date.", "data": pos}
         lines = ", ".join(f"{a['name']} {_money(a['balance_minor'], a['currency'])}" for a in pos["accounts"])
+        if bn_:
+            return {"text": f"আপনার তরল তহবিল {_money(pos['liquid_minor'], cur)} ({lines})। মোট সম্পদ {_money(pos['net_worth_minor'], cur)}। "
+                            "এটি আপনার দেওয়া শুরুর ব্যালান্স আর লেখা লেনদেন থেকে হিসাব করা, তাই আপনার রেকর্ড যতটা সম্পূর্ণ, হিসাবও ততটাই।", "data": pos}
         return {"text": f"Your liquid funds are {_money(pos['liquid_minor'], cur)} ({lines}). Net worth is {_money(pos['net_worth_minor'], cur)}. "
                         "These are calculated from the opening balances you entered plus the transactions you recorded, so they are only as complete as your records.", "data": pos}
     if kind == "budget":
         bs = [b for b in planning.list_budgets(user) if b["active"]]
         if not bs:
-            return {"text": "You have no budgets yet. You can create one in Plan, or tell me which category and limit.", "data": []}
+            return {"text": T["no_budgets"] if bn_ else "You have no budgets yet. You can create one in Plan, or tell me which category and limit.", "data": []}
+        if bn_:
+            return {"text": " ".join(f"{b['name']}: {b['limit']} {cur}-এর মধ্যে {b['spent']} খরচ ({round(b['utilization'] * 100)}%, {bn.STATUS.get(b['status'], b['status'])})।" for b in bs), "data": bs}
         return {"text": " ".join(f"{b['name']}: {b['spent']} of {b['limit']} {cur} ({round(b['utilization'] * 100)}%, {b['status']})." for b in bs), "data": bs}
     if kind == "goal":
         gs = [g for g in planning.list_goals(user) if g["status"] != "completed"]
         if not gs:
-            return {"text": "You have no goals yet. You can add one in Plan.", "data": []}
+            return {"text": T["no_goals"] if bn_ else "You have no goals yet. You can add one in Plan.", "data": []}
+        if bn_:
+            return {"text": " ".join(f"{g['name']}: {g['target']} {cur}-এর মধ্যে {g['saved']} জমেছে ({round(g['progress_pct'] * 100)}%)" + (f", আনুমানিক শেষ {g['estimated_completion']}" if g.get("estimated_completion") else "") + "।" for g in gs), "data": gs}
         return {"text": " ".join(f"{g['name']}: {g['saved']} of {g['target']} {cur} ({round(g['progress_pct'] * 100)}%)" + (f", estimated {g['estimated_completion']}" if g.get("estimated_completion") else "") + "." for g in gs), "data": gs}
     s, e, label = _period_bounds(q, today)
+    plabel = bn.PERIOD.get(label, label) if bn_ else label
     summ = analytics.summary(user, s, e)
     if summ["transactions"] == 0:
-        return {"text": f"I do not see any transactions recorded for {label}.", "data": summ}
+        return {"text": f"{plabel} কোনো লেনদেন লেখা নেই।" if bn_ else f"I do not see any transactions recorded for {label}.", "data": summ}
     if kind == "list":
         rows = books.list_transactions(user, start=s.isoformat(), end=e.isoformat(), size=5)["items"]
-        return {"text": "Most recent: " + "; ".join(f"{r['ts'][:10]} {r['merchant'] or r['category'] or r['type']} {_money(r['final_minor'], r['currency'])}" for r in rows) + ".", "data": rows}
+        items = "; ".join(f"{r['ts'][:10]} {r['merchant'] or C(r['category']) or r['type']} {_money(r['final_minor'], r['currency'])}" for r in rows)
+        return {"text": ("সাম্প্রতিক: " if bn_ else "Most recent: ") + items + ("।" if bn_ else "."), "data": rows}
     if kind == "spend_total":
         cat, mer = q.get("category"), q.get("merchant")
         if cat:
             hit = next((c for c in summ["by_category"] if c["category"] == cat), None)
             amt = hit["minor"] if hit else 0
+            if bn_:
+                return {"text": f"{plabel} {C(cat)} খাতে আপনি {_money(amt, cur)} খরচ করেছেন" + (f" ({hit['count']}টি লেনদেনে)।" if hit else "।"), "data": hit or {}}
             return {"text": f"You spent {_money(amt, cur)} on {cat} {label}" + (f" across {hit['count']} transactions." if hit else "."), "data": hit or {}}
         if mer:
             res = books.list_transactions(user, start=s.isoformat(), end=e.isoformat(), merchant=mer, type="expense", size=200)
             tot = sum(r["final_minor"] for r in res["items"])
+            if bn_:
+                return {"text": f"{plabel} {mer}-এ আপনি {_money(tot, cur)} খরচ করেছেন ({res['total']}টি লেনদেন)।", "data": res["items"]}
             return {"text": f"You spent {_money(tot, cur)} at {mer} {label} ({res['total']} transactions).", "data": res["items"]}
+        if bn_:
+            return {"text": f"{plabel} আপনি {_money(summ['spending_minor'], cur)} খরচ করেছেন, আয় লেখা আছে {_money(summ['income_minor'], cur)}।", "data": summ}
         return {"text": f"You spent {_money(summ['spending_minor'], cur)} {label}, with {_money(summ['income_minor'], cur)} of income recorded.", "data": summ}
+    ins = analytics.insights(user, s, e, cur=summ)
+    if bn_:
+        top = ", ".join(f"{C(c['category'])} {_money(c['minor'], cur)}" for c in summ["by_category"][:3])
+        text = (f"{plabel}: আয় {_money(summ['income_minor'], cur)}, খরচ {_money(summ['spending_minor'], cur)}, নিট {_money(summ['net_cash_flow_minor'], cur)}।" +
+                (f" শীর্ষ খাত: {top}।" if top else ""))
+        if ins:
+            text += " লক্ষ্য করার মতো: " + bn.insight(ins[0], cur)["pattern"]
+        return {"text": text, "data": summ, "insights": [bn.insight(i, cur) for i in ins[:3]]}
     top = ", ".join(f"{c['category']} {_money(c['minor'], cur)}" for c in summ["by_category"][:3])
     text = (f"{label.capitalize()}: income {_money(summ['income_minor'], cur)}, spending {_money(summ['spending_minor'], cur)}, net {_money(summ['net_cash_flow_minor'], cur)}." +
             (f" Top categories: {top}." if top else ""))
-    ins = analytics.insights(user, s, e, cur=summ)
     if ins:
         text += " Worth a look: " + ins[0]["pattern"]
     return {"text": text, "data": summ, "insights": ins[:3]}
@@ -717,7 +745,7 @@ def _handle(user: str, text: str, request_id: str, source: str) -> dict:
         _apply_slot(draft, awaiting, slot_patch, accounts)
         reply, extra = _continue(user, sess, accounts, lang, source)
     elif sess and intent == "query":
-        ans = answer_query(user, parsed.get("query", {}))
+        ans = answer_query(user, parsed.get("query", {}), lang)
         reply, extra = ans["text"], {"answer": ans}
         if awaiting and awaiting != "confirm":
             reply += " " + sess["question"]
@@ -771,7 +799,7 @@ def _handle_fresh(user, text, request_id, source, parsed, mode, lang, accounts, 
         reply, extra = _continue(user, sess, accounts, lang, source)
         return _finish(user, sess, text, reply, extra, mode, cid, lang)
     if intent == "query":
-        ans = answer_query(user, parsed.get("query", {}))
+        ans = answer_query(user, parsed.get("query", {}), lang)
         sess = _new_session(user, "query")
         sess["state"] = "completed"
         _save(sess)

@@ -250,7 +250,7 @@
       const inflow = t.type === "income" || t.type === "refund" || (t.type === "adjustment" && t.direction === "in");
       const amt = t.type === "transfer" ? `↔ ${money(t.final_amount)}` : money(inflow ? t.final_amount : "-" + t.final_amount, inflow);
       const detail = [t.item_name, t.discount !== "0.00" ? "discount " + money(t.discount) : "", t.tax !== "0.00" ? "VAT " + money(t.tax) : ""].filter(Boolean).join(" · ");
-      return `<tr data-txn="${esc(t.id)}" tabindex="0"><td data-label="Date">${esc(day(t.ts))}${t.scheduled ? ` <span class="chip scheduled" title="Dated in the future: not part of any balance or total yet">scheduled</span>` : ""}</td><td data-label="Description"><b>${esc(t.merchant || t.item_name || t.type)}</b>${detail ? `<div class="muted small">${esc(detail)}</div>` : ""}</td><td data-label="Category">${esc(t.category || t.type)}${t.essential === true ? ` <span class="chip ok">essential</span>` : ""}</td><td data-label="Account">${esc(names[t.account_id] || "")}${t.to_account_id ? " → " + esc(names[t.to_account_id] || "") : ""}</td><td class="num amt ${inflow ? "in" : "out"}" data-label="Amount">${amt}</td></tr>`;
+      return `<tr data-txn="${esc(t.id)}" tabindex="0"><td data-label="Date">${esc(day(t.ts))}${t.scheduled ? ` <span class="chip scheduled" title="Dated in the future: not part of any balance or total yet">scheduled</span>` : ""}</td><td data-label="Description"><b>${esc(t.merchant || t.item_name || t.type)}</b>${t.has_receipt ? ` <span class="chip" title="A receipt photo is attached">receipt</span>` : ""}${detail ? `<div class="muted small">${esc(detail)}</div>` : ""}</td><td data-label="Category">${esc(t.category || t.type)}${t.essential === true ? ` <span class="chip ok">essential</span>` : ""}</td><td data-label="Account">${esc(names[t.account_id] || "")}${t.to_account_id ? " → " + esc(names[t.to_account_id] || "") : ""}</td><td class="num amt ${inflow ? "in" : "out"}" data-label="Amount">${amt}</td></tr>`;
     }).join("")}</tbody></table></div>
       <div class="pager"><span>${res.total} transactions · page ${res.page} of ${res.pages}</span><span><button type="button" id="pgPrev" ${res.page <= 1 ? "disabled" : ""}>Previous</button> <button type="button" id="pgNext" ${res.page >= res.pages ? "disabled" : ""}>Next</button></span></div>`;
     box.querySelectorAll("tr[data-txn]").forEach((r) => { r.onclick = () => openTxn(r.dataset.txn); r.onkeydown = (e) => { if (e.key === "Enter") openTxn(r.dataset.txn); }; });
@@ -329,6 +329,7 @@
         <label class="check"><input id="tfRec" type="checkbox" ${t && t.recurring ? "checked" : ""}> Repeats regularly (subscription, bill)</label>
         <label>Tags (comma separated)<input id="tfTags" maxlength="200" value="${esc(t ? t.tags.join(", ") : "")}"></label>
         <label>Note<textarea id="tfNote" rows="2" maxlength="500">${esc(t ? t.note || "" : "")}</textarea></label>
+        ${edit ? `<div class="fin-receipt" id="tfRcp"><span class="muted small">Receipt photo (JPEG, PNG or WebP, up to 2 MB; location data is removed)</span><div class="fin-toolbar" style="margin:6px 0 0"><input id="tfRcpFile" type="file" accept="image/jpeg,image/png,image/webp" aria-label="Receipt photo"><button type="button" id="tfRcpDel" hidden>Remove photo</button></div><div id="tfRcpView"></div></div>` : ""}
         <div class="fin-err" id="tfErr" role="alert" hidden></div>
         <div class="row2"><button type="submit" class="primary" id="tfSave">${edit ? "Save changes" : "Save transaction"}</button>${edit ? `<button type="button" class="warn" id="tfDel">Delete</button>` : `<button type="button" id="tfCancel">Cancel</button>`}</div>`;
       body.appendChild(f);
@@ -360,6 +361,7 @@
       ["tfGross", "tfDisc", "tfTax", "tfSvc"].forEach((id) => $(id).addEventListener("input", preview));
       preview();
       const err = (m) => { $("tfErr").textContent = m; $("tfErr").hidden = !m; };
+      if (edit) wireReceipt(t);
       if ($("tfCancel")) $("tfCancel").onclick = closeModal;
       if ($("tfDel")) $("tfDel").onclick = async () => {
         if (!window.confirm("Delete this transaction? It will no longer count in any balance or report.")) return;
@@ -399,6 +401,34 @@
   }
 
   function afterChange() { showTab(state.tab); }
+
+  // ---- receipt photo: the file is sent as raw bytes; the server decides the type from the content and strips metadata
+  async function showReceipt(id) {
+    const view = $("tfRcpView");
+    try {
+      const r = await fetch(`/api/fin/transactions/${id}/receipt`);
+      if (!r.ok) { view.innerHTML = ""; $("tfRcpDel").hidden = true; return; }
+      const url = URL.createObjectURL(await r.blob());
+      view.innerHTML = `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="Receipt photo" style="max-width:100%;max-height:180px;border-radius:12px;margin-top:8px;border:1px solid var(--line)"></a>`;
+      $("tfRcpDel").hidden = false;
+    } catch (e) { view.innerHTML = ""; }
+  }
+  function wireReceipt(t) {
+    if (t.has_receipt) showReceipt(t.id);
+    $("tfRcpFile").onchange = async (ev) => {
+      const f = ev.target.files[0];
+      if (!f) return;
+      if (f.size > 2000000) { $("tfErr").textContent = "That photo is over 2 MB. Take it at a lower resolution."; $("tfErr").hidden = false; ev.target.value = ""; return; }
+      try {
+        const r = await fetch(`/api/fin/transactions/${t.id}/receipt`, { method: "POST", headers: { "Content-Type": f.type || "application/octet-stream" }, body: f });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.detail || "Upload failed");
+        $("tfErr").hidden = true; toast("Receipt attached"); showReceipt(t.id);
+      } catch (e) { $("tfErr").textContent = e.message; $("tfErr").hidden = false; }
+      ev.target.value = "";
+    };
+    $("tfRcpDel").onclick = async () => { try { await api(`/transactions/${t.id}/receipt/delete`, {}); $("tfRcpView").innerHTML = ""; $("tfRcpDel").hidden = true; toast("Receipt removed"); } catch (e) { $("tfErr").textContent = e.message; $("tfErr").hidden = false; } };
+  }
 
   // ------------------------------------------------------------------------------------------ ACCOUNTS
   async function loadAccounts() {
@@ -574,6 +604,7 @@
     const past = await api("/reports", undefined, "GET");
     root.innerHTML = `
       <div class="fcard" style="margin-bottom:14px"><div class="fin-toolbar" style="margin:0">
+        <select id="rpLang" aria-label="Report language"><option value="">Language: account default</option><option value="en">English</option><option value="bn">বাংলা</option></select>
         <select id="rpKind" aria-label="Report period"><option value="week">Weekly</option><option value="month" selected>Monthly</option><option value="year">Yearly</option><option value="custom">Custom range</option></select>
         <input id="rpFrom" type="date" aria-label="From" hidden><input id="rpTo" type="date" aria-label="To" hidden>
         <label class="check" style="display:inline-flex;gap:6px;align-items:center;font-size:13.5px"><input id="rpAi" type="checkbox" checked> Explain with AI</label>
@@ -583,7 +614,7 @@
     $("rpKind").onchange = () => { const c = $("rpKind").value === "custom"; $("rpFrom").hidden = !c; $("rpTo").hidden = !c; };
     $("rpGo").onclick = async () => {
       $("rpMsg").textContent = "Building your report…"; $("rpGo").disabled = true;
-      try { const k = $("rpKind").value; state.report = await api("/reports", { kind: k, start: k === "custom" ? $("rpFrom").value : null, end: k === "custom" ? $("rpTo").value : null, ai: $("rpAi").checked }); $("rpMsg").textContent = ""; drawReport(state.report); }
+      try { const k = $("rpKind").value; state.report = await api("/reports", { kind: k, start: k === "custom" ? $("rpFrom").value : null, end: k === "custom" ? $("rpTo").value : null, ai: $("rpAi").checked, lang: $("rpLang").value || null }); $("rpMsg").textContent = ""; drawReport(state.report); }
       catch (e) { $("rpMsg").textContent = e.message; }
       $("rpGo").disabled = false;
     };
@@ -614,10 +645,34 @@
         ${rec.suggested_budgets.length ? `<p style="margin:12px 0 4px"><b>Suggested monthly budgets</b> <span class="muted small">${esc(rec.note)}</span></p><ul class="flist">${rec.suggested_budgets.map((s2) => `<li class="frow"><div class="main"><b>${esc(s2.category)}</b><span>${esc(s2.basis)}</span></div><span class="amt">${money(s2.suggested_monthly_limit)} <button type="button" data-mkb="${esc(s2.category)}|${esc(s2.suggested_monthly_limit)}">Create</button></span></li>`).join("")}</ul>` : ""}</div>
       <div class="fcard report-section"><h3>G · Forecast <span class="tag">estimate, not a balance</span></h3>${forecastCard(r.forecast)}${r.scenario ? `<p class="estimate-note"><b>Scenario:</b> cutting ${esc(Object.entries(r.scenario.scenario.reductions_pct).map(([k, v]) => k + " by " + v + "%").join(", "))} would save about ${money(r.scenario.scenario.estimated_saving)} and move the projected month-end to ${money(r.scenario.projected_end_balance)}.</p>` : ""}</div>
       ${r.data_quality.length ? `<div class="fcard report-section"><h3>Data quality</h3><ul class="flist">${r.data_quality.map((q) => `<li class="frow"><span>${esc(q)}</span></li>`).join("")}</ul></div>` : ""}`;
+    if (r.lang === "bn") localizeReport($("rpOut"));
     $("rpMd").onclick = () => download(`/api/fin/reports/${r.id}/export?format=md`, `${r.id}.md`);
     $("rpJson").onclick = () => download(`/api/fin/reports/${r.id}/export?format=json`, `${r.id}.json`);
     $("rpPrint").onclick = () => window.print();
     $("rpOut").querySelectorAll("[data-mkb]").forEach((b) => (b.onclick = async () => { const [cat, lim] = b.dataset.mkb.split("|"); try { await api("/budgets", { category: cat, limit: lim, period: "monthly" }); b.disabled = true; b.textContent = "Created"; } catch (e) { b.textContent = e.message; } }));
+  }
+
+  // Bangla labels for the fixed parts of a report; the narrative, findings and recommendations already arrive in Bangla from the server
+  const BN_LABELS = { "A · Financial overview": "ক · আর্থিক পরিস্থিতি", "B · Spending analysis": "খ · খরচের বিশ্লেষণ", "C · Savings and goals": "গ · সঞ্চয় ও লক্ষ্য",
+    "D · Bills and budgets": "ঘ · বিল ও বাজেট", "E–F · Behaviour and recommendations": "ঙ–চ · অভ্যাস ও পরামর্শ", "G · Forecast": "ছ · পূর্বাভাস", "Data quality": "তথ্যের মান",
+    "actual": "বাস্তব", "estimate, not a balance": "অনুমান, ব্যালান্স নয়", "estimate": "অনুমান", "Liquid funds at start": "শুরুতে তরল তহবিল", "Liquid funds at end": "শেষে তরল তহবিল",
+    "Change": "পরিবর্তন", "Income": "আয়", "Spending": "খরচ", "Refunds": "ফেরত", "Net cash flow": "নিট নগদ প্রবাহ", "Moved to savings (net)": "সঞ্চয়ে গেছে (নিট)",
+    "Account": "অ্যাকাউন্ট", "Opening": "শুরু", "Closing": "শেষ", "Average per day": "দিনে গড়", "Essential": "দরকারি", "Discretionary": "ঐচ্ছিক", "Unclassified": "অশ্রেণিবদ্ধ",
+    "Recurring": "নিয়মিত", "One-time": "একবারের", "Top categories": "শীর্ষ খাত", "Savings rate (moved to savings)": "সঞ্চয়ের হার (সঞ্চয়ে পাঠানো)",
+    "Savings rate (income − spending)": "সঞ্চয়ের হার (আয় − খরচ)", "Contributions": "জমা", "Withdrawals": "তোলা", "Planned monthly for goals": "লক্ষ্যের জন্য মাসিক পরিকল্পনা",
+    "Due in the next 30 days": "পরবর্তী ৩০ দিনে প্রদেয়", "Overdue": "বকেয়া", "Possible shortfall": "সম্ভাব্য ঘাটতি", "none expected": "প্রত্যাশিত নয়",
+    "Suggested monthly budgets": "প্রস্তাবিত মাসিক বাজেট", "Create": "তৈরি করুন", "Download Markdown": "Markdown নামান", "Download JSON": "JSON নামান", "Print": "প্রিন্ট",
+    "Liquid now": "এখন তরল তহবিল", "Bills before month end": "মাস শেষের আগে বিল", "Projected month-end": "মাস শেষে আনুমানিক", "Expected daily spending": "প্রত্যাশিত দৈনিক খরচ" };
+  const BN_PREFIX = { "Why it matters: ": "কেন গুরুত্বপূর্ণ: ", "Estimated impact: ": "আনুমানিক প্রভাব: ", "Scenario: ": "পরিস্থিতি: " };
+  function localizeReport(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach((n) => {
+      const raw = n.nodeValue, tr = raw.trim();
+      if (BN_LABELS[tr]) { n.nodeValue = raw.replace(tr, BN_LABELS[tr]); return; }
+      for (const [en, bnTxt] of Object.entries(BN_PREFIX)) if (tr.startsWith(en)) { n.nodeValue = raw.replace(en, bnTxt); return; }
+    });
   }
 
   // ------------------------------------------------------------------------------------------ ASSISTANT
@@ -739,6 +794,7 @@
     if (window.WGVoice && window.WGVoice.setSpeak) window.WGVoice.setSpeak(st.voice_replies);
     const accs = state.accounts.length ? state.accounts : await refreshAccounts();
     const row = (title, hint, control) => `<div class="row"><div class="what"><b>${esc(title)}</b><span>${esc(hint)}</span></div>${control}</div>`;
+    const act = await api("/activity?limit=25", undefined, "GET").catch(() => null);
     root.innerHTML = `<div class="fin-set">
       <div class="fcard"><h3>AI preferences</h3>
         ${row("Explain reports with AI", "The AI only explains numbers calculated from your records. It cannot add figures, and a built-in explanation is used if it is off or unavailable.", `<label class="check" style="display:flex;gap:8px;align-items:center"><input id="stAi" type="checkbox" ${st.ai_reports ? "checked" : ""}> On</label>`)}
@@ -756,10 +812,14 @@
         <li class="frow"><span>Report explanations: summary figures only (totals, categories, goals), never individual transactions.</span></li>
         <li class="frow"><span>Voice: with the Whisper engine your recording goes to the transcription service; with the browser engine your browser vendor may process it. You always see and can edit the text before sending.</span></li>
         <li class="frow"><span>Guidance only: recommendations are informational, not professional financial advice, and nothing here guarantees a result.</span></li></ul></div>
+      <div class="fcard"><h3>My activity <span class="tag">${act && act.chain.valid ? "log verified" : "check failed"}</span></h3>
+        <p class="estimate-note">Changes to your money are written to a tamper-evident log (ids and amounts only, never names or notes). ${act ? act.chain.checked + " entries checked." : ""}</p>
+        ${act && act.entries.length ? `<ul class="flist">${act.entries.slice(0, 12).map((e) => `<li class="frow"><div class="main"><b>${esc(e.action.replace(/^fin_/, "").replace(/_/g, " "))}</b><span>${esc(e.ts.replace("T", " ").slice(0, 16))} UTC${e.detail.final_minor ? " · " + money(fromMinor(e.detail.final_minor)) : ""}</span></div></li>`).join("")}</ul>` : `<p class="empty">Nothing recorded yet.</p>`}</div>
       <div class="fcard"><h3>Your data</h3>
         ${row("Keep assistant conversations for (days)", "Older finished conversations are removed automatically. Your transactions are not affected.", `<input id="stDays" type="number" min="${st.options.history_days[0]}" max="${st.options.history_days[1]}" value="${st.history_days}" aria-label="Days to keep conversations">`)}
         ${row("Download my transactions", "A CSV file you can open in a spreadsheet or import again.", `<button type="button" id="stDl">Download CSV</button>`)}
         ${row("Clear assistant history", "Deletes conversations and retry records. Your ledger stays.", `<button type="button" id="stClear">Clear history</button>`)}
+        <div class="row"><div class="what"><b>Notify me on this device</b><span id="stNotifyHint">Shows a notification when a bill is due or a budget is nearly used up. It only works while WealthGuard is open in a browser tab; nothing is sent from a server.</span></div><label class="check" style="display:flex;gap:8px;align-items:center"><input id="stNotify" type="checkbox" ${notifyOn() ? "checked" : ""}> On</label></div>
         <div class="row danger"><div class="what"><b>Erase all my finance data</b><span>Deletes accounts, transactions, budgets, goals, bills, reports and conversations. This cannot be undone.</span></div><button type="button" class="warn" id="stErase">Erase everything…</button></div></div></div>`;
     const save = async (patch) => {
       try { const out = await api("/settings", patch); $("stMsg").textContent = "Saved."; if (window.WGVoice && window.WGVoice.setSpeak) window.WGVoice.setSpeak(out.voice_replies); }
@@ -772,11 +832,40 @@
     $("stCur").onchange = () => save({ base_currency: $("stCur").value });
     $("stDays").onchange = () => save({ history_days: Number($("stDays").value) });
     $("stDl").onclick = () => download("/api/fin/export/transactions.csv", "transactions.csv");
+    $("stNotify").onchange = async () => {
+      if ($("stNotify").checked) {
+        if (!("Notification" in window)) { $("stNotifyHint").textContent = "This browser does not support notifications."; $("stNotify").checked = false; return; }
+        const perm = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+        if (perm !== "granted") { $("stNotifyHint").textContent = "Permission was not given, so notifications stay off. You can allow them in the browser's site settings."; $("stNotify").checked = false; return; }
+      }
+      try { localStorage.setItem("wg-notify", $("stNotify").checked ? "1" : "0"); } catch (e) { /* ignore */ }
+      if ($("stNotify").checked) checkReminders(true);
+    };
     $("stClear").onclick = async () => { if (!window.confirm("Delete all assistant conversations? Your transactions stay.")) return; const r = await api("/privacy/clear-history", {}); A.loaded = false; $("stMsg").textContent = `Removed ${r.conversations_removed} conversations.`; };
     $("stErase").onclick = () => simpleForm("Erase all finance data", `
       <p>This permanently deletes everything you have recorded in My money. Download a CSV first if you may want it later.</p>
       <label>Type <b>DELETE MY FINANCE DATA</b> to confirm<input id="erPhrase" autocomplete="off" required></label>`,
     async () => { await api("/privacy/erase", { confirm: $("erPhrase").value }); state.accounts = []; state.meta = null; A.loaded = false; toast("All finance data erased"); }, "Erase everything");
+  }
+
+  // ------------------------------------------------------------------------------------------ reminders
+  const notifyOn = () => { try { return localStorage.getItem("wg-notify") === "1" && "Notification" in window && Notification.permission === "granted"; } catch (e) { return false; } };
+  function seenKeys() { try { return new Set(JSON.parse(localStorage.getItem("wg-seen") || "[]")); } catch (e) { return new Set(); } }
+  async function checkReminders(force) {
+    let alerts;
+    try { alerts = await api("/alerts", undefined, "GET"); } catch (e) { return; }
+    const urgent = alerts.filter((a) => a.severity !== "low");
+    const badge = $("modeBadge");
+    badge.hidden = !urgent.length;
+    badge.textContent = String(urgent.length);
+    badge.title = urgent.map((a) => a.title).join("; ");
+    const planNav = document.querySelector('.nav[data-tab="plan"] .dot');
+    if (planNav) planNav.classList.toggle("on", urgent.length > 0);
+    if (!notifyOn()) return;
+    const seen = seenKeys();
+    const fresh = urgent.filter((a) => !seen.has(a.key));
+    fresh.slice(0, 3).forEach((a) => { try { new Notification(a.title, { body: a.body, tag: a.key }); } catch (e) { /* the browser refused */ } });
+    if (fresh.length) { try { localStorage.setItem("wg-seen", JSON.stringify([...seen, ...fresh.map((a) => a.key)].slice(-200))); } catch (e) { /* ignore */ } }
   }
 
   // ------------------------------------------------------------------------------------------ mode, wiring
@@ -814,11 +903,13 @@
     $("finModal").addEventListener("click", (e) => { if (e.target === $("finModal")) closeModal(); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("finModal").hidden) closeModal(); });
     wireAssistant();
+    checkReminders(false);
+    setInterval(() => { if (!document.hidden) checkReminders(false); }, 5 * 60 * 1000);
     let saved = "advisor";
     try { saved = localStorage.getItem("wg-mode") || "advisor"; } catch (e) { /* ignore */ }
     if (saved === "money") setMode("money");
   }
 
   if (window.WGAuth) window.WGAuth.onReady(init);
-  window.WGFinance = { toMinor, fromMinor, money, setMode };
+  window.WGFinance = { toMinor, fromMinor, money, setMode, checkReminders };
 })();

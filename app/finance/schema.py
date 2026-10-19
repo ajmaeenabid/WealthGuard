@@ -94,6 +94,10 @@ CREATE TABLE IF NOT EXISTS fin_ai_usage (
   prompt_version TEXT, correlation_id TEXT, prompt_tokens INTEGER, completion_tokens INTEGER, est_cost_usd REAL,
   latency_ms INTEGER, retries INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL);
 
+CREATE TABLE IF NOT EXISTS fin_receipts (
+  id TEXT PRIMARY KEY, username TEXT NOT NULL, txn_id TEXT NOT NULL UNIQUE REFERENCES fin_transactions(id),
+  mime TEXT NOT NULL, size INTEGER NOT NULL, sha256 TEXT NOT NULL, data BLOB NOT NULL, created TEXT NOT NULL);
+
 CREATE TABLE IF NOT EXISTS fin_reports (
   id TEXT PRIMARY KEY, username TEXT NOT NULL, kind TEXT NOT NULL, period_start TEXT NOT NULL, period_end TEXT NOT NULL,
   payload TEXT NOT NULL, created TEXT NOT NULL);

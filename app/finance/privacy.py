@@ -72,6 +72,7 @@ def erase_all(user: str, confirm: str) -> dict:
             def run(label, sql, args):
                 counts[label] = c.execute(sql, args).rowcount
             run("payments", "DELETE FROM fin_obligation_payments WHERE obligation_id IN (SELECT id FROM fin_obligations WHERE username=?)", (user,))
+            run("receipts", "DELETE FROM fin_receipts WHERE username=?", (user,))
             run("items", "DELETE FROM fin_items WHERE txn_id IN (SELECT id FROM fin_transactions WHERE username=?)", (user,))
             run("transactions", "DELETE FROM fin_transactions WHERE username=?", (user,))
             run("obligations", "DELETE FROM fin_obligations WHERE username=?", (user,))

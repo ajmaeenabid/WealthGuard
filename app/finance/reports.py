@@ -11,7 +11,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 
 from app import store
-from app.finance import ai, analytics, books, money, planning, taxonomy
+from app.finance import ai, analytics, bn, books, money, planning, rules, taxonomy
 from app.finance.books import FinanceError
 
 PROMPT_VERSION = "report-explain-v1"
@@ -55,7 +55,7 @@ def _liquid(user: str, accounts: list, as_of: str) -> int:
     return sum(bal.get(a["id"], 0) for a in accounts if a["currency"] == base and a["type"] in taxonomy.LIQUID_TYPES)
 
 
-def build(user: str, kind: str = "month", ref: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None) -> dict:
+def build(user: str, kind: str = "month", ref: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None, lang: str = "en") -> dict:
     s, e = analytics.period(kind, ref, start, end)
     base = books.base_currency(user)
     today = money.today()
@@ -64,6 +64,8 @@ def build(user: str, kind: str = "month", ref: Optional[str] = None, start: Opti
     prev = analytics.summary(user, ps, pe)
     cmp_ = analytics.compare(cur, prev)
     insights = analytics.insights(user, s, e, cur=cur, prev=prev)
+    if lang == "bn":                                       # same evidence and figures, Bangla wording
+        insights = [bn.insight(i, base) for i in insights]
     accounts = books.list_accounts(user, include_archived=True)
     open_ts = money.iso(datetime.combine(s - timedelta(days=1), datetime.max.time()))
     close_ts = min(money.iso(datetime.combine(e, datetime.max.time())), money.iso(money.now()))
@@ -135,9 +137,9 @@ def build(user: str, kind: str = "month", ref: Optional[str] = None, start: Opti
             "budgets": [{"name": b["name"], "limit": b["limit"], "spent": b["spent"], "status": b["status"], "utilization": b["utilization"]} for b in budgets],
         },
         "behaviour": {"insights": [i for i in insights if i["kind"] not in ("top_category",)], "top_category": next((i for i in insights if i["kind"] == "top_category"), None)},
-        "recommendations": _recommendations(user, insights, budgets),
+        "recommendations": _recommendations(user, insights, budgets, lang),
         "forecast": fc, "scenario": scenario,
-        "data_quality": quality,
+        "data_quality": [bn.quality(q) for q in quality] if lang == "bn" else quality, "lang": lang,
     }
     return report
 
@@ -152,7 +154,7 @@ def _label(kind: str, s: date, e: date) -> str:
     return f"{s.isoformat()} to {e.isoformat()}"
 
 
-def _recommendations(user: str, insights: list, budgets: list) -> dict:
+def _recommendations(user: str, insights: list, budgets: list, lang: str = "en") -> dict:
     """Evidence-backed actions from the insights, plus category budgets suggested from the last three full months."""
     today = money.today()
     month_starts = []
@@ -180,12 +182,14 @@ def _recommendations(user: str, insights: list, budgets: list) -> dict:
             limit = int(round(avg * factor / 1000.0) * 1000)
             if limit > 0:
                 suggestions.append({"category": cat, "suggested_monthly_limit": money.s(limit), "average_monthly_spend": money.s(int(avg)),
-                                    "basis": f"average of the last {months_with_data} full months" + ("" if ess else ", minus 10% because the category is discretionary"),
+                                    "basis": (f"গত {months_with_data} পূর্ণ মাসের গড়" + ("" if ess else ", ঐচ্ছিক খাত বলে ১০% কম") if lang == "bn" else
+                                              f"average of the last {months_with_data} full months" + ("" if ess else ", minus 10% because the category is discretionary")),
                                     "type": "essential" if ess else "flexible"})
     actions = [{"from": i["kind"], "title": i["title"], "pattern": i["pattern"], "evidence": i["evidence"], "why": i["why"], "action": i["action"],
                 "estimated_impact": i["impact"], "assumptions": i["assumptions"]} for i in insights]
     return {"actions": actions, "suggested_budgets": suggestions[:6],
-            "note": "Suggestions come from your own history. They are starting points, not rules: change them to fit your life."}
+            "note": ("পরামর্শগুলো আপনার নিজের ইতিহাস থেকে নেওয়া। এগুলো নিয়ম নয়, শুরুর বিন্দু: নিজের জীবনের সঙ্গে মিলিয়ে বদলান।" if lang == "bn" else
+                     "Suggestions come from your own history. They are starting points, not rules: change them to fit your life.")}
 
 
 # ============================================================================================== explain
@@ -216,6 +220,7 @@ def _compact(report: dict) -> dict:
 
 
 def _numbers(text: str) -> set:
+    text = rules.ascii_digits(text or "")                  # Bangla digits count as the same numbers
     return {int(n.replace(",", "").split(".")[0]) for n in re.findall(r"\d[\d,]*(?:\.\d+)?", text or "") if len(n.replace(",", "").split(".")[0]) >= 3}
 
 
@@ -227,6 +232,8 @@ def _grounded(finding: dict, allowed: set) -> bool:
 
 def _fallback(report: dict) -> dict:
     acts = report["recommendations"]["actions"][:MAX_FINDINGS]
+    if report.get("lang") == "bn":
+        return bn.fallback_narrative(report, acts, report["currency"])
     o = report["overview"]
     cur = report["currency"]
     head = (f"{report['period']['label']}: income {money.fmt(_m(o['income']), cur)}, spending {money.fmt(_m(o['spending']), cur)}, "
@@ -246,7 +253,8 @@ def explain(user: str, report: dict, correlation_id: Optional[str] = None) -> di
     allowed = _numbers(json.dumps(data))
     allowed |= {int(float(x)) for x in re.findall(r"\d+\.\d+", json.dumps(data))}
     try:
-        res = ai.call([{"role": "system", "content": SYSTEM}, {"role": "user", "content": json.dumps(data, ensure_ascii=False)}], purpose="report_explain", user=user,
+        system = SYSTEM + (" Write every text value in Bangla (বাংলা). Keep numbers as ASCII digits exactly as given, with the amounts' currency." if report.get("lang") == "bn" else "")
+        res = ai.call([{"role": "system", "content": system}, {"role": "user", "content": json.dumps(data, ensure_ascii=False)}], purpose="report_explain", user=user,
                       schema=EXPLAIN_SCHEMA, schema_name="report_explanation", max_tokens=1800, prompt_version=PROMPT_VERSION, correlation_id=correlation_id,
                       validate=_validate_explanation)
     except ai.AIError as e:
@@ -258,7 +266,9 @@ def explain(user: str, report: dict, correlation_id: Optional[str] = None) -> di
         base = _fallback(report)
         out["headline"], out["summary"] = base["headline"], base["summary"]
         dropped += 1
-    caveats = list(out["caveats"]) + (["Some AI statements were removed because they contained figures that are not in your data."] if dropped else [])
+    removed = ("কিছু এআই বক্তব্য বাদ দেওয়া হয়েছে কারণ সেখানে আপনার তথ্যে নেই এমন অঙ্ক ছিল।" if report.get("lang") == "bn" else
+               "Some AI statements were removed because they contained figures that are not in your data.")
+    caveats = list(out["caveats"]) + ([removed] if dropped else [])
     return {"mode": "ai", "headline": out["headline"], "summary": out["summary"], "findings": kept or _fallback(report)["findings"], "caveats": caveats,
             "correlation_id": res.correlation_id, "model": res.model, "tokens": res.usage, "est_cost_usd": res.est_cost_usd}
 
@@ -275,8 +285,8 @@ def _validate_explanation(obj: dict) -> dict:
 
 
 # ============================================================================================== stored reports
-def generate(user: str, kind: str = "month", ref=None, start=None, end=None, with_ai: bool = True) -> dict:
-    report = build(user, kind, ref, start, end)
+def generate(user: str, kind: str = "month", ref=None, start=None, end=None, with_ai: bool = True, lang: str = "en") -> dict:
+    report = build(user, kind, ref, start, end, lang)
     report["narrative"] = explain(user, report) if with_ai else dict(_fallback(report), mode="rules")
     rid = "rep_" + uuid.uuid4().hex[:10]
     report["id"] = rid
@@ -302,7 +312,8 @@ def to_markdown(report: dict) -> str:
     """A readable export of a stored report (headline, figures, findings, assumptions)."""
     c, o, n = report["currency"], report["overview"], report.get("narrative", {})
     f = lambda v: money.fmt(_m(v), c)
-    lines = [f"# Financial report: {report['period']['label']}", "", f"_Generated {report['generated_at']}. Amounts in {c}. Forecasts are estimates._", "",
+    title = "আর্থিক প্রতিবেদন" if report.get("lang") == "bn" else "Financial report"
+    lines = [f"# {title}: {report['period']['label']}", "", f"_Generated {report['generated_at']}. Amounts in {c}. Forecasts are estimates._", "",
              f"**{n.get('headline', '')}**", "", n.get("summary", ""), "", "## Overview",
              f"- Income {f(o['income'])}, spending {f(o['spending'])}, refunds {f(o['refunds'])}, net cash flow {f(o['net_cash_flow'])}",
              f"- Liquid funds {f(o['opening_liquid'])} -> {f(o['closing_liquid'])}", f"- Moved into savings (net) {f(o['savings_net'])}", "", "## Findings"]

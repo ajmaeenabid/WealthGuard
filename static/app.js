@@ -805,7 +805,20 @@ function adminRender(out) {
   });
 }
 
-async function adminLoad() { adminRender(await api("/api/admin/users", undefined, "GET")); }
+async function adminLoad() {
+  adminRender(await api("/api/admin/users", undefined, "GET"));
+  try {                                   // finance assistant AI use across all accounts: counts, tokens and estimated cost, never message text
+    const u = await api("/api/admin/ai-usage", undefined, "GET");
+    const box = $("adminAi");
+    const purposes = Object.entries(u.by_purpose).map(([k, v]) => `${esc(k)}: ${v.calls} calls`).join(" · ") || "no calls yet";
+    box.hidden = false;
+    box.innerHTML = `<h3>${esc(t("AI usage (30 days)"))} <span class="tag">${esc(u.model)}</span></h3><div class="kv">
+      <div><b>${esc(t("Calls"))}</b>${u.calls}</div><div><b>${esc(t("Tokens"))}</b>${(u.prompt_tokens + u.completion_tokens).toLocaleString("en-US")}</div>
+      <div><b>${esc(t("Estimated cost"))}</b>$${Number(u.est_cost_usd).toFixed(4)}</div><div><b>${esc(t("Failed calls"))}</b>${u.failed_calls}</div>
+      <div><b>${esc(t("Average latency"))}</b>${u.avg_latency_ms} ms</div><div><b>${esc(t("By purpose"))}</b>${purposes}</div></div>
+      <p class="small muted">${esc(u.note)}</p>`;
+  } catch (e) { /* usage is informational */ }
+}
 
 async function init() {
   if (window.WGVoice) window.WGVoice.setClientIdGetter(() => clientId);

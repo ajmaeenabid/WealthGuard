@@ -75,3 +75,12 @@ def test_charts_have_text_alternatives_and_empty_states():
 def test_forecasts_and_estimates_are_labelled_as_estimates_in_the_interface():
     assert "estimate" in JS.lower() and "not a balance" in JS and "Forecast" in JS
     assert ".kpi.estimate" in CSS
+
+
+def test_receipts_reminders_activity_and_report_language_are_wired_in_the_interface():
+    for token in ["/receipt", "wireReceipt", "image/jpeg,image/png,image/webp", "checkReminders", "wg-notify", "modeBadge", "/activity", "rpLang", "localizeReport", "BN_LABELS"]:
+        assert token in JS or token in HTML, token
+    assert 'id="modeBadge"' in HTML and 'id="adminAi"' in HTML
+    assert "only works while WealthGuard is open" in JS                                  # no pretence of server-side push
+    app = c.get("/static/app.js").text
+    assert "/api/admin/ai-usage" in app and "never message text" in app
