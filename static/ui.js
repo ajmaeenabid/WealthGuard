@@ -68,12 +68,8 @@
     return "light";                                   // the brand canvas is warm ivory; dark is an explicit choice (saved in wg-theme)
   }
   function paintTheme() { themeBtn.innerHTML = currentTheme() === "light" ? MOON : SUN; }
-  themeBtn.onclick = () => {
-    const next = currentTheme() === "light" ? "dark" : "light";
-    document.documentElement.dataset.theme = next;
-    try { localStorage.setItem("wg-theme", next); } catch (e) { /* private mode */ }
-    paintTheme();
-  };
+  themeBtn.onclick = () => window.WGTheme.toggle();
+  window.addEventListener("wg:theme", paintTheme);
   paintTheme();
 
   // ------------------------------------------------------------------ composer

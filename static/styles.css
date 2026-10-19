@@ -593,3 +593,10 @@ h3.mini { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacin
 .md-table .a-right { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
 .md-table .a-center { text-align: center; }
 .md-table td:first-child { font-weight: 600; }
+
+/* sign-in page: language and theme controls, top right */
+.auth-tools { position: absolute; top: 18px; right: clamp(16px, 3vw, 36px); z-index: 2; display: flex; gap: 8px; }
+.auth-tool { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px; font-weight: 600; font-size: 13.5px;
+  color: #3b4a42; background: rgba(252, 248, 238, .85); border: 1px solid rgba(150, 120, 60, .35); backdrop-filter: blur(8px); box-shadow: 0 6px 18px -10px rgba(70, 55, 20, .5); }
+.auth-tool.icon { width: 40px; padding: 0; justify-content: center; }
+.auth-tool:hover:not(:disabled) { border-color: #2b8f7d; background: #fffaf0; }

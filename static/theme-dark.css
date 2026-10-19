@@ -144,3 +144,53 @@
   background: linear-gradient(150deg, rgba(98, 224, 90, .38), rgba(34, 130, 72, .32) 58%, rgba(98, 224, 90, .14)); border: 1px solid rgba(130, 245, 120, .45);
   box-shadow: 0 12px 34px -14px rgba(98, 224, 90, .45), inset 0 1px 0 rgba(255, 255, 255, .16); color: #F4FFF2;
 }
+
+/* ---------------------------------------------------------------- sign-in page in the dark theme */
+:root[data-theme="dark"] #auth {
+  background:
+    radial-gradient(1.2px 1.2px at 12% 22%, rgba(255, 255, 255, .5), transparent), radial-gradient(1px 1px at 33% 71%, rgba(255, 255, 255, .35), transparent),
+    radial-gradient(1.2px 1.2px at 68% 14%, rgba(255, 255, 255, .45), transparent), radial-gradient(1px 1px at 88% 52%, rgba(255, 255, 255, .3), transparent),
+    radial-gradient(1px 1px at 54% 86%, rgba(255, 255, 255, .3), transparent),
+    radial-gradient(980px 640px at 82% 8%, rgba(60, 138, 76, .55), rgba(16, 36, 24, .15) 60%, transparent 76%),
+    radial-gradient(720px 520px at 8% 104%, rgba(98, 224, 90, .16), transparent 64%), #050807;
+}
+:root[data-theme="dark"] #auth::after {                      /* the emblem as a quiet watermark: large, soft, behind everything */
+  content: ""; position: absolute; right: 8vw; top: 50%; width: min(34vw, 460px); aspect-ratio: 1; transform: translateY(-50%); pointer-events: none;
+  background: radial-gradient(circle, rgba(98, 224, 90, .22), transparent 66%); filter: blur(30px);
+}
+:root[data-theme="dark"] #auth .auth-card {
+  --ink: #F3F6F3; --ink-2: #B9C1BC; --muted: #8E9993; --surface: #161a18; --surface-2: #1d2320; --surface-3: #28302c; --line-strong: rgba(255, 255, 255, .14);
+  background: linear-gradient(165deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .02)), rgba(14, 18, 16, .82); border: 1px solid rgba(98, 224, 90, .28);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, .9), 0 0 60px -30px rgba(98, 224, 90, .5), inset 0 1px 0 rgba(255, 255, 255, .07);
+}
+:root[data-theme="dark"] #auth .auth-brand .wordmark { color: var(--color-text-primary); }
+:root[data-theme="dark"] #auth .auth-lead { color: var(--color-text-secondary); }
+:root[data-theme="dark"] #auth .auth-tabs { background: rgba(255, 255, 255, .05); border-color: rgba(98, 224, 90, .3); }
+:root[data-theme="dark"] #auth .auth-tabs button { color: var(--color-text-secondary); background: transparent; border-color: transparent; }
+:root[data-theme="dark"] #auth .auth-tabs button[aria-selected="true"] { background: linear-gradient(160deg, rgba(98, 224, 90, .3), rgba(98, 224, 90, .12)); color: var(--color-text-primary); box-shadow: inset 0 0 0 1px rgba(98, 224, 90, .6), 0 0 18px -6px rgba(98, 224, 90, .6); }
+:root[data-theme="dark"] #auth label { color: var(--color-text-muted); }
+:root[data-theme="dark"] #auth input { background: rgba(255, 255, 255, .05); color: var(--color-text-primary); border-color: rgba(255, 255, 255, .14); }
+:root[data-theme="dark"] #auth input:focus { border-color: rgba(98, 224, 90, .7); outline: 2px solid rgba(98, 224, 90, .22); }
+:root[data-theme="dark"] #auth .pw-input { caret-color: var(--color-action); }
+:root[data-theme="dark"] #auth .primary { background: linear-gradient(160deg, #7AE873, #4FD04A); color: #06110A; box-shadow: 0 12px 30px -12px rgba(98, 224, 90, .8); }
+:root[data-theme="dark"] #auth .primary:hover:not(:disabled) { filter: brightness(1.06); }
+:root[data-theme="dark"] #auth .demo-rule { color: var(--color-text-muted); }
+:root[data-theme="dark"] #auth .demo-rule::before, :root[data-theme="dark"] #auth .demo-rule::after { background: linear-gradient(90deg, transparent, rgba(98, 224, 90, .45), transparent); }
+:root[data-theme="dark"] #auth .demo-chip { background: rgba(255, 255, 255, .045); color: var(--color-text-primary); border-color: rgba(255, 255, 255, .13); }
+:root[data-theme="dark"] #auth .demo-chip:hover:not(:disabled) { border-color: rgba(98, 224, 90, .65); background: rgba(98, 224, 90, .1); }
+:root[data-theme="dark"] #auth .demo-who i { color: var(--color-text-muted); }
+:root[data-theme="dark"] #auth .demo-chip[data-demo="admin"] .demo-av { background: linear-gradient(160deg, #7AE873, #2f9b3d); color: #06110A; }
+:root[data-theme="dark"] #auth .demo-note { background: linear-gradient(180deg, rgba(229, 198, 90, .14), rgba(229, 198, 90, .06)); border-color: rgba(229, 198, 90, .4); box-shadow: none; }
+:root[data-theme="dark"] #auth .demo-pw { background: rgba(0, 0, 0, .35); color: #F2DA7A; border-color: rgba(229, 198, 90, .55); }
+:root[data-theme="dark"] #auth .demo-tip { color: var(--color-text-secondary); }
+:root[data-theme="dark"] #auth .auth-err { background: var(--color-danger-bg); color: var(--color-danger); }
+:root[data-theme="dark"] .auth-tool { color: var(--color-text-primary); background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .16); box-shadow: none; }
+:root[data-theme="dark"] .auth-tool:hover:not(:disabled) { border-color: rgba(98, 224, 90, .6); background: rgba(98, 224, 90, .1); }
+:root[data-theme="dark"] .logo-w { box-shadow: 0 0 22px -4px rgba(98, 224, 90, .45); }
+
+/* ---------------------------------------------------------------- the signed-in user box: never cut by the panel's rounded corner */
+@media (min-width: 900px) {
+  :root[data-theme="dark"] .userbox { bottom: 10px; }
+}
+:root[data-theme="dark"] .userbox { position: sticky; z-index: 3; }
+:root[data-theme="dark"] .userbox::before { content: ""; position: absolute; left: -4px; right: -4px; top: -26px; height: 26px; pointer-events: none; background: linear-gradient(transparent, var(--color-bg-secondary)); }

@@ -48,7 +48,7 @@
       "Voice mode": "ভয়েস মোড", "Start voice mode": "ভয়েস মোড চালু করুন", "Stop voice mode": "ভয়েস মোড বন্ধ করুন", "Listening…": "শুনছি…", "Processing…": "প্রক্রিয়া চলছে…", "Speaking…": "বলছি…",
       "Say something": "কিছু বলুন", "Back to text chat": "টেক্সট চ্যাটে ফিরুন", "Voice preferences": "ভয়েস পছন্দ", "Enable voice mode": "ভয়েস মোড চালু রাখুন", "Speech language": "কথার ভাষা",
       "Read replies aloud automatically": "উত্তর নিজে থেকে পড়ে শোনান", "Large text": "বড় লেখা", "Microphone": "মাইক্রোফোন", "Conversations": "কথোপকথন", "New conversation": "নতুন কথোপকথন", "Resume": "আবার শুরু",
-      "View": "দেখুন", "No conversations yet.": "এখনও কোনো কথোপকথন নেই।", "Or try a demo account": "অথবা ডেমো অ্যাকাউন্ট দেখুন", "Administrator": "অ্যাডমিন", "Client": "ক্লায়েন্ট", "Password 123": "পাসওয়ার্ড 123", "for every demo account. Change it in Settings.": "সব ডেমো অ্যাকাউন্টের জন্য। সেটিংসে বদলানো যায়।", "Region": "অঞ্চল", "Thinking…": "ভাবছি…", "Reading your message…": "আপনার বার্তা পড়ছি…", "Working on the answer…": "উত্তর তৈরি করছি…", "Checking your records…": "আপনার রেকর্ড দেখছি…", "Still working…": "এখনও কাজ চলছে…", "This is taking longer than usual. The AI service may be slow.": "স্বাভাবিকের চেয়ে বেশি সময় লাগছে। এআই সেবা ধীর হতে পারে।", "Try again": "আবার চেষ্টা করুন", "Rename chat": "চ্যাটের নাম বদলান", "Delete chat": "চ্যাট মুছুন", "Recorded": "লিপিবদ্ধ", "Estimate": "আনুমানিক", "Pending": "অপেক্ষমাণ", "Forecasted": "পূর্বাভাসিত", "Scheduled": "নির্ধারিত",
+      "View": "দেখুন", "No conversations yet.": "এখনও কোনো কথোপকথন নেই।", "Or try a demo account": "অথবা ডেমো অ্যাকাউন্ট দেখুন", "Administrator": "অ্যাডমিন", "Client": "ক্লায়েন্ট", "Password 123": "পাসওয়ার্ড 123", "for every demo account. Change it in Settings.": "সব ডেমো অ্যাকাউন্টের জন্য। সেটিংসে বদলানো যায়।", "Region": "অঞ্চল", "Sign in to continue your advice.": "আপনার পরামর্শ চালিয়ে যেতে সাইন ইন করুন।", "Sign in": "সাইন ইন", "Password": "পাসওয়ার্ড", "Create account": "অ্যাকাউন্ট তৈরি করুন", "Username": "ইউজারনেম", "Confirm password": "পাসওয়ার্ড নিশ্চিত করুন", "Switch language": "ভাষা বদলান", "Toggle theme": "থিম বদলান", "Thinking…": "ভাবছি…", "Reading your message…": "আপনার বার্তা পড়ছি…", "Working on the answer…": "উত্তর তৈরি করছি…", "Checking your records…": "আপনার রেকর্ড দেখছি…", "Still working…": "এখনও কাজ চলছে…", "This is taking longer than usual. The AI service may be slow.": "স্বাভাবিকের চেয়ে বেশি সময় লাগছে। এআই সেবা ধীর হতে পারে।", "Try again": "আবার চেষ্টা করুন", "Rename chat": "চ্যাটের নাম বদলান", "Delete chat": "চ্যাট মুছুন", "Recorded": "লিপিবদ্ধ", "Estimate": "আনুমানিক", "Pending": "অপেক্ষমাণ", "Forecasted": "পূর্বাভাসিত", "Scheduled": "নির্ধারিত",
       "Compliance-first wealth advice": "নিয়ম মেনে সম্পদ পরামর্শ", "New chat": "নতুন চ্যাট", "Chats": "চ্যাট", "No chats yet.": "এখনও কোনো চ্যাট নেই।",
       "Risk profile": "ঝুঁকির প্রোফাইল", "Allocation": "বিনিয়োগ বণ্টন", "Compliance": "নিয়ম পালন", "Stress test": "চাপ পরীক্ষা", "Approvals": "অনুমোদন", "Purchase history": "কেনাকাটার ইতিহাস",
       "Memory": "স্মৃতি", "Audit log": "অডিট লগ", "Advice receipt": "পরামর্শের রসিদ",
@@ -158,6 +158,29 @@
 
   window.WGLang = { LANGS, NAMES, SPEECH, P, get lang() { return lang; }, t, tr, toBn, apply, next, fmtNumber, fmtDate, cacheGet, walk, refresh: schedule,
                     bindServer(fn) { server = fn; }, speechCode(pref) { return pref && pref !== "auto" ? SPEECH[pref] : SPEECH[lang]; } };
+  // theme: one place for the sign-in page and the app (the choice is remembered in this browser)
+  const MOON_SVG = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>';
+  const SUN_SVG = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>';
+  window.WGTheme = {
+    current() { return document.documentElement.dataset.theme === "dark" ? "dark" : "light"; },
+    set(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem("wg-theme", t); } catch (e) { /* private mode */ } window.dispatchEvent(new CustomEvent("wg:theme", { detail: { theme: t } })); },
+    toggle() { this.set(this.current() === "dark" ? "light" : "dark"); },
+  };
+  const paintAuthTools = () => {
+    const tb = document.getElementById("authTheme"), lb = document.getElementById("authLangTxt");
+    if (tb) tb.innerHTML = window.WGTheme.current() === "dark" ? SUN_SVG : MOON_SVG;
+    if (lb) lb.textContent = BTN[lang];
+  };
+  window.addEventListener("wg:theme", paintAuthTools);
+  window.addEventListener("wg:lang", paintAuthTools);
+  let chosenOnSignIn = false;                      // a language picked on the sign-in page is saved to the account after signing in
+  document.addEventListener("DOMContentLoaded", () => {
+    const tb = document.getElementById("authTheme"), lb = document.getElementById("authLang");
+    if (tb) tb.onclick = () => window.WGTheme.toggle();
+    if (lb) lb.onclick = () => { chosenOnSignIn = true; window.WGLang.apply(window.WGLang.next(), { persist: false }); };
+    paintAuthTools();
+  });
+
   const post = async (patch) => {
     const r = await fetch("/api/fin/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
     if (!r.ok) throw new Error("settings");
@@ -175,7 +198,8 @@
         if (!r.ok) return;
         const st = await r.json();
         window.WGLang.prefs = st;
-        if (st.ui_lang && st.ui_lang !== lang) await apply(st.ui_lang, { persist: false });
+        if (chosenOnSignIn && st.ui_lang !== lang) await apply(lang);                       // the person just picked it: it becomes their saved language
+        else if (st.ui_lang && st.ui_lang !== lang) await apply(st.ui_lang, { persist: false });
         window.dispatchEvent(new CustomEvent("wg:prefs", { detail: st }));
       } catch (e) { /* the cached language stays */ }
     });

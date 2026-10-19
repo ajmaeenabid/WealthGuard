@@ -160,3 +160,5 @@ a:hover { color: var(--color-action-hover); }
 .hero-sub { color: var(--color-hero-sub); opacity: var(--hero-sub-opacity); font-weight: 450; max-width: 52ch; }
 .tg-main { background: linear-gradient(90deg, var(--tagline-a), var(--tagline-b)); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; font-weight: 600; }
 .hero-title, .hero h1, .hero-hello { line-height: 1.28; padding-bottom: .12em; overflow: visible; }   /* gradient text is clipped to its box: leave room for descenders (y, g, p) */
+.userbox .avatar { flex: none; min-width: 34px; min-height: 34px; overflow: visible; }
+.userbox { z-index: 3; }
