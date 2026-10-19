@@ -541,3 +541,14 @@ h3.mini { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacin
 #auth .demo-sep { width: 1px; height: 16px; background: rgba(150, 120, 60, .4); }
 #auth .demo-tip { font-size: 12.5px; color: #6f6a58; }
 @media (max-width: 520px) { #auth .demo-sep { display: none; } #auth .demo-note { border-radius: 18px; } }
+
+/* gold coins instead of password dots: one 18px coin per character, same pitch as the (transparent) monospace text so the caret lines up */
+#auth .pw-wrap { position: relative; }
+#auth .pw-input { font: 600 20px/1 ui-monospace, Consolas, monospace; letter-spacing: calc(22px - 1ch); color: transparent; caret-color: #1f2a24; -webkit-text-fill-color: transparent; padding-inline: 16px; }
+#auth .pw-input::selection { background: rgba(43, 143, 125, .25); }
+#auth .pw-coins { position: absolute; inset: 0; display: flex; align-items: center; padding-inline: 16px; gap: 4px; overflow: hidden; pointer-events: none; }
+#auth .pw-coins i { flex: none; width: 18px; height: 18px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff3c4 0 12%, transparent 13%), radial-gradient(circle at 50% 50%, #e9c768 0 46%, #c79a2e 47% 62%, #e9c768 63% 74%, #a87a1c 75% 100%);
+  box-shadow: 0 1px 2px rgba(90, 60, 10, .45); animation: coin-in .18s ease-out; }
+@keyframes coin-in { from { transform: scale(.4) rotateY(90deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { #auth .pw-coins i { animation: none; } }

@@ -77,9 +77,27 @@
     $("authUser").focus();
   }
 
+  // Password fields on the sign-in card show gold coins instead of dots. The real <input type="password"> stays (so password managers, autofill
+  // and accessibility work); its text is transparent and a decorative layer draws one coin per character. Nothing about the value is exposed.
+  function coinify(input) {
+    const wrap = document.createElement("div");
+    wrap.className = "pw-wrap";
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const layer = document.createElement("div");
+    layer.className = "pw-coins"; layer.setAttribute("aria-hidden", "true");
+    wrap.appendChild(layer);
+    input.classList.add("pw-input");
+    const paint = () => { const n = Math.min(input.value.length, 40); layer.innerHTML = "<i></i>".repeat(n); };
+    input.addEventListener("input", paint);
+    input.addEventListener("change", paint);
+    new MutationObserver(paint).observe(input, { attributes: true, attributeFilter: ["value"] });
+    input.coinPaint = paint;
+  }
+  ["authPass", "authPass2"].forEach((id) => coinify($(id)));
   // one tap fills a demo account (the password is the documented demo one); the person still presses Sign in
   document.querySelectorAll("[data-demo]").forEach((b) => (b.onclick = () => {
-    setMode("login"); $("authUser").value = b.dataset.demo; $("authPass").value = "123"; $("authGo").focus();
+    setMode("login"); $("authUser").value = b.dataset.demo; $("authPass").value = "123"; $("authPass").coinPaint(); $("authGo").focus();
   }));
   $("tabLogin").onclick = () => setMode("login");
   $("tabSignup").onclick = () => setMode("signup");
@@ -92,7 +110,7 @@
       const out = await call(mode === "signup" ? "/api/auth/signup" : "/api/auth/login", { username, password });
       save(out.token);
       try { localStorage.removeItem("wg-mode"); } catch (e) { /* ignore */ }      // a fresh sign-in starts on the default screen
-      $("authPass").value = ""; $("authPass2").value = ""; err($("authErr"), "");
+      $("authPass").value = ""; $("authPass2").value = ""; $("authPass").coinPaint(); $("authPass2").coinPaint(); err($("authErr"), "");
       begin(out.user);
     } catch (e) { err($("authErr"), e.message); }
     $("authGo").disabled = false;
