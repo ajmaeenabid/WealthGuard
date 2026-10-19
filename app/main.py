@@ -69,6 +69,25 @@ async def auth_gate(request: Request, call_next):
     return response
 
 
+class _RestoreVercelPath:
+    """Vercel rewrites every URL to /api/index?__p=<original path>; put the original path back before routing (and before auth_gate)."""
+
+    def __init__(self, inner):
+        self.inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket") and scope.get("path", "").startswith("/api/index"):
+            from urllib.parse import parse_qsl, urlencode
+            pairs = parse_qsl(scope.get("query_string", b"").decode("latin-1"), keep_blank_values=True)
+            orig = "/" + next((v for k, v in pairs if k == "__p"), "").lstrip("/")
+            rest = [(k, v) for k, v in pairs if k != "__p"]
+            scope = dict(scope, path=orig, raw_path=orig.encode(), query_string=urlencode(rest).encode("latin-1"))
+        await self.inner(scope, receive, send)
+
+
+app.add_middleware(_RestoreVercelPath)
+
+
 def _me(request: Request) -> dict:
     if request.state.user is None:
         raise HTTPException(401, "Sign in required.")
