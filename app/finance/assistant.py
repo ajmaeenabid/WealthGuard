@@ -17,7 +17,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict
 
 from app import store
-from app.finance import ai, analytics, bn, books, jurisdictions, money, planning, privacy, rules, settings, taxonomy
+from app.finance import ai, analytics, bn, books, jurisdictions, money, planning, privacy, rules, settings, taxonomy, zh
 from app.finance.books import FinanceError, new_id
 from app.security import guard
 
@@ -178,8 +178,50 @@ EN = {
 }
 
 
+ZH = {
+    "ask_type": "这是支出、收入，还是账户之间的转账？",
+    "ask_amount": "金额是多少？",
+    "ask_basis": "{amount} 是折扣或税费之前的金额，还是你实际支付的最终金额？",
+    "ask_basis_final": "{amount} 是打折之前的金额，还是打折后你实际支付的金额？",
+    "ask_tax": "有额外的增值税或服务费吗？",
+    "ask_discount": "优惠了多少？如果没有优惠，请回答“没有”。",
+    "ask_date": "这笔发生在什么时候：今天、昨天，还是其他日期？",
+    "ask_account": "你从哪个账户付的款？（{options}）",
+    "ask_account_none": "你还没有账户。你用的是哪一个：现金、支付宝、微信还是银行卡？请说出名称。",
+    "ask_account_miss": "找不到名为“{name}”的账户。你用的是哪一个？（{options}）也可以说“create {name}”来新建。",
+    "ask_account_in": "这笔钱进入了哪个账户？（{options}）",
+    "ask_adjustments": "{amount} 是你实际支付的最终金额，还是还有折扣、增值税或服务费？",
+    "ask_to_account": "这笔钱转到了哪个账户？（{options}）",
+    "ask_category": "这笔应归入哪个类别？（{options}）",
+    "saved": "已保存。原价 {gross}，优惠 {discount}，最终金额 {final}。",
+    "saved_simple": "已保存：{final}。",
+    "cancelled": "已取消，没有保存任何内容。",
+    "nothing": "目前没有待处理的事项。告诉我你花了或收到了什么。",
+    "confirm_tail": "要保存吗？请回答“是”，或告诉我要修改什么（也可以补充备注）。",
+    "help": "我可以帮你记录收支，并回答关于你的资金、预算和目标的问题。例如：“今天在超市花了 85 元买菜”。",
+}
+TYPE_ZH = {"expense": "支出", "income": "收入", "refund": "退款", "transfer": "转账", "adjustment": "调整"}
+
+
 def _t(lang: str, key: str, **kw) -> str:
-    return (BN if lang == "bn" else EN)[key].format(**kw)
+    return {"bn": BN, "zh": ZH}.get(lang, EN)[key].format(**kw)
+
+
+def resolve_lang(user: str, text: str, sess: Optional[dict], override: Optional[str] = None) -> str:
+    """A request-level override wins, then the saved assistant language; on 'auto' the script of the message decides, a short answer inside
+    a running conversation keeps that conversation's language, and otherwise the saved interface language is the default."""
+    if override in ("en", "bn", "zh"):
+        return override
+    pref = settings.get(user)
+    if pref["assistant_lang"] in ("en", "bn", "zh"):
+        return pref["assistant_lang"]
+    if rules.is_chinese(text):
+        return "zh"
+    if rules.is_bangla(text):
+        return "bn"
+    if sess and len(text.split()) <= 4 and sess["draft"].get("lang"):
+        return sess["draft"]["lang"]
+    return pref["ui_lang"]
 
 
 # ============================================================================================== persistence
@@ -548,6 +590,8 @@ def _summary(user: str, draft: dict, accounts: list, lang: str) -> tuple[str, di
             parts.append(f"category {draft['category']}" + (f" / {draft['subcategory']}" if draft.get("subcategory") else ""))
     if lang == "bn":
         return _summary_bn(draft, nums, names, cur), nums
+    if lang == "zh":
+        return _summary_zh(draft, nums, names, cur), nums
     text = "Here is what I will record: " + ", ".join(parts) + "."
     if draft.get("note"):
         text += f" Note: {draft['note']}."
@@ -555,6 +599,43 @@ def _summary(user: str, draft: dict, accounts: list, lang: str) -> tuple[str, di
     if new:
         text += f" I will also create the account {', '.join(new)} with a starting balance of {_money(0, cur)} (you can set the real balance in Accounts)."
     return text + " " + _t(lang, "confirm_tail"), nums
+
+
+def _summary_zh(draft: dict, nums: dict, names: dict, cur: str) -> str:
+    """The same plain-language summary in Chinese; amounts are the validated figures, never reinterpreted."""
+    typ = draft["type"]
+    head = f"{TYPE_ZH[typ]} {_money(nums['final'], cur)}"
+    extra = []
+    if nums["discount"] or nums["tax"] or nums["service"]:
+        extra.append(f"原价 {_money(nums['gross'], cur)}")
+        if nums["discount"]:
+            extra.append(f"优惠 {_money(nums['discount'], cur)}")
+        if nums["tax"]:
+            extra.append(f"税费 {_money(nums['tax'], cur)}")
+        if nums["service"]:
+            extra.append(f"服务费 {_money(nums['service'], cur)}")
+    parts = [head + ("（" + "，".join(extra) + "）" if extra else "")]
+    if draft.get("merchant"):
+        parts.append(f"商家：{draft['merchant']}")
+    if draft.get("item_name"):
+        parts.append(f"内容：{draft['item_name']}")
+    parts.append(f"日期：{draft['date']}")
+    if typ == "transfer":
+        src = names.get(draft.get("account_id")) or (draft.get("new_account") or {}).get("name")
+        dst = names.get(draft.get("to_account_id")) or (draft.get("new_to_account") or {}).get("name")
+        parts.append(f"从 {src} 转到 {dst}")
+    else:
+        acc = names.get(draft.get("account_id")) or (draft.get("new_account") or {}).get("name")
+        parts.append(f"账户：{acc}")
+        if draft.get("category"):
+            parts.append(f"类别：{draft['category']}")
+    text = "我将记录：" + "，".join(parts) + "。"
+    if draft.get("note"):
+        text += f" 备注：{draft['note']}。"
+    new = [s["name"] for s in (draft.get("new_account"), draft.get("new_to_account")) if s]
+    if new:
+        text += f" 我还会新建账户 {'、'.join(new)}，初始余额为 {_money(0, cur)}（真实余额可在“账户”中设置）。"
+    return text + " " + _t("zh", "confirm_tail")
 
 
 TYPE_BN = {"expense": "খরচ", "income": "আয়", "refund": "ফেরত", "transfer": "ট্রান্সফার", "adjustment": "সমন্বয়"}
@@ -624,6 +705,8 @@ def answer_query(user: str, q: dict, lang: str = "en") -> dict:
     today = money.today()
     cur = books.base_currency(user)
     kind = q.get("kind") or "summary"
+    if lang == "zh":
+        return _answer_zh(user, q, today, cur, kind)
     bn_ = lang == "bn"
     T = bn.query_texts(cur)
     C = (lambda c: bn.cat(c)) if bn_ else (lambda c: c)
@@ -693,6 +776,46 @@ def answer_query(user: str, q: dict, lang: str = "en") -> dict:
     return {"text": text, "data": summ, "insights": ins[:3]}
 
 
+def _answer_zh(user: str, q: dict, today: date, cur: str, kind: str) -> dict:
+    """The same figures as the English and Bangla answers, worded in Chinese."""
+    if kind == "balance":
+        pos = books.position(user)
+        if not pos["accounts"]:
+            return {"text": zh.TEXT["no_accounts"], "data": pos}
+        lines = "，".join(f"{a['name']} {_money(a['balance_minor'], a['currency'])}" for a in pos["accounts"])
+        return {"text": f"你的流动资金为 {_money(pos['liquid_minor'], cur)}（{lines}）。净资产 {_money(pos['net_worth_minor'], cur)}。" + zh.TEXT["calc_note"], "data": pos}
+    if kind == "budget":
+        bs = [b for b in planning.list_budgets(user) if b["active"]]
+        if not bs:
+            return {"text": zh.TEXT["no_budgets"], "data": []}
+        return {"text": " ".join(f"{b['name']}：限额 {b['limit']} {cur}，已花 {b['spent']}（{round(b['utilization'] * 100)}%，{zh.STATUS.get(b['status'], b['status'])}）。" for b in bs), "data": bs}
+    if kind == "goal":
+        gs = [g for g in planning.list_goals(user) if g["status"] != "completed"]
+        if not gs:
+            return {"text": zh.TEXT["no_goals"], "data": []}
+        return {"text": " ".join(f"{g['name']}：目标 {g['target']} {cur}，已存 {g['saved']}（{round(g['progress_pct'] * 100)}%）" + (f"，预计完成 {g['estimated_completion']}" if g.get("estimated_completion") else "") + "。" for g in gs), "data": gs}
+    s, e, label = _period_bounds(q, today)
+    pl = zh.period(label)
+    summ = analytics.summary(user, s, e)
+    if summ["transactions"] == 0:
+        return {"text": f"{pl}没有记录任何交易。", "data": summ}
+    if kind == "list":
+        rows = books.list_transactions(user, start=s.isoformat(), end=e.isoformat(), size=5)["items"]
+        return {"text": "最近：" + "；".join(f"{r['ts'][:10]} {r['merchant'] or zh.cat(r['category']) or r['type']} {_money(r['final_minor'], r['currency'])}" for r in rows) + "。", "data": rows}
+    if kind == "spend_total":
+        cat, mer = q.get("category"), q.get("merchant")
+        if cat:
+            hit = next((c for c in summ["by_category"] if c["category"] == cat), None)
+            return {"text": f"{pl}你在{zh.cat(cat)}上花了 {_money(hit['minor'] if hit else 0, cur)}" + (f"（共 {hit['count']} 笔）。" if hit else "。"), "data": hit or {}}
+        if mer:
+            res = books.list_transactions(user, start=s.isoformat(), end=e.isoformat(), merchant=mer, type="expense", size=200)
+            return {"text": f"{pl}你在 {mer} 花了 {_money(sum(r['final_minor'] for r in res['items']), cur)}（{res['total']} 笔）。", "data": res["items"]}
+        return {"text": f"{pl}你共支出 {_money(summ['spending_minor'], cur)}，已记录收入 {_money(summ['income_minor'], cur)}。", "data": summ}
+    top = "，".join(f"{zh.cat(c['category'])} {_money(c['minor'], cur)}" for c in summ["by_category"][:3])
+    text = f"{pl}：收入 {_money(summ['income_minor'], cur)}，支出 {_money(summ['spending_minor'], cur)}，净现金流 {_money(summ['net_cash_flow_minor'], cur)}。" + (f" 主要类别：{top}。" if top else "")
+    return {"text": text, "data": summ}
+
+
 # ============================================================================================== one conversational turn
 def _public(sess: Optional[dict], extra: Optional[dict] = None) -> dict:
     out = {"session_id": sess["id"] if sess else None, "state": sess["state"] if sess else "idle"}
@@ -705,7 +828,7 @@ def _public(sess: Optional[dict], extra: Optional[dict] = None) -> dict:
     return dict(out, **(extra or {}))
 
 
-def turn(user: str, text: str, request_id: str, *, source: str = "text") -> dict:
+def turn(user: str, text: str, request_id: str, *, source: str = "text", lang: Optional[str] = None) -> dict:
     """Handle one message. The same request_id returns the stored reply without doing anything twice."""
     text = privacy.redact((text or "").strip())            # card, account and phone numbers never reach the model or the stored history
     if not text:
@@ -719,26 +842,20 @@ def turn(user: str, text: str, request_id: str, *, source: str = "text") -> dict
         if cached:
             return dict(json.loads(cached["response"]), replayed=True)
         privacy.purge(user)                                 # retention: expired retry records and old finished conversations
-        resp = _handle(user, text, request_id, source)
+        resp = _handle(user, text, request_id, source, lang)
         store._write("INSERT OR REPLACE INTO fin_requests (username, request_id, response, created) VALUES (?,?,?,?)",
                      (user, request_id, json.dumps(resp, ensure_ascii=False, default=str), store.now()))
         return resp
 
 
-def _handle(user: str, text: str, request_id: str, source: str) -> dict:
+def _handle(user: str, text: str, request_id: str, source: str, lang_override: Optional[str] = None) -> dict:
     today = money.today()
     cid = request_id[:12]
     if guard.scan(text):
         from app.security import audit
         audit.append("system", "injection_flagged", "T1", {"source": "money_assistant", "user": user})
     sess = open_session(user)
-    pref = settings.get(user)["assistant_lang"]
-    if pref in ("en", "bn"):
-        lang = pref
-    elif rules.is_bangla(text):
-        lang = "bn"
-    else:                                                  # a short English answer ("Cash") inside a Bangla conversation stays Bangla
-        lang = (sess["draft"].get("lang", "en") if sess and len(text.split()) <= 4 else "en")
+    lang = resolve_lang(user, text, sess, lang_override)           # a short answer ("Cash") inside a running conversation keeps its language
     accounts = books.list_accounts(user)
     parsed, mode = _understand(user, text, sess, today, accounts, cid)
     intent = parsed["intent"]

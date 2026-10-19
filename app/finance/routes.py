@@ -224,6 +224,7 @@ class ChatIn(BaseModel):
     text: str = Field(max_length=assistant.MAX_TEXT)
     request_id: str = Field(max_length=80)
     source: str = Field("text", max_length=10)
+    lang: Optional[str] = Field(None, max_length=2)
 
 
 class ImportIn(BaseModel):
@@ -509,6 +510,11 @@ def import_csv(body: ImportIn, request: Request):
 
 
 # ---------------------------------------------------------------------------------------------- preferences and privacy
+@router.get("/version")
+def data_version(request: Request):
+    return _call(settings.data_version, _user(request))
+
+
 @router.get("/settings")
 def get_settings(request: Request):
     return _call(settings.get, _user(request))
@@ -538,7 +544,7 @@ def assistant_chat(body: ChatIn, request: Request):
     if body.source not in ("text", "voice"):
         raise HTTPException(400, "source must be text or voice")
     _limit(u, "assistant")
-    return _call(assistant.turn, u, body.text, body.request_id, source=body.source)
+    return _call(assistant.turn, u, body.text, body.request_id, source=body.source, lang=body.lang)
 
 
 @router.get("/assistant/session")

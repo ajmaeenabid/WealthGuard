@@ -73,6 +73,23 @@ def update(user: str, patch: dict) -> dict:
     res = get(user)
     if jur_changed:
         # Financial records are untouched. Open conversations stay filed under the jurisdiction they started in; the next message opens a fresh one.
+        books.set_base_currency(user, jurisdictions.currency(out["jurisdiction"]))     # totals follow the active jurisdiction; no record is converted
+        res = get(user)
         books._audit(user, "fin_jurisdiction_changed", {"from": cur["jurisdiction"], "to": out["jurisdiction"], "config_version": jurisdictions.VERSION})
         res["new_conversation"] = True
     return res
+
+
+def data_version(user: str) -> dict:
+    """A cheap fingerprint of everything the money screens show. The page polls it and reloads only when it changes, so a change made by the
+    assistant, another tab or another device appears without a manual refresh. It carries counts and timestamps, never any amounts."""
+    import hashlib
+    parts = []
+    for table in ("fin_accounts", "fin_transactions", "fin_budgets", "fin_goals", "fin_obligations", "fin_sessions"):
+        r = books._one(f"SELECT COUNT(*) AS n, COALESCE(MAX(updated), '') AS u FROM {table} WHERE username=?", (user,))
+        parts.append(f"{table}:{r['n']}:{r['u']}")
+    r = books._one("SELECT COUNT(*) AS n FROM fin_obligation_payments WHERE obligation_id IN (SELECT id FROM fin_obligations WHERE username=?)", (user,))
+    parts.append(f"pay:{r['n']}")
+    row = books._one("SELECT jurisdiction, ui_lang FROM fin_settings WHERE username=?", (user,))
+    parts.append(f"set:{row['jurisdiction']}:{row['ui_lang']}" if row else "set:")
+    return {"version": hashlib.sha1("|".join(parts).encode()).hexdigest()[:16]}

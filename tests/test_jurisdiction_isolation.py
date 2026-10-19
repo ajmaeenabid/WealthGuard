@@ -102,3 +102,13 @@ def test_sessions_record_language_jurisdiction_and_config_version(cash):
     row = books._one("SELECT jurisdiction, language, config_version FROM fin_sessions WHERE id=?", (r["session_id"],))
     assert (row["jurisdiction"], row["language"]) == ("BD", "bn") and row["config_version"]
     store  # noqa
+
+
+def test_data_version_changes_after_a_mutation_and_not_otherwise(cash):
+    v0 = settings.data_version(U)["version"]
+    assert settings.data_version(U)["version"] == v0
+    say("I spent 850 taka at the grocery store today on rice")
+    say("yes")
+    v1 = settings.data_version(U)["version"]
+    assert v1 != v0
+    assert settings.data_version(V)["version"] != v1             # another user's fingerprint is independent
