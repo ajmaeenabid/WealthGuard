@@ -157,8 +157,6 @@ a:hover { color: var(--color-action-hover); }
   font-family: var(--font-display); font-style: italic; font-weight: 500; letter-spacing: var(--tracking-display);
   background: linear-gradient(100deg, var(--color-text-primary) 0%, var(--color-text-primary) 52%, var(--color-action) 100%); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
 }
-.hero-sub { color: var(--color-text-primary); opacity: .82; font-weight: 450; max-width: 52ch; }
-.tg-main { background: linear-gradient(90deg, var(--color-action), var(--color-brand-bronze)); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; font-weight: 600; }
-:root[data-theme="dark"] .hero-sub { color: #EAF2EC; opacity: .94; text-shadow: 0 1px 14px rgba(0, 0, 0, .6); }
-:root[data-theme="dark"] .tg-main { background: linear-gradient(90deg, #8CF083, #E8D87A); -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 10px rgba(98, 224, 90, .25)); }
+.hero-sub { color: var(--color-hero-sub); opacity: var(--hero-sub-opacity); font-weight: 450; max-width: 52ch; }
+.tg-main { background: linear-gradient(90deg, var(--tagline-a), var(--tagline-b)); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; font-weight: 600; }
 .hero-title, .hero h1, .hero-hello { line-height: 1.28; padding-bottom: .12em; overflow: visible; }   /* gradient text is clipped to its box: leave room for descenders (y, g, p) */

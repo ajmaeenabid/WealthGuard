@@ -71,6 +71,7 @@
   --color-hover-bg: rgba(129, 91, 61, .08);
   --color-disabled-bg: #E9E1CD;  --color-disabled-text: #9A8A74;
   --color-focus-ring: #3B5C3F;
+  --color-hero-sub: var(--p-ink);  --tagline-a: var(--p-sage-action);  --tagline-b: var(--p-bronze);  --hero-sub-opacity: .82;
   --overlay-modal: rgba(41, 37, 31, .42);
   --overlay-scrim-soft: rgba(41, 37, 31, .16);
   --shadow-sm: 0 1px 2px rgba(70, 47, 29, .08);
@@ -108,6 +109,7 @@
   --color-hover-bg: rgba(255, 255, 255, .06);
   --color-disabled-bg: #1b201e;  --color-disabled-text: #6B756F;
   --color-focus-ring: #92EE8C;
+  --color-hero-sub: #EAF2EC;  --tagline-a: #8CF083;  --tagline-b: #E8D87A;  --hero-sub-opacity: .95;
   --overlay-modal: rgba(2, 5, 3, .72);
   --overlay-scrim-soft: rgba(2, 5, 3, .4);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, .5);
