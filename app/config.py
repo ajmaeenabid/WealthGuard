@@ -133,7 +133,11 @@ def groq_model() -> str:
 
 
 def db_path() -> str:
-    return os.environ.get("WEALTHGUARD_DB", os.path.join(os.getcwd(), "wealthguard.db"))
+    default = os.path.join(os.getcwd(), "wealthguard.db")
+    if os.environ.get("VERCEL"):                       # Vercel's disk is read-only except the temp folder
+        import tempfile
+        default = os.path.join(tempfile.gettempdir(), "wealthguard.db")
+    return os.environ.get("WEALTHGUARD_DB", default)
 
 
 def lower_bucket(a: str, b: str) -> str:
