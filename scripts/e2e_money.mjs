@@ -32,6 +32,7 @@ const ev = async (e) => { const r = await send("Runtime.evaluate", { expression:
 const shot = async (name) => { const r = await Promise.race([send("Page.captureScreenshot", { format: "png" }), sleep(10000).then(() => null)]); if (r && r.result) fs.writeFileSync(`${OUT}/${name}.png`, Buffer.from(r.result.data, "base64")); else console.log("NOTE  screenshot skipped (timed out): " + name); };
 const viewport = (w, h, mobile = false) => send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile });
 await send("Runtime.enable"); await send("Page.enable");
+await send("Page.addScriptToEvaluateOnNewDocument", { source: "window.WG_NO_ANIM = true;" });   // reply typing effect off, so checks read the full text at once
 
 let failed = 0;
 const check = (name, ok, detail = "") => { console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  -> " + String(detail).slice(0, 160) : ""}`); if (!ok) failed++; };
@@ -221,7 +222,7 @@ await run(setv("uiLangSel", "bn"), 1500);
 check("Bangla shows Bangla labels and Bangla digits for amounts", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("ভাষা, অঞ্চল ও মুদ্রা"));
 await run(setv("uiLangSel", "en"), 1200);
 await run(setv("stJur", "CN"), 2000);
-check("changing jurisdiction shows the active region chip (region name, your chosen currency)", (await ev(`(document.getElementById('finRegion')||{}).textContent`)).includes("China") && (await ev(`(document.getElementById('finRegion')||{}).textContent`)).includes("BDT"), await ev(`(document.getElementById('finRegion')||{}).textContent`));
+check("choosing China as the region sets the currency to CNY straight away", (await ev(`(document.getElementById('finRegion')||{}).textContent`)).includes("China") && (await ev(`(document.getElementById('finRegion')||{}).textContent`)).includes("CNY"), await ev(`(document.getElementById('finRegion')||{}).textContent`));
 const convo = await ev(`fetch('/api/fin/conversations').then(r=>r.json()).then(o=>o.active_jurisdiction)`);
 check("the active jurisdiction is CN on the server", convo === "CN", convo);
 await run(click(".fin-tabs button[data-tab=assistant]"), 1500);

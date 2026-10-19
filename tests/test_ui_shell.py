@@ -105,7 +105,7 @@ def test_shell_behaviour_is_in_ui_js_and_exposed_for_the_app():
 def test_the_screen_has_no_disclaimer_lines_and_chat_replies_hide_the_api_disclaimer():
     assert 'class="banner"' not in HTML and "<footer" not in HTML and "Not real financial advice" not in HTML
     assert "syncBanner" not in UI and "s.disclaimer" not in APP
-    assert "d.textContent = m && m[1].trim() ? m[1] : body" in APP     # the API reply keeps it; the bubble drops it
+    assert "const shown = m && m[1].trim() ? m[1] : body" in APP     # the API reply keeps it; the bubble drops it
 
 
 def test_the_welcome_page_greets_the_user_by_name_and_there_is_no_client_list_or_client_cards():

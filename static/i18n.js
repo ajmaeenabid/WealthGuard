@@ -61,7 +61,7 @@
     "Advice chat": "咨询聊天", "Order tickets and reports": "订单与报告", "Purchase history": "购买记录", "History replay": "历史重演",
     "Document upload": "文档上传", "Voice input": "语音输入", "Regulation search": "法规搜索", "Advice receipt": "建议凭证",
     "Red-team arena and self-inspection": "红队演练与自查",
-    "New chat": "新对话", "Rename chat": "重命名对话", "AI usage (30 days)": "AI 用量（30天）", "Manage accounts": "管理账户", "Hide accounts": "收起账户", "accounts": "个账户", "Calls": "调用次数", "Tokens": "令牌数", "Estimated cost": "预计费用", "Failed calls": "失败调用", "Average latency": "平均延迟", "By purpose": "按用途", "Delete chat": "删除对话", "Delete this chat?": "删除这段对话？", "Administrator": "管理员",
+    "New chat": "新对话", "Try again": "重试", "The AI service is not responding right now, so this answer comes from the built-in assistant. Please try again in a moment for a full AI answer.": "AI 服务暂时没有响应，这条回答来自内置助手。请稍后重试以获得完整的 AI 回答。", "Rename chat": "重命名对话", "AI usage (30 days)": "AI 用量（30天）", "Manage accounts": "管理账户", "Hide accounts": "收起账户", "accounts": "个账户", "Calls": "调用次数", "Tokens": "令牌数", "Estimated cost": "预计费用", "Failed calls": "失败调用", "Average latency": "平均延迟", "By purpose": "按用途", "Delete chat": "删除对话", "Delete this chat?": "删除这段对话？", "Administrator": "管理员",
     "The two passwords do not match.": "两次输入的密码不一致。", "Password changed. Other devices were signed out.": "密码已修改，其他设备已退出登录。", "Session started.": "会话已开始。", "Starting a session for the selected client first.": "先为所选客户开始会话。", "Advice approved by compliance": "建议已通过合规批准", "Open allocation": "查看配置",
     hC: "建议回执", rcHint: "已批准建议的封存记录：规则、法规条文、数据哈希和审计锚点。任何人都可以验证。", rcDownload: "下载回执",
     rcVerify: "验证回执文件", "Receipt is valid": "回执有效", "Receipt is NOT valid": "回执无效",

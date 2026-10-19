@@ -11,8 +11,9 @@
   let me = null;
 
   // ------------------------------------------------------------------------------------------ helpers
-  async function api(path, body, method) {
+  async function api(path, body, method, signal) {
     const opt = body === undefined && !method ? {} : { method: method || "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+    if (signal) opt.signal = signal;
     const r = await fetch("/api/fin" + path, opt);
     let data = null;
     try { data = await r.json(); } catch (e) { /* not JSON */ }
@@ -699,12 +700,16 @@
   const A = { busy: false, pending: null, loaded: false };
   const EXAMPLES = ["I spent 850 at the grocery store today on rice, oil and vegetables", "আজ ৮৫০ টাকা বাজার করলাম", "ajk 300 rickshaw bhara dilam", "今天在超市花了 85 元买菜", "Received 25000 salary today", "How much did I spend on food this month?", "What is my balance?"];
 
-  function addMsg(role, text) {
+  function addMsg(role, text, animate) {
     const box = $("finMsgs");
     const empty = box.querySelector(".empty-state");
     if (empty) empty.remove();
-    const m = el("div", "m " + role, text);
+    const md = role === "bot" && window.WGMarkdown;
+    const m = el("div", "m " + role + (md ? " md" : ""), animate || md ? "" : text);
     box.appendChild(m);
+    if (animate && window.WGThinking) m.typed = window.WGThinking.type(m, text, md ? { render: window.WGMarkdown.render } : undefined);
+    else if (md) m.innerHTML = window.WGMarkdown.render(text);
+    else if (animate) m.textContent = text;
     box.scrollTop = box.scrollHeight;
     return m;
   }
@@ -732,7 +737,8 @@
   function handleReply(r) {
     A.last = r;
     if (r.jurisdiction) chatBar(r.jurisdiction);
-    addMsg("bot", r.reply);
+    if (r.ai === "fallback") addMsg("sys", "The AI service is not responding right now, so I read your message with the built-in rules instead. Your records are safe; try again in a moment for the full AI reader.");
+    addMsg("bot", r.reply, true);
     $("finAi").textContent = aiLabel(r.ai);
     showState(r);
     if (r.transaction && r.state === "completed") { toast("Saved to your ledger"); }
@@ -754,20 +760,24 @@
     input.value = ""; input.dataset.voice = ""; input.style.height = "";
     setBusy(true);
     $("finQuick").innerHTML = ""; $("finConfirm").hidden = true;
+    const th = window.WGThinking ? window.WGThinking.start($("finMsgs"), { phases: ["Thinking…", "Reading your message…", "Checking your records…"] }) : { stop() {} };
     try {
-      const r = await api("/assistant/chat", Object.assign({ text, request_id: id, source }, opts && opts.lang ? { lang: opts.lang } : {}));
+      const payload = Object.assign({ text, request_id: id, source }, opts && opts.lang ? { lang: opts.lang } : {});
+      const r = window.WGThinking ? await window.WGThinking.withTimeout((signal) => api("/assistant/chat", payload, undefined, signal), 75000) : await api("/assistant/chat", payload);
+      th.stop();
       A.pending = null;
       handleReply(r);
       if (r.transaction || r.deleted) { state.dirty = true; syncNow(); }
       return r;
     } catch (e) {
-      const m = addMsg("sys", e.message + (e.status ? "" : " The message was kept: "));
+      th.stop();
+      const m = addMsg("sys", e.message + (e.status && !e.timeout ? "" : " The message was kept: "));
       const b = el("button", "", "Send again");
       b.type = "button"; b.style.marginLeft = "8px";
       b.onclick = () => { m.remove(); sendMsg(A.pending.text, true); };
       m.appendChild(b);
       return null;
-    } finally { setBusy(false); }
+    } finally { th.stop(); setBusy(false); }
   }
 
   // ---------------------------------------------------------------- live sync: the server's data fingerprint is polled while the page is visible
@@ -911,7 +921,7 @@
     $("stJur").onchange = async () => {
       try {
         const out = await api("/settings", { jurisdiction: $("stJur").value });
-        $("stMsg").textContent = out.new_conversation ? "Jurisdiction changed. A new conversation starts with the next message; earlier ones stay in history." : "Saved.";
+        $("stMsg").textContent = out.new_conversation ? `Region changed and currency set to ${out.currency_changed_to || out.base_currency}. A new conversation starts with the next message; earlier ones stay in history.` : "Saved.";
         state.meta = await api("/meta", undefined, "GET"); state.currency = state.meta.currency; paintRegion(state.meta.jurisdiction); A.loaded = false; A.last = null; state.dirty = true; document.dispatchEvent(new CustomEvent("wg:jurisdiction", { detail: out.jurisdiction }));
         loadSettings();
       } catch (e) { $("stMsg").textContent = e.message; }

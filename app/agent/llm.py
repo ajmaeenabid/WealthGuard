@@ -4,6 +4,7 @@ Messages use Anthropic's block format: content is a str or a list of {"type": "t
 The mock is a pure function of (messages, state), so every test and the offline demo are reproducible.
 """
 import json
+import os
 import re
 import time
 from dataclasses import dataclass, field
@@ -89,15 +90,25 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 def _groq_chat(messages: list, tools: list | None = None, max_tokens: int = 1500) -> dict:
     """Groq is OpenAI-compatible; plain httpx keeps this dependency-free. Returns the assistant message dict."""
     import httpx
-    body = {"model": config.groq_model(), "messages": messages, "max_tokens": max_tokens, "temperature": 0.2}
+    from app.finance import tokens
+    messages, _cut = tokens.fit_messages(messages)          # long histories are trimmed to the input budget (oldest turns first, newest kept)
+    body = {"model": config.groq_model(), "messages": messages, "max_tokens": tokens.clamp_output(max_tokens), "temperature": 0.2}
     if tools:
         body["tools"] = tools
+    started = time.monotonic()
+    limit = float(os.environ.get("WEALTHGUARD_LLM_DEADLINE", "30"))      # whole call incl. retries; then the caller shows a clear notice
     for attempt in range(3):  # free-tier limits are small: honour retry-after on 429, then give up (mock fallback)
-        r = httpx.post(GROQ_URL, json=body, timeout=60,
+        left = limit - (time.monotonic() - started)
+        if left <= 1:
+            raise TimeoutError("The AI service did not answer in time.")
+        r = httpx.post(GROQ_URL, json=body, timeout=min(25.0, left),
                        headers={"Authorization": f"Bearer {config.groq_key()}"})
         if r.status_code != 429 or attempt == 2:
             break
-        time.sleep(min(float(r.headers.get("retry-after", 2)), 20))
+        pause = min(float(r.headers.get("retry-after", 2)), 20)
+        if time.monotonic() - started + pause >= limit:
+            break
+        time.sleep(pause)
     r.raise_for_status()
     return r.json()["choices"][0]["message"]
 

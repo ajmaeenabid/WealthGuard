@@ -67,13 +67,14 @@ def test_saved_interface_language_is_the_default_for_ambiguous_text():
     assert say("help")["language"] == "zh"
 
 
-def test_currency_follows_jurisdiction_until_the_person_chooses_then_stays_fixed():
-    assert settings.update(U, {"jurisdiction": "CN"})["base_currency"] == "CNY" and not settings.get(U)["currency_chosen"]
+def test_choosing_a_country_sets_its_currency_immediately_and_usd_stays_selectable():
+    s = settings.update(U, {"jurisdiction": "CN"})
+    assert s["base_currency"] == "CNY" and s["currency_chosen"] and s["currency_changed_to"] == "CNY"
     assert settings.update(U, {"jurisdiction": "BD"})["base_currency"] == "BDT"
-    s = settings.update(U, {"base_currency": "USD"})
-    assert s["base_currency"] == "USD" and s["currency_chosen"]
-    assert settings.update(U, {"jurisdiction": "CN"})["base_currency"] == "USD"          # a deliberate choice is never overridden
-    assert settings.update(U, {"base_currency": "cny"})["base_currency"] == "CNY"       # and can be changed any time
+    assert settings.update(U, {"base_currency": "USD"})["base_currency"] == "USD"           # a manual pick still works
+    assert settings.update(U, {"ui_lang": "zh"})["base_currency"] == "USD"                  # unrelated changes do not touch it
+    assert settings.update(U, {"jurisdiction": "CN"})["base_currency"] == "CNY"             # but choosing a country sets it again
+    assert settings.update(U, {"jurisdiction": "CN"})["base_currency"] == "CNY"             # re-selecting the same country is a no-op
     with pytest.raises(Exception):
         settings.update(U, {"base_currency": "EUR"})
 

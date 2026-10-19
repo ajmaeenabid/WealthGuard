@@ -68,6 +68,8 @@ REGISTRY = [
     Var("FIN_AI_MAX_RETRIES", "Retries on 429/5xx/timeouts (exponential backoff with jitter)", "Money assistant", "app/finance/ai.py", "optional", False, _num(0, 10)),
     Var("FIN_AI_CONCURRENCY", "Simultaneous AI calls", "Money assistant", "app/finance/ai.py", "optional", False, _num(1, 16)),
     Var("FIN_AI_RPM", "AI calls per minute the app allows itself (0 turns pacing off); keep below your account limit", "Money assistant", "app/finance/ai.py", "optional", False, _num(0, 10000)),
+    Var("FIN_AI_DEADLINE", "Hard limit in seconds for one AI call including retries (default 25); after it the app shows a clear notice", "Money assistant", "app/finance/ai.py", "optional", False, _num(3, 300)),
+    Var("WEALTHGUARD_LLM_DEADLINE", "Same hard limit for the advisor chat (default 30 seconds)", "Advisor chat", "app/agent/llm.py", "optional", False, _num(3, 300)),
     Var("FIN_AI_MAX_WAIT", "Longest wait (seconds) for a rate-limit reset before falling back to the built-in rules", "Money assistant", "app/finance/ai.py", "optional", False, _num(0, 600)),
     Var("FIN_AI_MAX_INPUT_TOKENS", "Most estimated tokens sent to the model per request; older turns and long text are trimmed to fit (default 3500)", "Money assistant", "app/finance/tokens.py", "optional", False, _num(500, 100000)),
     Var("FIN_AI_MAX_OUTPUT_TOKENS", "Most tokens the model may write per reply (default 1200)", "Money assistant", "app/finance/tokens.py", "optional", False, _num(64, 8000)),

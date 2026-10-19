@@ -124,10 +124,15 @@ class GroqClient:
             log.warning("prompt trimmed purpose=%s %s", purpose, cut)
         max_tokens = tokens.clamp_output(max_tokens)
         max_retries = int(_env_num("FIN_AI_MAX_RETRIES", 3))
-        timeout = _env_num("FIN_AI_TIMEOUT", 30)
+        timeout = _env_num("FIN_AI_TIMEOUT", 20)
+        deadline = started + _env_num("FIN_AI_DEADLINE", 25)            # one hard limit for the whole call, retries included: nobody waits minutes
         status_label = "ok"
         try:
             while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0.5:
+                    raise AIError("timeout", "The AI service did not answer in time.", correlation_id=cid)
+                timeout = max(2.0, min(timeout, remaining))
                 body = {"model": model_name(), "messages": msgs, "max_tokens": max_tokens, "temperature": temperature}
                 effort = os.environ.get("FIN_REASONING_EFFORT", "low")
                 if effort and "reasoning" not in dropped:
@@ -185,7 +190,10 @@ class GroqClient:
                         raise AIError(kind, "The AI service is busy right now." if sc == 429 else "The AI service is temporarily unavailable.",
                                       retry_after=ra, correlation_id=cid)
                     retries += 1
-                    self._sleep(self._backoff(retries, ra))
+                    wait = self._backoff(retries, ra)
+                    if time.monotonic() + wait >= deadline:
+                        raise AIError("timeout", "The AI service did not answer in time.", retry_after=ra, correlation_id=cid)
+                    self._sleep(wait)
                     continue
                 raise AIError("unavailable", f"The AI service returned an unexpected error ({sc}).", correlation_id=cid)
         except AIError as e:

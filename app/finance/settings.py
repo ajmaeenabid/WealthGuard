@@ -73,7 +73,12 @@ def update(user: str, patch: dict) -> dict:
         # Financial records are untouched. Open conversations stay filed under the jurisdiction they started in; the next message opens a fresh one.
         res = get(user)
         books._audit(user, "fin_jurisdiction_changed", {"from": cur["jurisdiction"], "to": out["jurisdiction"], "config_version": jurisdictions.VERSION})
+        # Choosing a country sets the currency straight away (Bangladesh -> BDT, China -> CNY). Records are not converted; accounts in another
+        # currency stay listed and are left out of the totals. The person can still pick another currency afterwards (for example USD).
+        books.set_base_currency(user, jurisdictions.currency(out["jurisdiction"]))
+        res = get(user)
         res["new_conversation"] = True
+        res["currency_changed_to"] = res["base_currency"]
     return res
 
 
