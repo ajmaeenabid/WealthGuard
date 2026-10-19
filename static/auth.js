@@ -77,6 +77,10 @@
     $("authUser").focus();
   }
 
+  // one tap fills a demo account (the password is the documented demo one); the person still presses Sign in
+  document.querySelectorAll("[data-demo]").forEach((b) => (b.onclick = () => {
+    setMode("login"); $("authUser").value = b.dataset.demo; $("authPass").value = "123"; $("authGo").focus();
+  }));
   $("tabLogin").onclick = () => setMode("login");
   $("tabSignup").onclick = () => setMode("signup");
   $("authForm").addEventListener("submit", async (ev) => {

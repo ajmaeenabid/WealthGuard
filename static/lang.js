@@ -27,7 +27,7 @@
       "Voice mode": "语音模式", "Start voice mode": "开启语音模式", "Stop voice mode": "结束语音模式", "Listening…": "正在聆听…", "Processing…": "处理中…", "Speaking…": "正在朗读…",
       "Say something": "请说话", "Back to text chat": "返回文字聊天", "Voice preferences": "语音偏好", "Enable voice mode": "启用语音模式", "Speech language": "语音语言",
       "Read replies aloud automatically": "自动朗读回复", "Large text": "大号文字", "Microphone": "麦克风", "Conversations": "对话记录", "New conversation": "新对话", "Resume": "继续",
-      "View": "查看", "Conversations": "对话记录", "No conversations yet.": "还没有对话。", "Recorded": "已记录", "Estimate": "估算", "Pending": "待确认", "Forecasted": "预测值", "Scheduled": "已安排",
+      "View": "查看", "Conversations": "对话记录", "No conversations yet.": "还没有对话。", "Or try a demo account": "或使用演示账户", "Administrator": "管理员", "Client": "客户", "Recorded": "已记录", "Estimate": "估算", "Pending": "待确认", "Forecasted": "预测值", "Scheduled": "已安排",
       "Compliance-first wealth advice": "合规优先的财富顾问", "New chat": "新对话", "Chats": "对话", "No chats yet.": "暂无对话。",
       "Food": "餐饮", "Transport": "交通", "Housing": "住房", "Utilities": "水电费", "Health": "医疗健康", "Education": "教育", "Shopping": "购物", "Entertainment": "娱乐", "Savings": "储蓄",
       "Salary": "工资", "Other": "其他", "Cash": "现金", "Bank": "银行", "Card": "银行卡"
@@ -48,7 +48,7 @@
       "Voice mode": "ভয়েস মোড", "Start voice mode": "ভয়েস মোড চালু করুন", "Stop voice mode": "ভয়েস মোড বন্ধ করুন", "Listening…": "শুনছি…", "Processing…": "প্রক্রিয়া চলছে…", "Speaking…": "বলছি…",
       "Say something": "কিছু বলুন", "Back to text chat": "টেক্সট চ্যাটে ফিরুন", "Voice preferences": "ভয়েস পছন্দ", "Enable voice mode": "ভয়েস মোড চালু রাখুন", "Speech language": "কথার ভাষা",
       "Read replies aloud automatically": "উত্তর নিজে থেকে পড়ে শোনান", "Large text": "বড় লেখা", "Microphone": "মাইক্রোফোন", "Conversations": "কথোপকথন", "New conversation": "নতুন কথোপকথন", "Resume": "আবার শুরু",
-      "View": "দেখুন", "No conversations yet.": "এখনও কোনো কথোপকথন নেই।", "Recorded": "লিপিবদ্ধ", "Estimate": "আনুমানিক", "Pending": "অপেক্ষমাণ", "Forecasted": "পূর্বাভাসিত", "Scheduled": "নির্ধারিত",
+      "View": "দেখুন", "No conversations yet.": "এখনও কোনো কথোপকথন নেই।", "Or try a demo account": "অথবা ডেমো অ্যাকাউন্ট দেখুন", "Administrator": "অ্যাডমিন", "Client": "ক্লায়েন্ট", "Recorded": "লিপিবদ্ধ", "Estimate": "আনুমানিক", "Pending": "অপেক্ষমাণ", "Forecasted": "পূর্বাভাসিত", "Scheduled": "নির্ধারিত",
       "Compliance-first wealth advice": "নিয়ম মেনে সম্পদ পরামর্শ", "New chat": "নতুন চ্যাট", "Chats": "চ্যাট", "No chats yet.": "এখনও কোনো চ্যাট নেই।",
       "Risk profile": "ঝুঁকির প্রোফাইল", "Allocation": "বিনিয়োগ বণ্টন", "Compliance": "নিয়ম পালন", "Stress test": "চাপ পরীক্ষা", "Approvals": "অনুমোদন", "Purchase history": "কেনাকাটার ইতিহাস",
       "Memory": "স্মৃতি", "Audit log": "অডিট লগ", "Advice receipt": "পরামর্শের রসিদ",
