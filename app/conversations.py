@@ -12,7 +12,7 @@ def create(user: dict) -> dict:
     facts, extra = memory.seed(user["username"])
     s = service.create_session(None, facts=facts, extra=extra, name=user["display_name"])
     now = store.now()
-    store._write("INSERT INTO conversations VALUES (?,?,?,?,?,?,?,?)",
+    store._write("INSERT INTO conversations (client_id, username, title, persona_id, name, pending_question, created, updated) VALUES (?,?,?,?,?,?,?,?)",
                  (s["client_id"], user["username"], "New chat", None, s["name"],
                   state.PENDING_QUESTION.get(s["client_id"]), now, now))
     return s
@@ -43,7 +43,9 @@ def record_turn(client_id: str, message: str, reply: str) -> None:
     add_message(client_id, "agent", reply)
     title = conv["title"]
     text = message.strip().replace(chr(10), " ")
-    if title == "New chat" and len(text) >= 15 and not llm.SMALL_TALK.match(text):   # short replies are questionnaire answers
+    if conv["title_custom"]:
+        pass                                               # a name the person chose is never replaced by an automatic one
+    elif title == "New chat" and len(text) >= 15 and not llm.SMALL_TALK.match(text):   # short replies are questionnaire answers
         title = text[:42]
     elif title == "New chat" and store.latest_allocation(client_id):
         title = f"Advice for {conv['name']}"
@@ -82,6 +84,28 @@ def open_chat(client_id: str) -> dict:
     q = profiling.next_question(d["facts"]) if state.PENDING_QUESTION.get(client_id) else None
     return {"client_id": client_id, "title": conv["title"], "name": conv["name"], "persona_id": None,
             "story": None, "messages": msgs, "next_question": q}
+
+
+MAX_TITLE = 60
+
+
+def clean_title(raw: str) -> str:
+    t = "".join(ch for ch in (raw or "") if ch.isprintable()).strip()
+    t = " ".join(t.split())
+    if not t:
+        raise ValueError("The chat needs a name.")
+    if len(t) > MAX_TITLE:
+        raise ValueError(f"Keep the name under {MAX_TITLE} characters.")
+    return t
+
+
+def rename(client_id: str, raw_title: str) -> dict:
+    """The person's own name for a chat. Stored as plain text (the page renders it as text, never as HTML) and kept across later messages."""
+    title = clean_title(raw_title)
+    store._write("UPDATE conversations SET title=?, title_custom=1, updated=? WHERE client_id=?", (title, store.now(), client_id))
+    conv = get(client_id)
+    memory.update_summary(conv["username"], client_id, title)
+    return {"id": client_id, "title": title}
 
 
 def delete(client_id: str) -> None:

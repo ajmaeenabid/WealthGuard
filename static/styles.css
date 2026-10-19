@@ -552,3 +552,10 @@ h3.mini { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacin
   box-shadow: 0 1px 2px rgba(90, 60, 10, .45); animation: coin-in .18s ease-out; }
 @keyframes coin-in { from { transform: scale(.4) rotateY(90deg); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { #auth .pw-coins i { animation: none; } }
+
+/* chat list: rename */
+.chat-item .ci-ren { opacity: 0; width: 28px; height: 28px; transition: opacity .15s; }
+.chat-item:hover .ci-ren, .chat-item:focus-within .ci-ren, .chat-item.active .ci-ren { opacity: .75; }
+.chat-item .ci-ren:hover { opacity: 1; }
+.chat-item .ci-edit { width: 100%; font: inherit; padding: 2px 6px; border-radius: 8px; border: 1px solid var(--accent); background: var(--surface-2); color: var(--ink); }
+@media (hover: none) { .chat-item .ci-ren { opacity: .7; } }

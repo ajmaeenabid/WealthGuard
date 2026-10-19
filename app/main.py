@@ -348,6 +348,25 @@ def open_conversation(client_id: str, request: Request):
     return conversations.open_chat(client_id)
 
 
+class RenameChat(BaseModel):
+    title: str = Field(max_length=200)
+
+
+@app.post("/api/conversations/{client_id}/rename")
+def rename_conversation(client_id: str, body: RenameChat, request: Request):
+    me = _me(request)
+    if conversations.get(client_id) is None:
+        raise HTTPException(404, "unknown chat")
+    if not conversations.can_access(me, client_id):
+        raise HTTPException(403, "This chat belongs to another account.")
+    try:
+        out = conversations.rename(client_id, body.title)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    audit.append("system", "chat_renamed", "T0", {"user": me["username"]})
+    return out
+
+
 @app.post("/api/conversations/{client_id}/delete")
 def delete_conversation(client_id: str, request: Request):
     me = _me(request)

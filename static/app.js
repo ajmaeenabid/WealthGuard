@@ -163,9 +163,39 @@ async function refreshChats() {
     del.setAttribute("aria-label", t("Delete chat")); del.title = t("Delete chat");
     del.innerHTML = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg>';
     del.onclick = () => deleteChat(c.id).catch((e) => addMsg("sys", "Error: " + e.message));
-    row.append(open, del);
+    const ren = document.createElement("button");
+    ren.type = "button"; ren.className = "ci-ren ghost icon";
+    ren.setAttribute("aria-label", t("Rename chat")); ren.title = t("Rename chat");
+    ren.innerHTML = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>';
+    ren.onclick = () => renameChat(c, open.querySelector(".ci-title"));
+    open.querySelector(".ci-title").ondblclick = (ev) => { ev.stopPropagation(); renameChat(c, open.querySelector(".ci-title")); };
+    row.append(open, ren, del);
     box.appendChild(row);
   });
+}
+
+// Rename a chat in place: Enter or leaving the box saves, Escape cancels. The name is sent as plain text and shown as text.
+function renameChat(c, titleEl) {
+  if (titleEl.querySelector("input")) return;
+  const current = c.title === "New chat" ? t("New chat") : c.title;
+  const input = document.createElement("input");
+  input.type = "text"; input.value = current; input.maxLength = 60; input.className = "ci-edit";
+  input.setAttribute("aria-label", t("Rename chat"));
+  titleEl.textContent = ""; titleEl.appendChild(input);
+  input.focus(); input.select();
+  let done = false;
+  const finish = async (save) => {
+    if (done) return; done = true;
+    const v = input.value.trim();
+    if (save && v && v !== current) {
+      try { await api(`/api/conversations/${encodeURIComponent(c.id)}/rename`, { title: v }); }
+      catch (e) { addMsg("sys", "Error: " + e.message); }
+    }
+    refreshChats();
+  };
+  input.onkeydown = (ev) => { if (ev.key === "Enter") { ev.preventDefault(); finish(true); } else if (ev.key === "Escape") { ev.preventDefault(); finish(false); } };
+  input.onblur = () => finish(true);
+  input.onclick = (ev) => ev.stopPropagation();
 }
 
 async function send(text) {
