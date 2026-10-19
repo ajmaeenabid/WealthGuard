@@ -4,3 +4,17 @@ __pycache__/
 *.db
 .pytest_cache/
 .vscode/
+# personal documents (ID scans, registration forms) must never be committed
+Documents/
+# local databases and their journals
+*.db-journal
+*.db-wal
+*.db-shm
+# any real environment file; only .env.example is tracked
+.env.*
+!.env.example
+# local tooling and scratch
+.claude/
+node_modules/
+*.prof
+
