@@ -220,6 +220,7 @@ def summary() -> dict:
         t = current()
     except FxError as e:
         return {"available": False, "reason": e.kind, "message": e.message}
-    return {"available": True, "base": BASE, "per_usd": {c: format(v.normalize(), "f") for c, v in t["rates"].items()}, "source": t["source_name"], "provider_date": t["provider_date"],
+    pairs = {f"{a}->{b}": format(rate(a, b, t)["rate"] and Decimal(rate(a, b, t)["rate"]).normalize(), "f") for a in money.CURRENCIES for b in money.CURRENCIES if a != b}
+    return {"available": True, "base": BASE, "pairs": pairs, "per_usd": {c: format(v.normalize(), "f") for c, v in t["rates"].items()}, "source": t["source_name"], "provider_date": t["provider_date"],
             "fetched": t["fetched"], "age_hours": t["age_hours"], "stale": t["stale"], "attribution": t["attribution"],
             "note": "Indicative mid-market rates. A bank, card or wallet will use its own rate and fees."}

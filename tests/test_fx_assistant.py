@@ -160,3 +160,35 @@ def test_ai_path_keeps_a_currency_only_when_the_message_wrote_it(fx_live, monkey
     monkeypatch.setattr(ai, "call", fake("BDT"))
     r = say("I spent 10 on a long lunch with colleagues downtown today")             # the model says BDT, the person never did
     assert "¥10.00" in r["reply"] and "1 BDT" not in r["reply"]
+
+
+def test_primary_account_receives_foreign_income_and_pays_unnamed_spending_converted(fx_live):
+    cny = acct("Alipay", "CNY", "0", "wallet")
+    acct("bKash", "BDT", "500", "wallet")
+    books.set_primary_account(U, cny["id"])
+    r = say("I received 100 dollars salary today")
+    assert "Alipay" in r["reply"] and "¥669.27" in r["reply"] and "1 USD = 6.6927 CNY" in r["reply"]
+    say("yes")
+    t = books.list_transactions(U)["items"][0]
+    assert t["type"] == "income" and t["account_id"] == cny["id"] and t["original"]["amount"] == "100.00" and t["original"]["currency"] == "USD"
+    assert {a["name"]: a["balance"] for a in books.list_accounts(U)} == {"Alipay": "669.27", "bKash": "500.00"}
+    r = say("I spent 1000 taka on rice today")                                    # no account named: the primary pays, converted
+    assert "Alipay" in r["reply"] and "¥54.24" in r["reply"]
+
+
+def test_the_primary_account_must_be_the_users_own_and_usable(fx_live):
+    a = acct("Alipay", "CNY")
+    with pytest.raises(Exception):
+        books.set_primary_account("someone_else", a["id"])
+    books.set_primary_account(U, a["id"])
+    books.update_account(U, a["id"], {"archived": True})
+    assert books.primary_account(U) is None                                       # an archived account stops being primary
+    assert books.set_primary_account(U, None) is None
+
+
+def test_all_six_pairs_are_available_with_inverse_rates(fx_live):
+    s = fx.summary()
+    assert set(s["pairs"]) == {"USD->CNY", "CNY->USD", "USD->BDT", "BDT->USD", "CNY->BDT", "BDT->CNY"}
+    from decimal import Decimal
+    for a, b in (("USD", "BDT"), ("USD", "CNY"), ("CNY", "BDT")):
+        assert abs(Decimal(s["pairs"][f"{a}->{b}"]) * Decimal(s["pairs"][f"{b}->{a}"]) - 1) < Decimal("1e-6")

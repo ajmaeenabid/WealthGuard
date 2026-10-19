@@ -76,6 +76,27 @@ def base_currency(user: str) -> str:
     return jurisdictions.currency(r["jurisdiction"])
 
 
+def primary_account(user: str) -> Optional[dict]:
+    """The account that receives income and pays for spending when the person does not name one. None if unset or no longer usable."""
+    base_currency(user)
+    r = _one("SELECT primary_account_id FROM fin_settings WHERE username=?", (user,))
+    if not r or not r["primary_account_id"]:
+        return None
+    a = _one("SELECT * FROM fin_accounts WHERE id=? AND username=? AND archived=0", (r["primary_account_id"], user))
+    return None if a is None else _account_out(a)
+
+
+def set_primary_account(user: str, account_id: Optional[str]) -> Optional[dict]:
+    base_currency(user)
+    if account_id:
+        a = get_account(user, account_id)                      # 404 if it is not this user's
+        if a["archived"]:
+            raise FinanceError("An archived account cannot be the primary account.")
+    store._write("UPDATE fin_settings SET primary_account_id=? WHERE username=?", (account_id or None, user))
+    _audit(user, "fin_primary_account_set", {"account": account_id})
+    return primary_account(user)
+
+
 def valid_currency(currency: Optional[str]) -> str:
     c = (currency or "").strip().upper()
     if c not in money.CURRENCIES:

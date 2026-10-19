@@ -212,6 +212,7 @@ class SettingsIn(BaseModel):
     voice_enabled: Optional[bool] = None
     speech_lang: Optional[str] = Field(None, max_length=4)
     large_text: Optional[bool] = None
+    primary_account_id: Optional[str] = Field(None, max_length=40)
 
 
 class EraseIn(BaseModel):
@@ -526,6 +527,11 @@ def relabel_all(body: RelabelIn, request: Request):
             books.set_base_currency(u, body.currency)
         return out
     return _call(run)
+
+
+@router.post("/accounts/{account_id}/primary")
+def make_primary(account_id: str, request: Request):
+    return _call(books.set_primary_account, _user(request), account_id)
 
 
 @router.get("/fx")

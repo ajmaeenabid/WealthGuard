@@ -339,7 +339,7 @@
         <div class="row2"><label>Date<input id="tfDate" type="date" value="${esc(t ? day(t.ts) : todayStr())}" required></label>
           <label>Amount paid<input id="tfFinal" inputmode="decimal" placeholder="0.00" value="${esc(t ? t.final_amount : "")}" autocomplete="off"></label></div>
         <label id="tfAccL">Account<select id="tfAcc">${accOpts(t && t.account_id)}</select></label>
-        ${edit ? (t.original ? `<p class="muted small" id="tfOrig">Originally ${esc(money(t.original.amount, false, t.original.currency))}, converted at 1 ${esc(t.original.currency)} = ${esc(t.original.rate)} ${esc(t.original.converted_to)} (${esc(String(t.original.source || "").replace("@", ", "))}). Editing the amount replaces this record.</p>` : "") : `<label id="tfCurL">Paid in<select id="tfCur">${state.meta.currencies.map((c) => `<option value="${c.code}">${c.symbol}  ${c.code}</option>`).join("")}</select></label>
+        ${edit ? (t.original ? `<p class="muted small" id="tfOrig">Originally ${esc(money(t.original.amount, false, t.original.currency))}, converted at 1 ${esc(t.original.currency)} = ${esc(t.original.rate)} ${esc(t.original.converted_to)} (${esc(String(t.original.source || "").replace("@", ", "))}). Editing the amount replaces this record.</p>` : "") : `<label id="tfCurL"><span id="tfCurT">Paid in</span><select id="tfCur">${state.meta.currencies.map((c) => `<option value="${c.code}">${c.symbol}  ${c.code}</option>`).join("")}</select></label>
         <div class="fin-preview" id="tfFx" role="status" hidden></div>`}
         <label id="tfToL" hidden>To account<select id="tfTo">${accOpts(t && t.to_account_id)}</select></label>
         <label id="tfDirL" hidden>Direction<select id="tfDir"><option value="in">Money in</option><option value="out">Money out</option></select></label>
@@ -367,6 +367,7 @@
         $("tfCat").innerHTML = cats.map((c) => `<option ${c === ($("tfCat").value || cur) ? "selected" : ""}>${esc(c)}</option>`).join("");
         subs();
         $("tfAccL").firstChild.textContent = type === "income" || type === "refund" ? "Received into" : type === "transfer" ? "From account" : "Account";
+        if ($("tfCurT")) $("tfCurT").textContent = type === "income" || type === "refund" ? "Received in" : "Paid in";
         $("tfFinal").parentElement.firstChild.textContent = type === "income" ? "Amount received" : type === "transfer" || type === "adjustment" ? "Amount" : "Amount paid";
       };
       const subs = () => { const list = (state.meta.expense_categories[$("tfCat").value] || []); $("tfSub").innerHTML = `<option value="">—</option>` + list.map((s2) => `<option ${t && t.subcategory === s2 ? "selected" : ""}>${esc(s2)}</option>`).join(""); };
@@ -491,7 +492,8 @@
   async function loadAccounts() {
     const root = $("finTab-accounts");
     if (await currencyGate(root)) return;
-    const [accs, pos] = await Promise.all([api("/accounts?include_archived=true", undefined, "GET"), api("/position", undefined, "GET")]);
+    const [accs, pos, stp] = await Promise.all([api("/accounts?include_archived=true", undefined, "GET"), api("/position", undefined, "GET"), api("/settings", undefined, "GET")]);
+    state.primaryId = stp.primary_account_id || null;
     state.accounts = accs.filter((a) => !a.archived);
     state.currency = pos.currency;
     if (state.meta) paintRegion(state.meta.jurisdiction);
@@ -503,8 +505,9 @@
         <div class="fcard kpi"><div class="l">Liabilities</div><div class="v">${money(pos.liabilities)}</div><div class="d">cards and loans</div></div>
         <div class="fcard kpi"><div class="l">Net worth</div><div class="v">${money(pos.net_worth)}</div><div class="d">${pos.excluded_other_currency.length ? "excludes other-currency accounts: " + esc(pos.excluded_other_currency.join(", ")) : "accounts in " + esc(pos.currency)}</div>${estLine(pos, "net_worth")}</div>
       </div>
-      <div class="fin-grid fin-cols">${accs.map((a) => `<div class="fcard acc-card" style="${a.archived ? "opacity:.55" : ""}"><h3>${esc(a.type.replace("_", " "))}${a.archived ? ` <span class="chip">archived</span>` : ""}</h3><div><b>${esc(a.name)}</b></div><div class="bal ${a.balance_minor < 0 ? "neg" : ""}">${money(a.balance, false, a.currency)}</div>${(() => { const e = pos.converted_estimate; const r = e && e.available && e.accounts.find((x) => x.id === a.id); return r ? `<div class="muted small est">≈ ${money(r.converted, false, pos.currency)} (estimate)</div>` : ""; })()}<div class="muted small">opening ${money(a.opening_balance, false, a.currency)} on ${esc(a.opening_date)}</div><div class="fin-toolbar" style="margin:6px 0 0"><button type="button" data-edit="${esc(a.id)}">Edit</button><button type="button" data-rec="${esc(a.id)}">Check balance</button></div></div>`).join("") || `<div class="fcard">${emptyHtml("No accounts yet.")}</div>`}</div>`;
+      <div class="fin-grid fin-cols">${accs.map((a) => `<div class="fcard acc-card" style="${a.archived ? "opacity:.55" : ""}"><h3>${esc(a.type.replace("_", " "))}${a.archived ? ` <span class="chip">archived</span>` : ""}${state.primaryId === a.id ? ` <span class="tag good" title="Receives income and pays for spending when you do not name an account">primary</span>` : ""}</h3><div><b>${esc(a.name)}</b></div><div class="bal ${a.balance_minor < 0 ? "neg" : ""}">${money(a.balance, false, a.currency)}</div>${(() => { const e = pos.converted_estimate; const r = e && e.available && e.accounts.find((x) => x.id === a.id); return r ? `<div class="muted small est">≈ ${money(r.converted, false, pos.currency)} (estimate)</div>` : ""; })()}<div class="muted small">opening ${money(a.opening_balance, false, a.currency)} on ${esc(a.opening_date)}</div><div class="fin-toolbar" style="margin:6px 0 0"><button type="button" data-edit="${esc(a.id)}">Edit</button><button type="button" data-rec="${esc(a.id)}">Check balance</button>${!a.archived && state.primaryId !== a.id ? `<button type="button" data-primary="${esc(a.id)}">Make primary</button>` : ""}</div></div>`).join("") || `<div class="fcard">${emptyHtml("No accounts yet.")}</div>`}</div>`;
     root.querySelectorAll("[data-edit]").forEach((b) => (b.onclick = () => openAccountForm(accs.find((a) => a.id === b.dataset.edit))));
+    root.querySelectorAll("[data-primary]").forEach((b) => (b.onclick = async () => { try { await api(`/accounts/${b.dataset.primary}/primary`, {}); toast("Primary account set"); loadAccounts(); } catch (e) { fail(e); } }));
     root.querySelectorAll("[data-rec]").forEach((b) => (b.onclick = () => openReconcile(accs.find((a) => a.id === b.dataset.rec))));
   }
 

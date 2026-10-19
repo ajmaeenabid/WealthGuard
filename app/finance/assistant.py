@@ -615,7 +615,10 @@ def _next_step(user: str, draft: dict, accounts: list, lang: str) -> dict:
     if not draft.get("account_id"):
         match, cands = _match_account(accounts, draft.get("account_hint"), draft.get("payment_method"))
         same_cur = [a for a in accounts if a["currency"] == draft.get("currency")] if draft.get("currency") else []
-        if not match and not cands and not draft.get("account_hint") and len(same_cur) == 1 and len(accounts) > 1:
+        prim = books.primary_account(user) if draft["type"] != "transfer" else None
+        if not match and not cands and not draft.get("account_hint") and prim and any(a["id"] == prim["id"] for a in accounts):
+            match = next(a for a in accounts if a["id"] == prim["id"])       # no account named: money goes to / comes from the person's primary account
+        elif not match and not cands and not draft.get("account_hint") and len(same_cur) == 1 and len(accounts) > 1:
             match = same_cur[0]                          # "10 taka" and exactly one taka account: that is the account, no conversion needed
         if match:
             draft["account_id"] = match["id"]

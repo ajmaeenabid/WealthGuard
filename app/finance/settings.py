@@ -16,7 +16,7 @@ def get(user: str) -> dict:
     return {"base_currency": books.base_currency(user), "ai_reports": bool(r["ai_reports"]), "assistant_lang": r["assistant_lang"],
             "ask_adjustments": r["ask_adjustments"], "voice_replies": bool(r["voice_replies"]), "history_days": r["history_days"],
             "ui_lang": r["ui_lang"], "jurisdiction": r["jurisdiction"], "voice_enabled": bool(r["voice_enabled"]), "speech_lang": r["speech_lang"],
-            "large_text": bool(r["large_text"]), "currency_chosen": books.currency_chosen(user), "currencies": [{"code": c, "symbol": money.SYMBOLS[c], "name": money.CURRENCY_NAMES[c]} for c in money.CURRENCIES], "jurisdiction_config": jurisdictions.summary(r["jurisdiction"]),
+            "large_text": bool(r["large_text"]), "currency_chosen": books.currency_chosen(user), "primary_account_id": (books.primary_account(user) or {}).get("id"), "currencies": [{"code": c, "symbol": money.SYMBOLS[c], "name": money.CURRENCY_NAMES[c]} for c in money.CURRENCIES], "jurisdiction_config": jurisdictions.summary(r["jurisdiction"]),
             "options": {"assistant_lang": list(LANGS), "ask_adjustments": list(ADJUSTMENT_POLICIES), "history_days": list(HISTORY_RANGE), "ui_lang": list(UI_LANGS), "speech_lang": list(SPEECH_LANGS),
                                                                  "jurisdiction": jurisdictions.codes()}}
 
@@ -60,6 +60,8 @@ def update(user: str, patch: dict) -> dict:
             raise FinanceError(str(e))
         jur_changed = new_j != cur["jurisdiction"]
         out["jurisdiction"] = new_j
+    if "primary_account_id" in patch:
+        books.set_primary_account(user, patch["primary_account_id"] or None)
     if "base_currency" in patch and (not cur["currency_chosen"] or books.valid_currency(patch["base_currency"]) != cur["base_currency"]):
         books.set_base_currency(user, patch["base_currency"])                  # allowed any time: records are untouched and never converted
     out.setdefault("ui_lang", cur["ui_lang"]); out.setdefault("speech_lang", cur["speech_lang"]); out.setdefault("jurisdiction", cur["jurisdiction"])
