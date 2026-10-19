@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Optional
 
-from app.finance import books, money, taxonomy
+from app.finance import books, money
 from app.finance.books import FinanceError
 
 SAVINGS_TYPES = {"savings", "investment"}
@@ -211,7 +211,6 @@ def insights(user: str, start: date, end: date, cur: Optional[dict] = None, prev
                                     "A sharp rise is worth checking in case it is a one-off rather than a new habit.",
                                     f"Review this period's {c['category']} purchases and mark the one-offs as such.", inc // 2,
                                     ["Assumes about half of the increase could be avoided."], "attention"))
-    amounts = sorted(cur["daily"], key=lambda d: d["minor"])
     # small purchases that add up
     c = books.db.connect()
     try:

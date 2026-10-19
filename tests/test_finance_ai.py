@@ -1,6 +1,4 @@
 """The Groq client: structured output, retries with backoff, Retry-After, 429/401/timeout handling, pacing, usage and cost."""
-import json
-
 import pytest
 
 from app import db

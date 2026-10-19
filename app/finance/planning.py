@@ -18,6 +18,10 @@ def _one(sql, params=()):
     return books._one(sql, params)
 
 
+def _days(n: int) -> str:
+    return f"{n} day" + ("" if n == 1 else "s")
+
+
 def _q(sql, params=()):
     return books._q(sql, params)
 
@@ -141,7 +145,6 @@ def delete_budget(user: str, bid: str) -> dict:
 # ============================================================================================== goals
 def _goal_out(r) -> dict:
     user = r["username"]
-    base = books.base_currency(user)
     c = _one("SELECT COALESCE(SUM(final_minor),0) AS n FROM fin_transactions WHERE username=? AND deleted_at IS NULL AND type='transfer' AND goal_id=? AND ts<=?",
              (user, r["id"], money.iso(money.now())))["n"]
     saved = r["saved_minor"] + c
@@ -410,7 +413,7 @@ def alerts(user: str) -> list[dict]:
                         "body": f"{money.fmt(b['spent_minor'], b['currency'])} spent of {money.fmt(money.to_minor(b['limit']), b['currency'])}.", "ref": b["id"]})
         elif b["status"] == "warning":
             out.append({"kind": "budget_warning", "severity": "medium", "title": f"{b['name']} is at {round(b['utilization'] * 100)}%",
-                        "body": f"{b['remaining']} {b['currency']} left with {b['days_left']} days to go.", "ref": b["id"]})
+                        "body": f"{b['remaining']} {b['currency']} left with {_days(b['days_left'])} to go.", "ref": b["id"]})
         elif b["projected_over"]:
             out.append({"kind": "budget_projected", "severity": "low", "title": f"{b['name']} may run over",
                         "body": f"At the current pace you would spend about {b['projected_total']} {b['currency']} against a limit of {b['limit']}.", "ref": b["id"]})
@@ -418,7 +421,7 @@ def alerts(user: str) -> list[dict]:
         if o["status"] == "overdue":
             out.append({"kind": "bill_overdue", "severity": "high", "title": f"{o['name']} is overdue", "body": f"{o['amount']} {o['currency']} was due {o['next_due']}.", "ref": o["id"]})
         elif o["status"] == "due":
-            out.append({"kind": "bill_due", "severity": "medium", "title": f"{o['name']} is due soon", "body": f"{o['amount']} {o['currency']} due {o['next_due']} (in {o['days_until_due']} days).", "ref": o["id"]})
+            out.append({"kind": "bill_due", "severity": "medium", "title": f"{o['name']} is due soon", "body": f"{o['amount']} {o['currency']} due {o['next_due']} (in {_days(o['days_until_due'])}).", "ref": o["id"]})
     for g in list_goals(user):
         if g["status"] == "active" and g.get("on_track") is False:
             out.append({"kind": "goal_off_track", "severity": "low", "title": f"{g['name']} is behind schedule",

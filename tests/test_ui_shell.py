@@ -36,7 +36,7 @@ def test_every_feature_has_one_sidebar_button_and_one_card_in_the_drawer():
     for cid in CARDS:
         assert drawer.count(f'<div class="card" id="{cid}"') == 1, cid
         assert HTML.count(f'id="{cid}"') == 1
-    for b in re.findall(r"<button[^>]*class=\"nav\"[^>]*>", HTML):
+    for b in re.findall(r"<button[^>]*class=\"nav\"[^>]*data-panel[^>]*>", HTML):          # drawer navigation; the money tabs use data-tab
         assert 'aria-controls="' in b and 'aria-pressed="false"' in b
 
 
@@ -45,7 +45,7 @@ def test_the_advice_flow_is_a_five_step_thread_and_the_tools_are_grouped_apart()
     assert flow.count('class="node"') == 5 and flow.count('class="nav"') == 5
     for cid in ["profileCard", "allocCard", "compCard", "stressCard", "approvalCard"]:
         assert f'data-panel="{cid}"' in flow
-    assert HTML.count('class="group-label"') == 3
+    assert HTML.count('class="group-label"') == 4          # advice flow, insights, trust and evidence, and the My money group
 
 
 def test_the_composer_is_a_growing_textarea_with_send_on_one_side_and_voice_on_the_other():

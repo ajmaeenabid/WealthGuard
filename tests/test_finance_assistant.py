@@ -364,3 +364,88 @@ def test_pending_state_is_in_the_database_not_in_model_memory(cash):
     say("I spent 300 on a taxi")
     r = books._one("SELECT state, pending, draft FROM fin_sessions WHERE username=?", (U,))
     assert r["state"] == "awaiting_clarification" and '"awaiting": "date"' in r["pending"] and '"amount": "300"' in r["draft"]
+
+
+# ============================================================================================== account safety (found in the browser)
+def test_yes_or_an_unknown_name_never_creates_an_account_when_the_user_already_has_some(cash):
+    books.create_account(U, "bKash", "wallet", "1000", opening_date=(money.today() - timedelta(days=30)).isoformat())
+    r = say("I spent 120 on tea today")
+    assert r["awaiting"] == "account"
+    r = say("yes")                                                           # not an account name: ask again
+    assert r["awaiting"] == "account" and "new_account" not in assistant.open_session(U)["draft"] and count() == 0
+    r = say("Dutch Bangla")
+    assert r["awaiting"] == "account" and "could not find an account called" in r["reply"] and "create Dutch Bangla" in r["reply"]
+    assert "new_account" not in assistant.open_session(U)["draft"]
+    r = say("create Dutch Bangla")
+    assert r["awaiting"] == "confirm" and "I will also create the account Dutch Bangla" in r["reply"] and len(books.list_accounts(U)) == 2
+    say("yes")
+    assert {a["name"] for a in books.list_accounts(U)} == {"Cash", "bKash", "Dutch Bangla"}
+
+
+def test_a_payment_method_the_user_does_not_have_is_asked_about_not_invented(cash):
+    books.create_account(U, "bKash", "wallet", "1000")
+    r = say("spent 90 on a snack today using nagad")
+    assert r["awaiting"] == "account" and "could not find an account called \"nagad\"" in r["reply"] and len(books.list_accounts(U)) == 2
+
+
+def test_bangla_conversations_get_a_bangla_summary(cash):
+    r = say("আজ ৮৫০ টাকা বাজার করলাম, ৫০ টাকা ছাড় ছিল, ছাড়ের আগে")
+    assert r["awaiting"] == "tax"
+    r = say("না")
+    assert r["awaiting"] == "confirm" and "আমি এটা লিখে রাখব" in r["reply"] and "আসল ৳850.00" in r["reply"] and "ছাড় ৳50.00" in r["reply"]
+    assert "Here is what" not in r["reply"]
+
+
+def test_day_counts_are_grammatical(cash):
+    from app.finance import planning
+    planning.create_obligation(U, {"name": "Wifi", "amount": "500", "next_due": (money.today() + timedelta(days=1)).isoformat(), "reminder_days": 3})
+    assert any("in 1 day)" in a["body"] for a in planning.alerts(U))
+
+
+# ============================================================================================== found by the live model run
+def test_short_answers_never_call_the_model_but_a_first_message_does(cash, live):
+    calls = live(fake_turn(type="expense", amount="850", date=TODAY, merchant="Shwapno", category="food", discount="50"))
+    say("I spent 850 at Shwapno today with a 50 taka discount")              # free text: the model reads it
+    assert len(calls) == 1
+    for reply in ("Before the discount", "no", "yes"):
+        say(reply)                                                           # plain answers: rules only
+    assert len(calls) == 1
+
+
+def test_the_model_cannot_decide_that_an_amount_was_before_or_after_a_discount(cash, live):
+    live(fake_turn(type="expense", amount="850", date=TODAY, merchant="Shwapno", category="food", discount="50", amount_basis="final"))
+    r = say("I spent 850 at Shwapno today with a 50 taka discount")
+    assert r["awaiting"] == "amount_basis"                                   # the person never said which, so the assistant asks
+
+
+def test_a_message_about_a_different_purchase_starts_a_fresh_draft(cash):
+    books.create_account(U, "bKash", "wallet", "100", opening_date=(money.today() - timedelta(days=30)).isoformat())
+    say("I spent 300 on a rickshaw today")                                  # account question pending
+    r = say("Received 30000 taka salary yesterday")
+    assert r["awaiting"] == "account" and "come into" in r["reply"] and "pay from" not in r["reply"]
+    d = assistant.open_session(U)["draft"]
+    assert d["amount"] == "30000" and d["type"] == "income" and d["category"] == "salary" and "merchant" not in d
+    assert count() == 0
+
+
+def test_a_whole_sentence_is_not_taken_as_an_account_name(cash):
+    books.create_account(U, "bKash", "wallet", "100", opening_date=(money.today() - timedelta(days=30)).isoformat())
+    say("I spent 850 taka at Shwapno today")
+    r = say("It was a mistake, forget the account for now")
+    assert "new_account" not in assistant.open_session(U)["draft"] and r["awaiting"] in ("account", "confirm")
+    assert len(books.list_accounts(U)) == 2
+
+
+def test_an_entry_started_by_voice_stays_a_voice_entry_when_confirmed_by_typing(cash):
+    say("spent 90 on tea today using cash", source="voice")
+    assert say("yes")["transaction"]["source"] == "voice"                      # confirmed by text, but the person spoke the details
+    say("spent 50 on a snack today using cash")
+    assert say("yes")["transaction"]["source"] == "assistant"
+
+
+def test_a_short_english_answer_inside_a_bangla_conversation_keeps_the_conversation_in_bangla(cash):
+    books.create_account(U, "bKash", "wallet", "100", opening_date=(money.today() - timedelta(days=30)).isoformat())
+    assert say("আজ ৮৫০ টাকা বাজার করলাম")["language"] == "bn"
+    r = say("Cash")
+    assert r["language"] == "bn" and "আমি এটা লিখে রাখব" in r["reply"]
+    assert say("Thanks, please record my salary of 25000 today")["language"] == "en"           # a new full English sentence switches back

@@ -5,7 +5,9 @@ Every row belongs to a username; every query in the services filters on it.
 """
 SQL = """
 CREATE TABLE IF NOT EXISTS fin_settings (
-  username TEXT PRIMARY KEY, base_currency TEXT NOT NULL DEFAULT 'BDT', created TEXT NOT NULL);
+  username TEXT PRIMARY KEY, base_currency TEXT NOT NULL DEFAULT 'BDT', created TEXT NOT NULL,
+  ai_reports INTEGER NOT NULL DEFAULT 1, assistant_lang TEXT NOT NULL DEFAULT 'auto',
+  ask_adjustments TEXT NOT NULL DEFAULT 'auto', voice_replies INTEGER NOT NULL DEFAULT 0, history_days INTEGER NOT NULL DEFAULT 90);
 
 CREATE TABLE IF NOT EXISTS fin_accounts (
   id TEXT PRIMARY KEY, username TEXT NOT NULL, name TEXT NOT NULL,

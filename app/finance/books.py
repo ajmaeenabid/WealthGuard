@@ -12,7 +12,6 @@ and paying the card is a transfer from a bank account, so nothing is counted twi
 import json
 import sqlite3
 import uuid
-from datetime import date
 from typing import Optional
 
 from app import db, store
@@ -210,7 +209,8 @@ def _tx_out(r, items: Optional[list] = None) -> dict:
          "essential": None if r["essential"] is None else bool(r["essential"]), "recurring": bool(r["recurring"]),
          "obligation_id": r["obligation_id"], "goal_id": r["goal_id"], "refund_of": r["refund_of"],
          "tags": json.loads(r["tags"] or "[]"), "note": r["note"], "receipt_ref": r["receipt_ref"], "source": r["source"],
-         "confidence": r["confidence"], "confirmed": bool(r["confirmed"]), "created": r["created"], "updated": r["updated"]}
+         "confidence": r["confidence"], "confirmed": bool(r["confirmed"]), "created": r["created"], "updated": r["updated"],
+         "scheduled": r["ts"] > money.iso(money.now())}      # dated in the future: planned, not yet part of any balance or total
     if items is not None:
         d["items"] = items
     return d

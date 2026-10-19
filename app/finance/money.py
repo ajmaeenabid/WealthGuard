@@ -1,5 +1,4 @@
 """Decimal-safe money. Amounts are integer minor units (1/100) in storage and Decimal strings at the API."""
-import math
 from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Optional

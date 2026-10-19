@@ -14,10 +14,10 @@ import threading
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict
 
 from app import store
-from app.finance import ai, analytics, books, money, planning, rules, taxonomy
+from app.finance import ai, analytics, books, money, planning, privacy, rules, settings, taxonomy
 from app.finance.books import FinanceError, new_id
 from app.security import guard
 
@@ -142,6 +142,9 @@ BN = {
     "ask_date": "এটা কবে হয়েছিল — আজ, গতকাল, নাকি অন্য কোনো তারিখ?",
     "ask_account": "কোন অ্যাকাউন্ট থেকে দিয়েছেন? ({options})",
     "ask_account_none": "আপনার কোনো অ্যাকাউন্ট নেই। কোন অ্যাকাউন্ট থেকে দিয়েছেন — যেমন নগদ টাকা, বিকাশ, না ব্যাংক?",
+    "ask_account_miss": "\"{name}\" নামে কোনো অ্যাকাউন্ট পাইনি। কোনটি ব্যবহার করেছেন? ({options}) নতুন খুলতে বলুন \"create {name}\"।",
+    "ask_account_in": "টাকাটা কোন অ্যাকাউন্টে এসেছে? ({options})",
+    "ask_adjustments": "{amount} কি আপনার পরিশোধ করা চূড়ান্ত অঙ্ক, নাকি কোনো ছাড়, ভ্যাট বা সার্ভিস চার্জ ছিল?",
     "ask_to_account": "কোন অ্যাকাউন্টে গেছে? ({options})",
     "ask_category": "এটা কোন ক্যাটাগরিতে রাখব? ({options})",
     "saved": "সংরক্ষণ হয়েছে। আসল অঙ্ক {gross}, ছাড় {discount}, চূড়ান্ত {final}।",
@@ -161,6 +164,9 @@ EN = {
     "ask_date": "When did this happen: today, yesterday, or another date?",
     "ask_account": "Which account did you pay from? ({options})",
     "ask_account_none": "You have no accounts yet. Which one did you use: cash, bKash, or a bank account? Say its name.",
+    "ask_account_miss": "I could not find an account called \"{name}\". Which one did you use? ({options}) Or say \"create {name}\" to add it.",
+    "ask_account_in": "Which account did the money come into? ({options})",
+    "ask_adjustments": "Was {amount} the final amount you paid, or was there a discount, VAT or service charge?",
     "ask_to_account": "Which account did the money go to? ({options})",
     "ask_category": "Which category should this go under? ({options})",
     "saved": "Saved. The original amount was {gross}, the discount was {discount}, and the final amount was {final}.",
@@ -235,10 +241,26 @@ def cancel_session(user: str, sid: Optional[str] = None) -> dict:
 
 
 # ============================================================================================== understanding
+def _rules_suffice(text: str, base: dict, sess: Optional[dict], today: date) -> bool:
+    """Short replies ("no", "before the discount", "bKash", "yes") are parsed exactly by rules: faster, free, and nothing to hallucinate."""
+    words = len(text.split())
+    if base["intent"] in ("cancel", "confirm", "deny") and words <= 4:
+        return True
+    if sess and words <= 6:
+        pend = sess.get("pending", {})
+        aw = pend.get("awaiting")
+        if aw and aw != "confirm" and rules.answer_slot(aw, text, today, pend.get("options")):
+            tx = base.get("transaction", {})
+            return not (tx.get("amount") and aw not in ("amount", "discount", "tax", "adjustments"))   # "spent 90 on tea" is a new thing, not an answer
+    return False
+
+
 def _understand(user: str, text: str, sess: Optional[dict], today: date, accounts: list, cid: str) -> tuple[dict, str]:
     """(parsed message, mode) where mode is 'ai', 'rules' or 'fallback' (AI was tried and failed, rules were used)."""
     base = rules.extract(text, today)
     if not ai.enabled():
+        return base, "rules"
+    if _rules_suffice(text, base, sess, today):                           # a plain answer to the question just asked needs no model call
         return base, "rules"
     try:
         res = ai.call(_prompt(text, today, accounts, sess["draft"] if sess else {}, (sess or {}).get("pending", {}).get("awaiting")), purpose="assistant_extract",
@@ -269,6 +291,8 @@ def _understand(user: str, text: str, sess: Optional[dict], today: date, account
             tx["account_hint" if k == "account_name" else "to_account_hint"] = tx.pop(k)
     q = {k: v for k, v in parsed["query"].items() if v is not None}
     # facts the rules are certain about fill gaps the model left (never override the model)
+    if "amount_basis" in tx and rules.amount_basis(text) is None:             # the model assumed it: only the person's own words count
+        tx.pop("amount_basis")
     for k, v in base.get("transaction", {}).items():
         tx.setdefault(k, v)
     out = {"intent": parsed["intent"], "transaction": tx}
@@ -312,7 +336,9 @@ def _match_account(accounts: list, hint: Optional[str], method: Optional[str]) -
         if method == "cash":
             cands = [a for a in accounts if a["type"] == "cash"]
         elif method in ("bkash", "nagad", "rocket", "mobile wallet"):
-            cands = [a for a in accounts if method in a["name"].lower()] or [a for a in accounts if a["type"] == "wallet"]
+            cands = [a for a in accounts if method in a["name"].lower()]          # a named wallet only matches its own account
+            if not cands and method == "mobile wallet":
+                cands = [a for a in accounts if a["type"] == "wallet"]
         elif method == "card":
             cands = [a for a in accounts if a["type"] == "credit_card"] or [a for a in accounts if a["type"] == "bank"]
         elif method == "bank":
@@ -372,7 +398,13 @@ def _next_step(user: str, draft: dict, accounts: list, lang: str) -> dict:
         return {"slot": "amount", "q": _t(lang, "ask_amount"), "options": []}
     amt = _money(money.to_minor(draft["amount"]), cur)
     mentioned = any(draft.get(k) for k in ("discount", "tax", "service_charge"))
+    policy = settings.get(user)["ask_adjustments"]
     if draft["type"] in ("expense", "refund"):
+        if policy == "always" and not draft.get("adjustments_asked") and not mentioned and not draft.get("amount_basis") and not draft.get("discount_mentioned")                 and not draft.get("tax_mentioned") and not draft.get("no_discount") and not draft.get("no_tax"):
+            draft["adjustments_asked"] = True               # asked once per draft
+            return {"slot": "adjustments", "q": _t(lang, "ask_adjustments", amount=amt), "options": ["final amount", "there was a discount", "no discount or VAT"]}
+        if policy == "never" and mentioned and not draft.get("amount_basis"):
+            draft["amount_basis"] = "final"                 # the person asked not to be questioned: the amount is what was paid
         if draft.get("discount_mentioned") and not draft.get("discount") and not draft.get("no_discount"):
             return {"slot": "discount", "q": _t(lang, "ask_discount"), "options": ["none"]}
         if draft.get("tax_mentioned") and not (draft.get("tax") or draft.get("service_charge")) and not draft.get("no_tax"):
@@ -393,12 +425,18 @@ def _next_step(user: str, draft: dict, accounts: list, lang: str) -> dict:
         elif len(accounts) == 1 and not draft.get("account_hint"):
             draft["account_id"] = accounts[0]["id"]
         elif draft.get("account_hint") and not cands and not draft.get("new_account"):
-            draft["new_account"] = _new_account_spec(draft["account_hint"])
+            if accounts:                                   # an account the user already has was not found: ask, never invent one
+                draft["account_miss"] = draft.pop("account_hint")
+            else:                                          # the very first account is created from what they say, after they confirm
+                draft["new_account"] = _new_account_spec(draft["account_hint"])
         elif not accounts and not draft.get("new_account"):
             return {"slot": "account", "q": _t(lang, "ask_account_none"), "options": ["Cash", "bKash", "Bank"]}
         if not draft.get("account_id") and not draft.get("new_account"):
             names = [a["name"] for a in (cands or accounts)]
-            return {"slot": "account", "q": _t(lang, "ask_account", options=", ".join(names)), "options": names}
+            if draft.get("account_miss"):
+                return {"slot": "account", "q": _t(lang, "ask_account_miss", name=draft["account_miss"], options=", ".join(names)), "options": names}
+            key = "ask_account_in" if draft["type"] in ("income", "refund") else "ask_account"
+            return {"slot": "account", "q": _t(lang, key, options=", ".join(names)), "options": names}
     if draft["type"] == "transfer" and not draft.get("to_account_id") and not draft.get("new_to_account"):
         pool = [a for a in accounts if a["id"] != draft.get("account_id")]
         match, cands = _match_account(pool, draft.get("to_account_hint"), None)
@@ -470,6 +508,8 @@ def _summary(user: str, draft: dict, accounts: list, lang: str) -> tuple[str, di
         parts.append(f"{'received into' if typ in ('income', 'refund') else 'paid from'} {acc}")
         if draft.get("category"):
             parts.append(f"category {draft['category']}" + (f" / {draft['subcategory']}" if draft.get("subcategory") else ""))
+    if lang == "bn":
+        return _summary_bn(draft, nums, names, cur), nums
     text = "Here is what I will record: " + ", ".join(parts) + "."
     if draft.get("note"):
         text += f" Note: {draft['note']}."
@@ -477,6 +517,46 @@ def _summary(user: str, draft: dict, accounts: list, lang: str) -> tuple[str, di
     if new:
         text += f" I will also create the account {', '.join(new)} with a starting balance of {_money(0, cur)} (you can set the real balance in Accounts)."
     return text + " " + _t(lang, "confirm_tail"), nums
+
+
+TYPE_BN = {"expense": "খরচ", "income": "আয়", "refund": "ফেরত", "transfer": "ট্রান্সফার", "adjustment": "সমন্বয়"}
+
+
+def _summary_bn(draft: dict, nums: dict, names: dict, cur: str) -> str:
+    """The same plain-language summary in Bangla, so a Bangla conversation never switches language at the moment that matters."""
+    typ = draft["type"]
+    head = f"{TYPE_BN[typ]} {_money(nums['final'], cur)}"
+    extra = []
+    if nums["discount"] or nums["tax"] or nums["service"]:
+        extra.append(f"আসল {_money(nums['gross'], cur)}")
+        if nums["discount"]:
+            extra.append(f"ছাড় {_money(nums['discount'], cur)}")
+        if nums["tax"]:
+            extra.append(f"ভ্যাট {_money(nums['tax'], cur)}")
+        if nums["service"]:
+            extra.append(f"সার্ভিস চার্জ {_money(nums['service'], cur)}")
+    parts = [head + (" (" + ", ".join(extra) + ")" if extra else "")]
+    if draft.get("merchant"):
+        parts.append(f"স্থান: {draft['merchant']}")
+    if draft.get("item_name"):
+        parts.append(f"বিবরণ: {draft['item_name']}")
+    parts.append(f"তারিখ: {draft['date']}")
+    if typ == "transfer":
+        src = names.get(draft.get("account_id")) or (draft.get("new_account") or {}).get("name")
+        dst = names.get(draft.get("to_account_id")) or (draft.get("new_to_account") or {}).get("name")
+        parts.append(f"{src} থেকে {dst}-এ")
+    else:
+        acc = names.get(draft.get("account_id")) or (draft.get("new_account") or {}).get("name")
+        parts.append(f"অ্যাকাউন্ট: {acc}")
+        if draft.get("category"):
+            parts.append(f"ক্যাটাগরি: {draft['category']}")
+    text = "আমি এটা লিখে রাখব: " + ", ".join(parts) + "।"
+    if draft.get("note"):
+        text += f" নোট: {draft['note']}।"
+    new = [s["name"] for s in (draft.get("new_account"), draft.get("new_to_account")) if s]
+    if new:
+        text += f" আমি {', '.join(new)} নামে নতুন অ্যাকাউন্টও খুলব (শুরুতে {_money(0, cur)}; আসল ব্যালান্স পরে অ্যাকাউন্টস পাতায় দিন)।"
+    return text + " " + BN["confirm_tail"]
 
 
 def _plain_numbers(draft: dict, cur: str) -> dict:
@@ -555,14 +635,14 @@ def _public(sess: Optional[dict], extra: Optional[dict] = None) -> dict:
     if sess:
         aw = sess["pending"].get("awaiting")
         out["question"] = {"slot": aw, "options": sess["pending"].get("options", [])} if aw and aw != "confirm" else None
-        out["draft"] = {k: v for k, v in sess["draft"].items() if k in ("type", "amount", "amount_basis", "discount", "tax", "service_charge", "date", "merchant", "item_name", "category", "subcategory", "payment_method", "note")}
+        out["draft"] = {k: v for k, v in sess["draft"].items() if k in ("type", "amount", "amount_basis", "discount", "tax", "service_charge", "date", "merchant", "item_name", "category", "subcategory", "payment_method", "note", "account_id", "to_account_id")}
         out["awaiting"] = aw
     return dict(out, **(extra or {}))
 
 
 def turn(user: str, text: str, request_id: str, *, source: str = "text") -> dict:
     """Handle one message. The same request_id returns the stored reply without doing anything twice."""
-    text = (text or "").strip()
+    text = privacy.redact((text or "").strip())            # card, account and phone numbers never reach the model or the stored history
     if not text:
         raise FinanceError("Say or type something first.")
     if len(text) > MAX_TEXT:
@@ -573,6 +653,7 @@ def turn(user: str, text: str, request_id: str, *, source: str = "text") -> dict
         cached = books._one("SELECT response FROM fin_requests WHERE username=? AND request_id=?", (user, request_id))
         if cached:
             return dict(json.loads(cached["response"]), replayed=True)
+        privacy.purge(user)                                 # retention: expired retry records and old finished conversations
         resp = _handle(user, text, request_id, source)
         store._write("INSERT OR REPLACE INTO fin_requests (username, request_id, response, created) VALUES (?,?,?,?)",
                      (user, request_id, json.dumps(resp, ensure_ascii=False, default=str), store.now()))
@@ -586,7 +667,13 @@ def _handle(user: str, text: str, request_id: str, source: str) -> dict:
         from app.security import audit
         audit.append("system", "injection_flagged", "T1", {"source": "money_assistant", "user": user})
     sess = open_session(user)
-    lang = "bn" if rules.is_bangla(text) else "en"
+    pref = settings.get(user)["assistant_lang"]
+    if pref in ("en", "bn"):
+        lang = pref
+    elif rules.is_bangla(text):
+        lang = "bn"
+    else:                                                  # a short English answer ("Cash") inside a Bangla conversation stays Bangla
+        lang = (sess["draft"].get("lang", "en") if sess and len(text.split()) <= 4 else "en")
     accounts = books.list_accounts(user)
     parsed, mode = _understand(user, text, sess, today, accounts, cid)
     intent = parsed["intent"]
@@ -617,11 +704,16 @@ def _handle(user: str, text: str, request_id: str, source: str) -> dict:
     elif sess and sess["intent"] == "create_transaction" and intent != "query" and not (intent in ("delete_transaction", "update_transaction") and not awaiting):
         slot_patch = rules.answer_slot(awaiting, text, today, pend.get("options")) if awaiting else {}
         draft = sess["draft"]
+        # a message about a different purchase starts a new draft instead of being mixed into the unfinished one
+        if (intent == "create_transaction" and tx.get("amount") and draft.get("amount") and tx["amount"] != draft["amount"]
+                and awaiting not in ("amount", "discount", "tax", "adjustments") and (tx.get("type") or tx.get("merchant") or tx.get("item_name"))):
+            return _handle_fresh(user, text, request_id, source, parsed, mode, lang, accounts, today)
         # a short answer to a question must not be re-read as a brand-new amount ("50" answering "how much was the discount?")
-        if awaiting in ("discount", "tax", "amount_basis", "adjustments", "date", "account", "to_account", "category", "type") and slot_patch:
-            _merge(draft, {k: v for k, v in tx.items() if k not in ("amount", "type")}, override=False)
-        else:
-            _merge(draft, tx, override=True)
+        numeric_slot = awaiting in ("discount", "tax", "amount_basis", "adjustments", "date", "account", "to_account", "category", "type") and bool(slot_patch)
+        _merge(draft, {k: v for k, v in tx.items() if not (numeric_slot and k in ("amount", "type"))}, override=True)
+        draft["lang"] = lang
+        if source == "voice":
+            draft["via_voice"] = True                      # any spoken part marks the whole entry as voice-created
         _apply_slot(draft, awaiting, slot_patch, accounts)
         reply, extra = _continue(user, sess, accounts, lang, source)
     elif sess and intent == "query":
@@ -641,21 +733,26 @@ def _apply_slot(draft: dict, slot: Optional[str], patch: dict, accounts: list) -
         _merge(draft, {k: v for k, v in patch.items() if k in FIELD_MAP})
     if slot == "adjustments":
         _merge(draft, patch)
-    if slot == "account":
-        name = patch.get("account", "")
-        match, _ = _match_account(accounts, name, taxonomy.payment_method_from(name))
+        if patch.get("adjustments_yes"):
+            draft["discount_mentioned"] = True              # "yes, there was one": the next question asks how much
+    if slot in ("account", "to_account"):
+        name = patch.get(slot, "").strip()
+        pool = accounts if slot == "account" else [a for a in accounts if a["id"] != draft.get("account_id")]
+        if not name or rules.YES.match(name) or rules.NO.match(name) or rules.CANCEL.match(name):
+            return                                          # "yes" / "no" is not an account name: the question is asked again
+        match, _ = _match_account(pool, name, taxonomy.payment_method_from(name) if slot == "account" else None)
+        wants_new = re.match(r"^(?:create|new|add)\s+(?:an?\s+|the\s+)?(?:account\s+)?(.{2,40})$", name, re.I)
+        id_key, new_key = ("account_id", "new_account") if slot == "account" else ("to_account_id", "new_to_account")
         if match:
-            draft["account_id"] = match["id"]
-        elif name:
-            draft["new_account"] = _new_account_spec(name)
-    if slot == "to_account":
-        name = patch.get("to_account", "")
-        pool = [a for a in accounts if a["id"] != draft.get("account_id")]
-        match, _ = _match_account(pool, name, None)
-        if match:
-            draft["to_account_id"] = match["id"]
-        elif name:
-            draft["new_to_account"] = _new_account_spec(name)
+            draft[id_key] = match["id"]
+            draft.pop("account_miss", None)
+        elif wants_new:
+            draft[new_key] = _new_account_spec(wants_new.group(1))
+            draft.pop("account_miss", None)
+        elif not accounts:
+            draft[new_key] = _new_account_spec(name)        # the first account: created only after the user confirms the summary
+        else:
+            draft["account_miss"] = name
     if slot == "tax" and patch.get("no_tax"):
         draft["no_tax"] = True
     if slot == "discount" and patch.get("no_discount"):
@@ -668,6 +765,9 @@ def _handle_fresh(user, text, request_id, source, parsed, mode, lang, accounts, 
     if intent == "create_transaction" or (intent in ("provide_info", "other") and tx.get("amount") and tx.get("type")):
         sess = _new_session(user, "create_transaction")
         _merge(sess["draft"], tx)
+        sess["draft"]["lang"] = lang
+        if source == "voice":
+            sess["draft"]["via_voice"] = True
         reply, extra = _continue(user, sess, accounts, lang, source)
         return _finish(user, sess, text, reply, extra, mode, cid, lang)
     if intent == "query":
@@ -721,7 +821,7 @@ def _commit(user: str, sess: dict, accounts: list, source: str, lang: str) -> tu
     _resolve_pending_accounts(user, draft)
     payload = _payload(user, draft, books.list_accounts(user))
     key = f"assist:{sess['id']}:{pend.get('version', 1)}"
-    txn = books.create_transaction(user, payload, source="voice" if source == "voice" else "assistant", idempotency_key=key)
+    txn = books.create_transaction(user, payload, source="voice" if (source == "voice" or draft.get("via_voice")) else "assistant", idempotency_key=key)
     sess["state"], sess["question"], sess["pending"] = "completed", None, {"last_txn": txn["id"]}
     _save(sess)
     cur = txn["currency"]
@@ -758,7 +858,7 @@ def _propose_change(user: str, sess: dict, intent: str, tx: dict, text: str) -> 
     if intent == "delete_transaction":
         action = {"kind": "delete", "id": target["id"]}
         q = f"Delete this transaction: {label}? Say yes to delete it, or no to keep it."
-        if re.search(r"(all|every|everything)", text.lower()):
+        if re.search(r"\b(all|every|everything)\b", text.lower()):
             q = "I can only remove one transaction at a time, never everything at once. " + q
     else:
         patch = {}

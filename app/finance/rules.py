@@ -312,6 +312,8 @@ def answer_slot(slot: str, text: str, today: date, options: Optional[list] = Non
     if slot == "adjustments":                                              # "any discount, VAT or service charge?"
         if NO.match(t) or re.search(r"\b(no|none|nothing)\b|না", low):
             return {"no_discount": True, "no_tax": True}
+        if re.search(r"\bfinal\b|\bpaid\b|\bthat'?s all\b|\bjust that\b|ছাড় নেই", low) and not amounts(t).get("discount"):
+            return {"no_discount": True, "no_tax": True, "amount_basis": "final"}
         a = amounts(t)
         out = {k: v for k, v in a.items() if k != "amount"}
         if a.get("amount") and not out.get("discount") and re.search(r"discount|ছাড়", low):
@@ -355,7 +357,7 @@ def answer_slot(slot: str, text: str, today: date, options: Optional[list] = Non
         if slot == "type":
             typ = classify_type(t) or next((x for x in ("expense", "income", "transfer", "refund") if x in low), None)
             return {"type": typ} if typ else {}
-        return {"account": _clean(t)} if t and len(t) <= 40 else {}
+        return {"account": _clean(t)} if t and len(t) <= 40 and len(t.split()) <= 4 and not re.search(r"\d", t) else {}
     if slot == "note":
         if SKIP.match(t):
             return {"note_done": True}

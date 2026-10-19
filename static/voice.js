@@ -65,7 +65,7 @@
     async function sendToWhisper(blob) {
       if (blob.size < 1000) { say("Nothing was recorded."); return; }
       say("Transcribing with Whisper...");
-      const q = new URLSearchParams({ language: lang().startsWith("zh") ? "zh" : "en" });
+      const q = new URLSearchParams({ language: lang().startsWith("zh") ? "zh" : lang().startsWith("bn") ? "bn" : "en" });
       const cid = getClientId ? getClientId() : null;
       if (cid) q.set("client_id", cid);
       try {
@@ -154,6 +154,7 @@
     } catch (e) { /* offline: browser engine only */ }
     attach("micBtn", "chatInput", "voiceNote");
     attach("ledgerMic", "ledgerCmd", "ledgerNote");
+    attach("finMic", "finInput", "finNote");
     const sel = $("voiceEngine");
     if (sel) {
       const opt = [...sel.options].find((o) => o.value === "whisper");
@@ -172,6 +173,14 @@
     };
   }
 
-  window.WGVoice = { speak, attach, tidy, setClientIdGetter: (fn) => { getClientId = fn; } };
+  // the Money settings can switch "read replies aloud" on or off for the whole page
+  function setSpeak(on) {
+    speakOn = !!on && !!synth;
+    const sb = $("speakBtn");
+    if (sb) { sb.setAttribute("aria-pressed", String(speakOn)); sb.title = speakOn ? "Reading replies aloud (click to stop)" : "Read replies aloud"; }
+    if (!speakOn && synth) synth.cancel();
+  }
+
+  window.WGVoice = { speak, setSpeak, attach, tidy, setClientIdGetter: (fn) => { getClientId = fn; } };
   document.addEventListener("DOMContentLoaded", init);
 })();
