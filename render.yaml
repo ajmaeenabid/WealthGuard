@@ -7,7 +7,7 @@
 # Secrets are entered in the Render dashboard, never here.
 services:
   - type: web
-    name: wealthguard
+    name: wealthguard-ajmaeenabid
     runtime: python
     plan: free
     region: singapore
