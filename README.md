@@ -3,11 +3,46 @@
 2026 Shenzhen International FinTech Competition, International Track, Topic B (Wealth Advisory Agent).
 
 > **Educational demo with synthetic products. Not real financial advice.**
-> All data is synthetic: no real customers, products, money, or broker/bank APIs.
+> Advisor clients and products are synthetic: no real customers, products, money, or broker/bank APIs.
 
-An AI wealth-advisory agent that profiles a client, compares products, proposes an explainable allocation, and
-**cannot show or execute anything until an independent compliance layer approves it**. Every step is audited in a
-tamper-evident hash chain.
+WealthGuard has two parts that share one sign-in:
+
+- **Advisor** - an AI wealth-advisory agent that profiles a client, compares products and proposes an explainable allocation. It **cannot show or execute anything until an independent compliance layer approves it**, and every step is written to a tamper-evident hash-chained audit log.
+- **My money** - a personal-finance module (accounts, income, expenses, transfers, budgets, reports) with a chat-style **money assistant**. The assistant only *reads* your message into a structured guess; the backend decides what to ask next and nothing is saved until you confirm.
+
+Stack: FastAPI, SQLite, pydantic v2, vanilla JS (no frontend build step), Chart.js from a CDN.
+
+## Features
+
+### Advisor
+- Risk profile (tolerance vs capacity, the lower of the two wins), allocation with a rationale per line, product comparison.
+- Compliance layer (rules R1-R9 plus an LLM second opinion), stress tests (including real historical episodes), approval queue for order tickets, forbidden actions refused and logged.
+- Insights: purchase history and behaviour, history replay, regulation search. Trust and evidence: advice receipt, red-team arena, self-inspection report, document upload (prompt-injection guard), audit log.
+- Answers are grounded in the signed-in user's own database rows, not in model memory. A per-user context summary is kept in the database and refreshed from what the user tells the app.
+
+### My money
+- Accounts, income, expenses, transfers, budgets, goals, reports and charts. Money is stored as integer minor units and the API uses decimal strings (floats are rejected).
+- Money assistant in English, Chinese and Bangla. Rules-based extraction runs first; the model (Groq `openai/gpt-oss-20b` with a strict JSON schema) only fills gaps. A draft is shown, you confirm, then it is saved. Requests are idempotent (request id), and each user has a lock against double submits.
+- Chat conversations can be renamed; names are stored in the database.
+- A **primary account** can be chosen as the default for new entries.
+
+### Currency and exchange rates
+- Three currencies: **USD, CNY, BDT**. The display currency is a setting; choosing a **region** (Bangladesh, China) sets the matching currency.
+- Real conversion, not relabelling: USD is the pivot. Rates come from two keyless providers (open.er-api.com as primary, a jsDelivr currency dataset as cross-check). If they disagree by more than 3% the conversion is refused. Rates are cached in the database with their source, provider date and fetch time; stale rates are flagged and refused after 72 hours; no rate is ever invented.
+- Results are rounded to minor units (half up). The original amount and the rate used are stored next to the converted figure, and a quote pinned to a draft is re-checked if you confirm more than 30 minutes later.
+- Rates are indicative mid-market rates, not what a bank or exchange would give you.
+
+### Languages and jurisdictions
+- Interface and assistant: **English, Simplified Chinese (zh-CN) and Bangla (bn-BD)**; switchable on the sign-in page and inside the app.
+- Jurisdiction (Bangladesh or China) is a separate setting from the language, so a Bangla speaker in China still gets China rules and the other way round. Per-jurisdiction data is kept isolated.
+
+### Interface
+- Light theme (grey canvas, white cards, lime `#b3f948` accent) and dark theme (near-black with a green glow). Both come from shared design tokens in `static/tokens.css`, with automated contrast tests.
+- Thinking animation while the model works, token-by-token reply rendering, and markdown tables in answers.
+- Hard AI deadlines: if the provider does not answer in time the user sees a clear error instead of waiting, and the rules-based path takes over where it can.
+- Prompt and context **token budgets** (`app/finance/tokens.py`) truncate long history so inputs and outputs stay inside the model limits.
+- **Voice**: microphone fills the chat box (Whisper via Groq, local `faster-whisper`, or the browser speech API), read-aloud for replies, and a turn-based voice mode. Spoken text takes the same guarded path as typed text and voice can never confirm an action.
+- Admin portal, reports, per-user memory, and a sign-in page with English/Chinese/Bangla and theme switches.
 
 ## Install
 
@@ -24,14 +59,14 @@ Python 3.11+.
 ```bash
 # offline / deterministic demo (no network or key needed)
 set USE_MOCK_LLM=1             # PowerShell: $env:USE_MOCK_LLM="1";  bash: export USE_MOCK_LLM=1
-python scripts/demo_seed.py    # resets the DB (optional)
+python scripts/demo_seed.py    # resets the DB and creates the demo users (optional)
 python -m uvicorn app.main:app --port 8000
 # open http://localhost:8000
 ```
 
-Live LLM: copy `.env.example` to `.env`, put your key in it, save, and start the server. `.env` is read every
-time the app starts, so it is permanent; it is git-ignored and excluded from Vercel uploads, so the key never leaves
-your machine. Real environment variables, if set, override the file.
+### Configuration (`.env`)
+
+Copy `.env.example` to `.env` and fill in the values you need. **`.env` is git-ignored and must never be committed**; only the placeholder file `.env.example` is in the repository. Real environment variables override the file. Minimum for live AI:
 
 ```
 LLM_PROVIDER=groq
@@ -39,30 +74,42 @@ GROQ_API_KEY=your_key_here
 GROQ_MODEL=openai/gpt-oss-20b
 ```
 
-(or `LLM_PROVIDER=anthropic` with `ANTHROPIC_API_KEY` and optional `ANTHROPIC_MODEL`, default `claude-sonnet-5-5`).
-The terminal prints `WealthGuard LLM: groq (live), model ...` at startup, and the page badge shows "live LLM"; if it
-says mock, the key was not found or `USE_MOCK_LLM=1` is set. Leave `USE_MOCK_LLM` unset. If `LLM_PROVIDER` is unset, Anthropic is used when its key exists, else Groq. Tests ignore `.env` and always use the mock. The key is only ever read from the environment. If the network or key fails mid-demo, the app
-falls back to the mock automatically and logs `llm_fallback_to_mock`. `WEALTHGUARD_DB` overrides the SQLite path.
+(or `LLM_PROVIDER=anthropic` with `ANTHROPIC_API_KEY`). The terminal prints which provider is active at startup. If the key or network fails, the advisor falls back to the deterministic mock and logs `llm_fallback_to_mock`.
 
-## Interface
+Other settings in `.env.example` cover: the money-assistant model and limits (`FINANCE_MODEL`, `FIN_AI_*`), AI deadlines, token budgets, exchange rates (`FX_PROVIDER`, `FX_CACHE_HOURS`, `FX_MAX_STALE_HOURS`, `FX_TIMEOUT`), Whisper (`WHISPER_*`), Qdrant (`QDRANT_*`), `RECEIPT_KEY`, `WEALTHGUARD_DB` and `FIN_TZ`.
 
-The page is a chat with a Claude-style composer (growing text box, send on the right, a separate voice dock on the left with microphone,
-read-aloud and voice settings; the profile-question answers appear as larger pills above it and the suggestions as small ones below).
-Everything else lives in the **sidebar**: the five *Advice flow* steps (risk profile, allocation, compliance, stress test, approvals) are drawn
-as a thread that fills as each step completes, followed by *Insights* (purchase history, history replay, regulation search) and *Trust and
-evidence* (receipt, red-team arena, self-inspection, document upload, audit log). Clicking an item slides its panel in from the right (Esc or the
-close button hides it); a brass dot on an item means its content changed while closed, and a toast offers to open the allocation when compliance
-approves it. English/Chinese and a dark/light theme are in the top bar; the layout adapts down to phones.
+Check your setup without starting the server:
 
-## Voice and language
+```bash
+python scripts/check_env.py
+```
 
-- **Mic** fills the chat box from speech; you press Send, so spoken and typed text take the same guarded path. **Read aloud** speaks replies.
-  Two engines, chosen by the *Voice* selector (default Auto): **Whisper** records with the browser (MediaRecorder) and uploads the clip to `/api/transcribe`, which runs Whisper (Groq-hosted `whisper-large-v3-turbo` when `GROQ_API_KEY` is set and the app is live, or `WHISPER_PROVIDER=local` with `pip install faster-whisper`); it works in any modern browser, in English and Chinese, with a vocabulary hint so "NovaYield", "CSRC" and "yuan" are spelled correctly, and silence gives no text. **Browser** uses the Web Speech API (Chrome/Edge). With Whisper the audio clip is sent to the transcription service (Groq); with Browser the vendor may process it. In mock mode (`USE_MOCK_LLM=1`) Whisper is off and the browser engine is used. `python scripts/check_whisper.py` verifies it end to end.
-- **EN / 中文** toggle: fixed UI labels come from a dictionary; engine text (rationales, compliance details) is translated by `/api/translate`. Chinese is also accepted in chat (answers, injection and R7 checks). With `USE_MOCK_LLM=1` there is no translator, so dynamic text stays English (never a guess); use a live LLM to demo it.
+It reports unknown, misspelled or malformed variables (values are never printed). Set `WEALTHGUARD_STRICT_CONFIG=1` to make the app refuse to start on a bad configuration.
 
-## Purchase history and behaviour
+## Test
 
-A ledger of planned, bought and cancelled purchases. Type or speak a command (English or Chinese): "I bought headphones for 300", "plan to buy a laptop 6000", "I didn't buy the laptop", "change headphones to 250", "delete lunch", 买了耳机花了300元, 取消耳机. A command only creates a **proposal**; nothing changes until you click Confirm (voice can never confirm). The form buttons (Mark bought, Cancel item, Delete) are your own clicks. Totals, category/month sums and the guidance are computed by code from your entries, never by the model. Heavy or impulse-driven spending lowers risk *capacity* by at most 10 points; it can never raise risk. Ask the chat "How is my spending?" for a summary. "Load sample history" fills synthetic data for the demo.
+```bash
+pytest
+```
+
+The suite runs on the mock LLM and with exchange rates switched off by default (tests that need conversion use fixtures). It covers the advisor pipeline, compliance rules, audit chain, money handling, FX, the assistant in three languages, jurisdiction isolation, token budgets, deadlines, markdown rendering, voice mode, design tokens and more.
+
+An opt-in browser test drives headless Edge/Chrome through the My money flows (slow):
+
+```bash
+RUN_E2E=1 pytest tests/test_e2e_browser.py     # PowerShell: $env:RUN_E2E="1"; pytest tests/test_e2e_browser.py
+```
+
+## Known limits
+
+- Only USD, CNY and BDT are supported.
+- Exchange rates are indicative; budget and report charts do not blend amounts in other currencies.
+- The Bangla wording has not had a native-speaker review.
+- Voice mode is turn-based and has not been tested with real Whisper on Bengali speech.
+- Live Groq extraction of the assistant's `currency` field was tested only against a stub, not against the live model.
+- The advisor uses synthetic products and clients; it is a demonstration, not advice.
+- Dataset licences (below) should be checked again before this repository is ever made public.
+- See `docs/known_risks.md` for the longer list.
 
 ## Real-world data
 
@@ -75,85 +122,24 @@ Clients and products stay synthetic. Real public data calibrates and grounds the
 | China CPI inflation, deposit and lending rate, GDP growth | [World Bank Open Data](https://data.worldbank.org/country/china) | CC BY 4.0 | China-specific context |
 | Suitability Management Measures, 43 articles (Chinese original) | [State Council Gazette](https://www.gov.cn/gongbao/content/2023/content_5742209.htm) (CSRC) | PRC regulations are not copyrightable (Copyright Law Art. 5) | grounding compliance explanations |
 
+Exchange rates are fetched at runtime from open.er-api.com and a jsDelivr-hosted currency dataset; check their terms for your use.
+
 ## Knowledge base (vector database)
 
-The real CSRC *Suitability Management Measures* (43 articles, Chinese original), our data sources, the historical stress
-episodes, our compliance rules and 150 real **history cards** (one per US year 1928-2025 with returns and inflation, one per
-China year 1985-2025 with inflation, deposit/lending rates and GDP growth, and decade averages, generated from the real CSVs) are indexed in a small vector database on SQLite + numpy (`app/vectorstore.py`,
-`app/knowledge.py`): hashing TF-IDF vectors (Chinese character n-grams, English words), cosine search, no network or
-model download, so mock mode, tests and Vercel behave the same. English questions reach the Chinese text through a small
-EN->ZH glossary. Use the **Regulation & data search** card, or ask the chat ("What does the CSRC regulation say about
-disclosing principal loss?"); the compliance panel also shows the **regulatory basis** (article) under each rule.
-The index is rebuilt automatically when the data changes.
+The CSRC *Suitability Management Measures*, the data sources, historical stress episodes, compliance rules and 150 history cards (US years 1928-2025, China years 1985-2025, decade averages) are indexed in a small vector database on SQLite + numpy (`app/vectorstore.py`, `app/knowledge.py`): hashing TF-IDF vectors, cosine search, no network or model download. English questions reach the Chinese text through a small EN->ZH glossary. Retrieval is lexical, not deep semantic search.
 
-**Qdrant Cloud (optional, real vector database).** Create a free cluster at [cloud.qdrant.io](https://cloud.qdrant.io), copy
-its https URL (REST port 6333) and an API key into `.env`:
+**Qdrant Cloud (optional).** Put `QDRANT_URL` (https, REST port 6333) and `QDRANT_API_KEY` in `.env` and the app mirrors the index to Qdrant; `python scripts/check_qdrant.py` verifies it. If the service is unreachable the app silently uses the local index.
 
-```
-QDRANT_URL=https://xxxx.region.cloud.qdrant.io:6333
-QDRANT_API_KEY=your_key_here
-```
+## Trust and evidence tools
 
-On start the app mirrors the 211 chunks to a collection named `wealthguard_kb_<index version>` and answers searches through
-Qdrant; the terminal prints `WealthGuard vector DB: qdrant`, `/api/health` shows `vector_db.backend`, and each search
-response says which backend answered. `python scripts/check_qdrant.py` verifies the setup (verified on a real Qdrant Cloud free cluster). If the service is unreachable,
-the key is wrong or the URL is not https, the app silently uses the local index (and retries after 60 s), so the demo never
-depends on it. On Vercel, set the same two variables in the project settings. The key is sent only as an `api-key` header.
- Lexical retrieval is not deep semantic search; see known risks.
+- **Click any number**: dotted numbers open the formula in words, each input with its source, and a fresh recomputation with a match flag.
+- **Advice receipt**: downloadable JSON sealed by a content hash and an HMAC checkpoint tied to the audit chain; verify offline with `python scripts/verify_receipt.py receipt.json`. Set `RECEIPT_KEY` so receipts stay verifiable across restarts.
+- **Replay**: relive a real episode (2008, dot-com, 2022, the 1970s, the Great Depression) month by month; behaviour can only make the profile more cautious.
+- **Counterfactuals**: "What would it take?" searches the changeable questionnaire answers for the smallest truthful change that would make a product eligible.
+- **Red-team arena**: 54 deterministic attacks plus benign controls against the live defences, no model called.
+- **Self-inspection report**: a report modelled on Article 30 of the CSRC Measures, generated from the audit log, in English or Chinese.
 
-## Replay history with your money (revealed risk)
-
-The **Replay** card lives through a real episode (2008, dot-com, 2022, the 1970s, the Great Depression) month by month with your approved
-allocation, or with a stock-market-only portfolio that tests your nerves, using the real S&P 500 monthly series and real annual bond, cash and
-gold returns. When the portfolio first falls 10%, 20% and 30% from its peak you choose to hold, sell some, sell everything or buy more. At the
-end you see what acting cost or saved against holding, and whether what you did at -20% was more cautious than the answer you gave in the
-questionnaire. If it was, **Apply to my profile** (an explicit click) replaces the answer with the more cautious one; a bolder reaction never
-changes anything, so behaviour can only make the profile *more* cautious (stated vs revealed risk, combined with the lower-of rule).
-
-## Click any number
-
-Dotted-underlined numbers (risk tolerance, capacity, bucket, expected return, volatility, the stress-test change, the goal probability, the
-historical share and the purchase-history total) open a panel with the **formula in words, every input with its source** (the client's answer,
-synthetic product assumptions with the file hash, or a real dataset with its license and SHA-256), and a **fresh recomputation** with a match
-flag. For historical stress scenarios the recomputation is independent: it re-reads the raw CSV with its own arithmetic. A stale or wrong
-displayed number shows as "does NOT match".
-
-## Verifiable advice receipt
-
-The **Advice receipt** card downloads a JSON receipt for the latest compliance-approved advice: the advice text and weights, the compliance
-result, the CSRC article behind each rule (with its text hash), the SHA-256 of every real dataset used, the client's audit entries with
-their chain hashes, and an anchor to the audit-chain head at issue, sealed by a content hash and an HMAC checkpoint. Anyone can run
-`python scripts/verify_receipt.py receipt.json` offline (content hash, entry hashes, dataset hashes); `--server URL` or the page's *Verify a
-receipt file* also checks that every entry is still in the live log, that the chain head recorded at issue is still intact (this catches later
-truncation or rewriting, which the chain alone cannot), and that the HMAC was issued by that server. Set `RECEIPT_KEY` in `.env` (or the
-Vercel settings) so receipts stay verifiable across restarts.
-
-## Counterfactuals: "What would it take?"
-
-Under each "why not" note, **What would it take?** shows, rule by rule (with the CSRC article), whether the product passes today, and
-searches all 720 combinations of the five changeable questionnaire answers for the smallest set of *different answers* under which the
-product would be eligible, using the real scoring and eligibility code. Facts that cannot change (age, horizon, income) are respected, so
-an impossible case says so and why (for example Ms. Li and NovaYield: "even with the most favourable truthful answers your best bucket is
-Growth, below the Aggressive this product needs"). It is an explanation, never advice to change an answer, and it changes nothing. The chat
-answers the same question ("What would it take for NovaYield to be allowed?").
-
-## Red-team arena
-
-The **Red-team arena** card runs 54 deterministic attacks (about a second) against the live defences and shows which layer stopped each:
-English and Chinese prompt injection, a poisoned brochure, the five forbidden (T3) actions, tool abuse, compliance bypasses (NovaYield,
-guaranteed wording in both languages, concentration, jargon, minimums, a vulnerable client, missing disclosures), approval bypasses
-(agent self-approval, cross-client, replay), purchase-history tricks, a hostile translation, a non-allowlisted URL, and four kinds of
-audit tampering (on an in-memory copy). Three benign **controls** must *not* be flagged, so it is not just blocking everything.
-No language model is called; results export as JSON and the run is audited.
-
-## Self-inspection report (Art. 30)
-
-The **Self-inspection report** card generates, from the hash-chained audit log, a report modelled on Article 30 of the CSRC
-Measures (a periodic self-check): per regulatory duty (Art. 6, 18, 20, 21, 22, 23, 24, 32) how the system addresses it and the
-evidence count, findings (drafts blocked before display and by which rule, injections flagged, forbidden actions refused,
-approvals, chain validity) and an honest list of duties the demo does not implement. English or Chinese, downloadable as Markdown.
-
-## Deploy to Vercel (frontend and backend together)
+## Deploy to Vercel
 
 `api/index.py` serves the FastAPI app and the static UI as one serverless function; `vercel.json` routes every path to it.
 
@@ -164,38 +150,7 @@ vercel            # preview deploy
 vercel --prod     # production deploy
 ```
 
-In the Vercel project settings add environment variables as needed: `LLM_PROVIDER`, `GROQ_API_KEY` or `ANTHROPIC_API_KEY`
-(and optionally `GROQ_MODEL` / `ANTHROPIC_MODEL`). With no key the hosted app runs on the deterministic mock LLM.
-Vercel's disk is read-only except `/tmp`, so SQLite (and the audit chain) lives there per instance and resets on a cold
-start; the tamper demo (`scripts/tamper_demo.py`) is a local-only step. Never commit keys; set them only in Vercel.
-
-## Test
-
-```bash
-pytest
-```
-
-The suite runs fully on the mock LLM (profiling, allocation, one test per compliance rule, tiers, audit chain and
-tamper detection, 12 injection strings, attack tests, Chinese R7/guard/answer parsing, translation, and an end-to-end persona flow).
-
-## Demo steps (5 minutes)
-
-1. Pick **Ms. Li**, Start session, say "Hi". Answer the three questions with the buttons (only unknown facts are asked).
-   The profile card shows tolerance vs capacity and the final bucket (the lower of the two).
-2. The agent's first draft contains the tempting **NovaYield Note**; the **draft log** shows it BLOCKED (R1, R3) and the
-   revised draft passing. The allocation table shows a rationale per line, and "Why not that product?" explains NovaYield.
-3. The compliance panel lists R1-R9 (and the LLM second opinion).
-4. Click "Stress test: equities -20%" for portfolio loss and goal probability, then pick a **real** episode (2008, 2022, 1974, dot-com, Great Depression) from the dropdown: the shocks are the real returns of those years, followed by a rolling-window check on 1928-2025 history.
-5. Click "Create order ticket", then **Approve** in the queue (T2 needs this click). Click **Verify log**: chain valid.
-6. Attack: in section 6 click "Load attack sample" then Upload. The guard quotes the injected sentences. Re-run the flow
-   with the same client: the allocation is unchanged and compliance still blocks NovaYield.
-7. Tamper: `python scripts/tamper_demo.py` edits one audit row in SQLite; click Verify log: it fails at that row.
-   Also try "Try a forbidden action" (T3 refusal, logged).
-
-8. Purchase history: click **Load heavy-spender sample**, read the insights, say "cancel the new phone" (Mic or type), then **Confirm**; ask the chat "How is my spending?".
-9. Language: click **中文**, or answer in Chinese (e.g. 稳定, 大约10%, 卖出一部分); use Mic for speech.
-
-Other personas: **Mr. Chen** (Growth allocation passes), **Mr. Wang** (68, capped to Moderate by R5).
+Set environment variables in the Vercel project settings (never in the repository). With no key the hosted app runs on the deterministic mock. Vercel's disk is read-only except `/tmp`, so SQLite and the audit chain live there per instance and reset on a cold start.
 
 ## Documentation
 
