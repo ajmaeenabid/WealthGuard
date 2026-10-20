@@ -64,6 +64,12 @@ python -m uvicorn app.main:app --port 8000
 # open http://localhost:8000
 ```
 
+### Running without a key, or getting one
+
+- **No key needed:** with `USE_MOCK_LLM=1` the whole app runs offline on a deterministic mock model. Every feature works, but answers are scripted rather than written by a live model. This is the quickest way to try the project.
+- **Live AI (free):** create a free account at https://console.groq.com, open **API Keys**, create a key, and put it in your own `.env` as `GROQ_API_KEY=...`. Each person uses their own key; the key in the author's `.env` is private and is not in this repository.
+- **Hosted demo:** https://wealthguard-ajmaeenabid.onrender.com needs no setup.
+
 ### Configuration (`.env`)
 
 Copy `.env.example` to `.env` and fill in the values you need. **`.env` is git-ignored and must never be committed**; only the placeholder file `.env.example` is in the repository. Real environment variables override the file. Minimum for live AI:
