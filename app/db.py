@@ -48,8 +48,6 @@ SCHEMA += FINANCE_SQL
 _MIGRATED: set = set()
 
 
-# Columns added after a table first shipped. Additive only (ALTER TABLE ADD COLUMN with a default), so existing rows are kept,
-# the migration is idempotent, and an older build can still read the database (it ignores columns it does not know).
 ADDED_COLUMNS = {
     "users": {"banned": "INTEGER NOT NULL DEFAULT 0", "permissions": "TEXT NOT NULL DEFAULT '{}'", "last_login": "TEXT",
               "login_count": "INTEGER NOT NULL DEFAULT 0"},
@@ -66,7 +64,6 @@ ADDED_COLUMNS = {
 
 
 def _migrate(conn: sqlite3.Connection) -> None:
-    """Bring a database created by an older build up to date, once per process and database file."""
     path = config.db_path()
     if path in _MIGRATED:
         return

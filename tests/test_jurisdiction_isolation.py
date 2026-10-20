@@ -25,9 +25,9 @@ def test_defaults_and_persistence():
     assert (s["ui_lang"], s["jurisdiction"], s["voice_enabled"], s["speech_lang"]) == ("en", "BD", True, "auto")
     s = settings.update(U, {"ui_lang": "zh", "jurisdiction": "CN", "speech_lang": "bn", "large_text": True, "voice_enabled": False})
     assert (s["ui_lang"], s["jurisdiction"], s["speech_lang"], s["large_text"], s["voice_enabled"]) == ("zh", "CN", "bn", True, False)
-    again = settings.get(U)                                   # a fresh read (as after a reload or a new login)
+    again = settings.get(U)
     assert again["ui_lang"] == "zh" and again["jurisdiction_config"]["currency"] == "CNY"
-    assert settings.get(V)["ui_lang"] == "en"                 # another user is unaffected
+    assert settings.get(V)["ui_lang"] == "en"
 
 
 @pytest.mark.parametrize("patch", [{"ui_lang": "fr"}, {"jurisdiction": "US"}, {"speech_lang": "xx"}, {"voice_enabled": "yes"}])
@@ -50,12 +50,11 @@ def test_changing_jurisdiction_starts_a_clean_conversation_and_keeps_old_one_as_
     res = settings.update(U, {"jurisdiction": "CN"})
     assert res["new_conversation"] is True
     cur = assistant.current(U)
-    assert cur["session_id"] is None and cur["messages"] == [] and cur["jurisdiction"] == "CN"      # nothing inherited
+    assert cur["session_id"] is None and cur["messages"] == [] and cur["jurisdiction"] == "CN"
     hist = {c["id"]: c for c in assistant.list_sessions(U)["conversations"]}
     assert hist[old]["jurisdiction"] == "BD" and hist[old]["currency"] == "BDT" and hist[old]["open"] and not hist[old]["active_jurisdiction"]
     nxt = say("I spent 30 on lunch")
     assert nxt["session_id"] != old and nxt["jurisdiction"] == "CN"
-    # the old pending entry was not touched by the new message
     row = books._one("SELECT state FROM fin_sessions WHERE id=?", (old,))
     assert row["state"] in ("collecting", "awaiting_clarification", "awaiting_confirmation")
     assert all("tea" not in m["text"] for m in assistant.messages(U, nxt["session_id"]))
@@ -101,7 +100,7 @@ def test_sessions_record_language_jurisdiction_and_config_version(cash):
     r = say("I spent 120 taka on tea")
     row = books._one("SELECT jurisdiction, language, config_version FROM fin_sessions WHERE id=?", (r["session_id"],))
     assert (row["jurisdiction"], row["language"]) == ("BD", "bn") and row["config_version"]
-    store  # noqa
+    store
 
 
 def test_data_version_changes_after_a_mutation_and_not_otherwise(cash):
@@ -111,4 +110,4 @@ def test_data_version_changes_after_a_mutation_and_not_otherwise(cash):
     say("yes")
     v1 = settings.data_version(U)["version"]
     assert v1 != v0
-    assert settings.data_version(V)["version"] != v1             # another user's fingerprint is independent
+    assert settings.data_version(V)["version"] != v1

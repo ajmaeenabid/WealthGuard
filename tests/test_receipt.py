@@ -28,7 +28,6 @@ def approved_client(persona="persona_li"):
 
 
 def reseal(r):
-    """What a forger can do without the server key: recompute the content hash."""
     r["content_hash"] = receipt._sha(receipt._content_of(r))
     return r
 
@@ -87,13 +86,13 @@ def test_forging_an_audit_entry_is_caught_by_its_own_hash_or_by_membership():
     r = receipt.build(approved_client())
     r["audit"]["entries"][1]["action"] = "approve_order"
     res = receipt.verify(reseal(r))
-    assert "entry_hashes" in failed(res)                              # the edited field no longer matches its hash
+    assert "entry_hashes" in failed(res)
     r2 = receipt.build(approved_client())
     e = r2["audit"]["entries"][1]
     e["action"] = "forged"
     e["entry_hash"] = audit._entry_hash(e["id"], e["ts"], e["client_id"], e["actor"], e["action"], e["tier"], e["payload_hash"], e["prev_hash"])
     res2 = receipt.verify(reseal(r2))
-    assert "entry_hashes" not in failed(res2) and "membership" in failed(res2)       # consistent forgery, but not in the live log
+    assert "entry_hashes" not in failed(res2) and "membership" in failed(res2)
 
 
 def test_truncating_the_audit_log_after_issue_is_detected_by_the_anchor():
@@ -106,7 +105,7 @@ def test_truncating_the_audit_log_after_issue_is_detected_by_the_anchor():
     conn.close()
     res = receipt.verify(r)
     assert {"anchor", "membership"} & failed(res) and not res["valid"]
-    assert audit.verify()["valid"]          # the truncated chain still verifies on its own: only the receipt reveals the loss
+    assert audit.verify()["valid"]
 
 
 def test_rewriting_history_in_the_live_log_is_detected():
@@ -154,13 +153,12 @@ def test_the_key_is_stable_per_database_and_overridable(monkeypatch):
     assert receipt._key() == b"fixed-key"
 
 
-# ------------------------------------------------------------------------------------------ API, script, UI
 def test_api_issue_and_verify_round_trip_with_audit():
     cid = approved_client()
     r = c.get("/api/receipt", params={"client_id": cid}).json()
     v = c.post("/api/receipt/verify", json={"receipt": r}).json()
     assert v["valid"] is True
-    v2 = c.post("/api/receipt/verify", json=r).json()                 # the bare receipt is accepted too
+    v2 = c.post("/api/receipt/verify", json=r).json()
     assert v2["valid"] is True
     acts = [e["action"] for e in c.get("/api/audit", params={"client_id": cid}).json()]
     assert "receipt_issued" in acts and c.get("/api/audit/verify").json()["valid"]
@@ -194,7 +192,6 @@ def test_ui_has_the_receipt_card():
 
 
 def js_roundtrip(o):
-    """What a browser does to JSON numbers: 100000.0 becomes 100000 (it cannot tell them apart)."""
     if isinstance(o, float):
         return int(o) if o.is_integer() else o
     if isinstance(o, dict):
@@ -206,7 +203,7 @@ def js_roundtrip(o):
 
 def test_a_receipt_survives_a_browser_json_round_trip():
     r = receipt.build(approved_client())
-    assert json.dumps(r) != json.dumps(js_roundtrip(r))                  # the round trip really changes the text (200000.0 -> 200000)
+    assert json.dumps(r) != json.dumps(js_roundtrip(r))
     res = receipt.verify(js_roundtrip(r))
     assert res["valid"] and failed(res) == set()
 

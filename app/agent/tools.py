@@ -14,7 +14,7 @@ from app.security import audit
 @dataclass
 class Ctx:
     client_id: str
-    denied: frozenset = frozenset()   # tools this account may not use (set by an administrator)
+    denied: frozenset = frozenset()
 
 
 class NoArgs(StrictArgs):
@@ -77,7 +77,6 @@ def _facts(client_id: str) -> dict:
     return d.get("facts", {})
 
 
-# ---- T0 -------------------------------------------------------------------------------------------------
 def list_products(a: ListProductsArgs, ctx: Ctx) -> dict:
     ps = [comparison.row(p) for p in load_products().values() if not a.asset_class or p.asset_class == a.asset_class]
     return {"products": ps}
@@ -106,7 +105,6 @@ def ask_profile_question(a: NoArgs, ctx: Ctx) -> dict:
     return {"complete": False, "question": q}
 
 
-# ---- T1 -------------------------------------------------------------------------------------------------
 def compute_risk_profile(a: NoArgs, ctx: Ctx) -> dict:
     d = store.load_client(ctx.client_id)
     if not d:
@@ -206,7 +204,6 @@ def run_goal_projection(a: GoalArgs, ctx: Ctx) -> dict:
     return {**shocked, "base_probability": base["probability"], "shock_pct": a.shock_pct, "historical": hist}
 
 
-# ---- T2 (stage only; approval is a separate endpoint) ----------------------------------------------------
 def _stage(kind: str, a: AllocIdArgs, ctx: Ctx) -> dict:
     alloc, err = _compliant(ctx, a.allocation_id)
     if err:
@@ -259,7 +256,6 @@ TOOLS: dict[str, Tool] = {t.name: t for t in [
          "Stage the advisory report. Released only after the client's approval click."),
 ]}
 
-# T3: always refused and logged. These have no handler by design.
 FORBIDDEN = {"execute_real_trade", "change_bank_details", "export_client_data", "disable_audit_log", "fetch_url"}
 
 

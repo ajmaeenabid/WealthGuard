@@ -10,7 +10,7 @@ from app.finance.ai import AIError, GroqClient, _Resp
 def live(monkeypatch):
     monkeypatch.setenv("USE_MOCK_LLM", "0")
     monkeypatch.setenv("GROQ_API_KEY", "gsk_test_not_a_real_key")
-    monkeypatch.setenv("FIN_AI_RPM", "0")               # no pacing in tests unless a test asks for it
+    monkeypatch.setenv("FIN_AI_RPM", "0")
     monkeypatch.setenv("FIN_AI_MAX_WAIT", "5")
     monkeypatch.delenv("FIN_REASONING_EFFORT", raising=False)
 
@@ -25,7 +25,6 @@ def err(status, message="", **headers):
 
 
 class Script:
-    """A fake transport that plays back responses (or raises) in order and remembers what it was sent."""
     def __init__(self, *items):
         self.items, self.sent, self.slept = list(items), [], []
 
@@ -74,7 +73,7 @@ def test_prices_are_configurable_not_hardcoded(monkeypatch):
 def test_a_429_is_retried_after_the_retry_after_header_then_succeeds():
     t = Script(err(429, "rate limit", **{"Retry-After": "3"}), ok('{"intent": "x"}'))
     r = t.client().chat(MSG, purpose="p", schema=SCHEMA)
-    assert r.retries == 1 and len(t.sent) == 2 and t.slept and 3 <= t.slept[0] <= 5      # waited at least what the API asked, within the cap
+    assert r.retries == 1 and len(t.sent) == 2 and t.slept and 3 <= t.slept[0] <= 5
 
 
 def test_a_long_retry_after_is_not_waited_for_it_degrades_immediately():
@@ -92,7 +91,7 @@ def test_retries_are_bounded_and_back_off_with_jitter(monkeypatch):
     assert e.value.kind == "unavailable" and len(t.sent) == 4 and len(t.slept) == 3
     assert all(0 <= s <= 5 for s in t.slept)
     row = db.connect().execute("SELECT status, retries FROM fin_ai_usage").fetchone()
-    assert (row["status"], row["retries"]) == ("unavailable", 3)                               # failures are visible in the usage log
+    assert (row["status"], row["retries"]) == ("unavailable", 3)
 
 
 def test_authentication_failures_are_not_retried_and_never_echo_the_key():
@@ -156,9 +155,9 @@ def test_without_a_key_or_in_mock_mode_the_client_refuses_without_touching_the_n
 
 
 def test_requests_are_paced_to_the_configured_rate(monkeypatch):
-    monkeypatch.setenv("FIN_AI_RPM", "30")                       # one start every 2 seconds
+    monkeypatch.setenv("FIN_AI_RPM", "30")
     t = Script(ok("{}"), ok("{}"), ok("{}"))
     c = t.client()
     for _ in range(3):
         c.chat(MSG, purpose="p")
-    assert len(t.slept) == 2 and 1.5 <= t.slept[0] <= 2.0 and 3.5 <= t.slept[1] <= 4.0      # starts are spaced 2 s apart
+    assert len(t.slept) == 2 and 1.5 <= t.slept[0] <= 2.0 and 3.5 <= t.slept[1] <= 4.0

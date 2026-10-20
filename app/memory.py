@@ -1,13 +1,4 @@
-"""Per-account memory: what the assistant remembers about a user between chats, even after several days.
-
-Three kinds of memory, all stored per account and all visible (and deletable) in the Memory panel:
-  fact    structured profile answers (age, horizon, goal, ...). New chats start with them, so nothing is asked twice.
-  note    short statements the user made about themselves ("I'm saving for a flat", "remember that ..."), found by fixed
-          patterns, not by a model, so what gets saved is predictable and cannot be steered by hidden instructions.
-  summary one line per chat: what was asked and what the outcome was.
-Recall is retrieval, not a dump: all facts, plus the notes and summaries that best match the current message
-(token overlap, most recent first), capped so the prompt stays small. Memory is passed to the model as data, never as instructions.
-"""
+"""Per-account memory: what the assistant remembers about a user between chats, even after several days."""
 import json
 import re
 import uuid
@@ -52,7 +43,6 @@ def _rows(username: str, kind: Optional[str] = None) -> list:
     return rows
 
 
-# ------------------------------------------------------------------------------------------ facts
 def facts(username: str) -> dict:
     return {r["key"]: json.loads(r["text"]) for r in _rows(username, "fact")}
 
@@ -99,13 +89,11 @@ def display(key: str, value) -> str:
 
 
 def seed(username: str) -> tuple[dict, dict]:
-    """(facts, extra) a new chat starts with."""
     f = facts(username)
     return {k: f[k] for k in PROFILE_KEYS if k in f}, {k: f[k] for k in EXTRA_KEYS if k in f}
 
 
 def sync_from_client(username: str, client_id: str) -> None:
-    """Answers given in a chat become part of the account's memory."""
     d = store.load_client(client_id) or {}
     for k in PROFILE_KEYS:
         if k in (d.get("facts") or {}):
@@ -127,7 +115,6 @@ def load_demo(username: str, persona_id: str) -> None:
             _upsert(username, "fact", k, json.dumps(per[k]))
 
 
-# ------------------------------------------------------------------------------------------ notes
 _EN = [
     (r"\b(?:please\s+)?remember(?:\s+that)?[:,]?\s+(.{4,200}?)(?:[.!?\n]|$)", "{0}"),
     (r"\bmy name is\s+((?-i:[A-Z][a-z]+(?: [A-Z][a-z]+)?))", "Name: {0}"),
@@ -147,7 +134,6 @@ _PATTERNS = [(re.compile(p, re.I), t) for p, t in _EN + _ZH]
 
 
 def extract_notes(message: str) -> list[str]:
-    """Statements worth remembering. Nothing is saved from messages the injection guard flags."""
     if not message or len(message) > 1500 or guard.scan(message):
         return []
     out = []
@@ -156,7 +142,7 @@ def extract_notes(message: str) -> list[str]:
             text = re.sub(r"\s+", " ", tpl.format(*[g.strip(" .,!?，。！？") for g in m.groups()])).strip()
             if 6 <= len(text) <= 200 and text.lower() not in {o.lower() for o in out}:
                 out.append(text[0].upper() + text[1:])
-    out = [o for o in out if not any(o != p and o.lower() in p.lower() for p in out)]   # keep the fuller sentence only
+    out = [o for o in out if not any(o != p and o.lower() in p.lower() for p in out)]
     return out[:3]
 
 
@@ -168,12 +154,11 @@ def add_note(username: str, text: str) -> bool:
         return False
     _upsert(username, "note", uuid.uuid4().hex[:10], text)
     old = _rows(username, "note")
-    for r in old[MAX_NOTES:]:                       # keep the newest MAX_NOTES
+    for r in old[MAX_NOTES:]:
         store._write("DELETE FROM memories WHERE id=?", (r["id"],))
     return True
 
 
-# ------------------------------------------------------------------------------------------ chat summaries
 def summarise(client_id: str, title: str = "") -> str:
     from app.agent import llm
     c = db.connect()
@@ -205,7 +190,6 @@ def delete_summary(client_id: str) -> None:
     store._write("DELETE FROM memories WHERE kind='summary' AND key=?", (client_id,))
 
 
-# ------------------------------------------------------------------------------------------ panel + recall
 def overview(username: str) -> dict:
     f = [{"key": r["key"], "label": LABELS.get(r["key"], r["key"]), "value": json.loads(r["text"]),
           "text": display(r["key"], json.loads(r["text"])), "updated": r["updated"]}
@@ -234,7 +218,6 @@ def _score(message: str, text: str) -> int:
 
 
 def context(username: str, message: str, k: int = 6) -> str:
-    """The remembered facts plus the k notes / chat summaries most relevant to this message, as plain text for the model."""
     ov = overview(username)
     pool = [("note", n["text"]) for n in ov["notes"]] + [("chat", f"{s['title'] or 'earlier chat'} ({s['updated'][:10]}): {s['text']}") for s in ov["summaries"]]
     ranked = sorted(enumerate(pool), key=lambda p: (-_score(message, p[1][1]), p[0]))[:k]

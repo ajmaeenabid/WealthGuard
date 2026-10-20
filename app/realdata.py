@@ -1,16 +1,10 @@
-"""Loaders for the real public datasets in app/data/real (see MANIFEST.json for source and license).
-
-Our products are synthetic; their asset classes are mapped onto real historical series so stress scenarios and
-backtests use what markets actually did. Mapping assumptions are explicit and documented in docs/algorithm.md.
-"""
+"""Loaders for the real public datasets in app/data/real (see MANIFEST.json for source and license)."""
 import csv
 import os
 from functools import lru_cache
 
 DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "real")
 
-# asset class -> blend of real series (weights sum to 1). Assumptions, not facts about any product:
-#  bond = intermediate-duration proxy; balanced = 60/40; structured note = equity-linked with a cash cushion.
 ASSET_MIX = {
     "cash": {"tbill_3m": 1.0},
     "bond": {"tbond_10y": 0.6, "tbill_3m": 0.4},
@@ -39,7 +33,6 @@ def years() -> list[int]:
 
 
 def class_return(asset_class: str, year: int) -> float:
-    """Real annual return of an asset class (fraction) from its mapped blend."""
     r = annual_returns()[year]
     return sum(w * r[col] for col, w in ASSET_MIX[asset_class].items())
 
@@ -52,7 +45,6 @@ def cumulative_pct(asset_class: str, start: int, end: int) -> float:
 
 
 def inflation_pct(year: int):
-    """December-to-December CPI change from Shiller's series, or None if the months are missing."""
     s = _shiller()
     a, b = s.get(f"{year - 1}-12"), s.get(f"{year}-12")
     if not a or not b:
@@ -69,13 +61,11 @@ def long_rate_change(start_month: str, end_month: str):
 
 @lru_cache(maxsize=1)
 def china_macro() -> dict:
-    """Year -> {cpi_inflation_pct, deposit_rate_pct, lending_rate_pct, gdp_growth_pct} (None where missing)."""
     with open(os.path.join(DIR, "china_macro.csv"), encoding="utf-8") as f:
         return {int(r["year"]): {k: (float(v) if v != "" else None) for k, v in r.items() if k != "year"}
                 for r in csv.DictReader(f)}
 
 
 def year_end_rate(year: int):
-    """10-year US rate in December of `year` (Shiller), or None."""
     r = _shiller().get(f"{year}-12")
     return float(r["long_rate"]) if r else None

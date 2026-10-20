@@ -56,7 +56,7 @@ def test_requires_sign_in(fx_live):
 def test_posting_a_transaction_in_another_currency_converts_and_keeps_the_original(fx_live, li):
     a = mk(li, "Yuan", "CNY")
     body = {"type": "expense", "account_id": a["id"], "amount": "10", "currency": "BDT", "category": "food"}
-    assert c.post("/api/fin/transactions", headers=li, json=body).status_code == 400          # not converted unless asked
+    assert c.post("/api/fin/transactions", headers=li, json=body).status_code == 400
     t = c.post("/api/fin/transactions", headers=li, json=dict(body, convert=True)).json()
     assert t["final_amount"] == "0.54" and t["original"]["currency"] == "BDT" and t["original"]["amount"] == "10.00"
     got = c.get(f"/api/fin/transactions/{t['id']}", headers=li).json()
@@ -67,8 +67,8 @@ def test_position_shows_other_currency_accounts_as_a_labelled_estimate(fx_live, 
     c.post("/api/fin/settings", headers=li, json={"base_currency": "CNY"})
     mk(li, "Yuan", "CNY", "500")
     mk(li, "Taka", "BDT", "12340")
-    c.get("/api/fin/fx", headers=li)                                                           # warms the cache the way any conversion would
+    c.get("/api/fin/fx", headers=li)
     pos = c.get("/api/fin/position", headers=li).json()
     est = pos["converted_estimate"]
-    assert pos["liquid"] == "500.00" and pos["excluded_other_currency"] == ["Taka"]           # the exact figures are untouched
+    assert pos["liquid"] == "500.00" and pos["excluded_other_currency"] == ["Taka"]
     assert est["available"] and est["liquid"] == "1169.27" and est["accounts"][0]["converted"] == "669.27" and "Estimate" in est["note"]

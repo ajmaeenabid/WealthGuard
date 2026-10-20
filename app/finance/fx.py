@@ -1,18 +1,4 @@
-"""Exchange rates for the three supported currencies (USD, CNY, BDT). Real rates only: nothing here is ever invented.
-
-Where the numbers come from (verified live on 2026-10-19, both agreed to within 0.1%):
-  1. open.er-api.com   (ExchangeRate-API open endpoint, no key, daily update, requires attribution)  - primary
-  2. @fawazahmed0/currency-api through the jsDelivr CDN (no key, daily update)                       - independent cross-check
-Rates are pivoted through USD (1 USD = N units), so BDT->CNY = rate[CNY] / rate[BDT]. They are indicative mid-market rates, not what a bank or wallet
-will actually give you; every place that shows a converted figure says so.
-
-Rules this module keeps:
-  * a rate is always stored with its source, the provider's own date and the time we fetched it, and shown with that provenance;
-  * the two providers must agree within MAX_DISAGREEMENT, otherwise the conversion is refused (a wrong rate is worse than none);
-  * if the network is down the last good rate is used only while it is younger than FX_MAX_STALE_HOURS and is flagged stale; beyond that
-    there is no conversion at all (FxUnavailable), and the caller asks the person for the amount in the account's own currency;
-  * arithmetic is decimal with ROUND_HALF_UP to minor units, and the original amount is always kept next to the converted one.
-"""
+"""Exchange rates for the three supported currencies (USD, CNY, BDT). Real rates only: nothing here is ever invented."""
 import json
 import os
 import threading
@@ -24,7 +10,7 @@ from app import store
 from app.finance import money
 
 BASE = "USD"
-MAX_DISAGREEMENT = Decimal("0.03")                       # providers may differ by 3% at most
+MAX_DISAGREEMENT = Decimal("0.03")
 SOURCES = {"er-api": "ExchangeRate-API (open.er-api.com)", "fawaz": "fawazahmed0 currency-api (jsDelivr)"}
 ATTRIBUTION = "Rates By Exchange Rate API (exchangerate-api.com)"
 _LOCK = threading.Lock()
@@ -51,7 +37,6 @@ def enabled() -> bool:
     return (os.environ.get("FX_PROVIDER", "auto") or "auto").lower() != "off"
 
 
-# ---------------------------------------------------------------------------------------------- providers
 def _http_json(url: str, timeout: float) -> dict:
     import httpx
     r = httpx.get(url, timeout=timeout, headers={"User-Agent": "WealthGuard/1.0"}, follow_redirects=True)
@@ -73,19 +58,17 @@ def _fetch_fawaz(get: Callable) -> dict:
 
 
 def _fetch_all() -> list[dict]:
-    """Every provider that answers. Replaced in tests; never called when FX_PROVIDER=off."""
     timeout = _env_num("FX_TIMEOUT", 6)
     get = lambda u: _http_json(u, timeout)
     out = []
     for fn in (_fetch_er, _fetch_fawaz):
         try:
             out.append(fn(get))
-        except Exception:                                  # one provider down is normal; the other (or the cache) covers it
+        except Exception:
             continue
     return out
 
 
-# ---------------------------------------------------------------------------------------------- storage
 def _ensure() -> None:
     store._write("CREATE TABLE IF NOT EXISTS fin_fx_rates (id INTEGER PRIMARY KEY AUTOINCREMENT, fetched TEXT NOT NULL, source TEXT NOT NULL, "
                  "provider_date TEXT, rates TEXT NOT NULL, cross_check TEXT, agree INTEGER NOT NULL DEFAULT 1)", ())
@@ -109,7 +92,6 @@ def _dec(x) -> Decimal:
 
 
 def _combine(found: list[dict]) -> dict:
-    """Pick the primary rates and cross-check them against the second provider."""
     if not found:
         raise FxUnavailable("No exchange-rate source could be reached.")
     primary = next((f for f in found if f["source"] == "er-api"), found[0])
@@ -128,7 +110,6 @@ def _combine(found: list[dict]) -> dict:
 
 
 def refresh(force: bool = True) -> dict:
-    """Fetch, cross-check and store a new set of rates. Raises FxUnavailable if nothing usable came back."""
     if not enabled():
         raise FxUnavailable("Exchange rates are switched off (FX_PROVIDER=off).")
     with _LOCK:
@@ -141,7 +122,6 @@ def refresh(force: bool = True) -> dict:
 
 
 def current(allow_fetch: bool = True) -> dict:
-    """The rate table to use now: fresh from the cache, else refreshed, else (within limits) the last good one flagged stale."""
     row = _latest()
     fresh_h, stale_h = _env_num("FX_CACHE_HOURS", 12), _env_num("FX_MAX_STALE_HOURS", 72)
     if row is not None and _age_hours(row["fetched"]) <= fresh_h:
@@ -150,7 +130,7 @@ def current(allow_fetch: bool = True) -> dict:
         try:
             return refresh()
         except FxUnavailable:
-            pass                                           # network trouble: fall through to the last good rate, if recent enough
+            pass
     if row is not None and _age_hours(row["fetched"]) <= stale_h:
         return _pack(row, stale=True)
     raise FxUnavailable("There is no current exchange rate available.")
@@ -165,9 +145,7 @@ def _pack(row, stale: bool) -> dict:
             "fetched": row["fetched"], "age_hours": round(_age_hours(row["fetched"]), 1), "stale": stale, "attribution": ATTRIBUTION}
 
 
-# ---------------------------------------------------------------------------------------------- conversion
 def rate(frm: str, to: str, table: Optional[dict] = None) -> dict:
-    """1 `frm` = `rate` `to`, with provenance."""
     frm, to = frm.upper(), to.upper()
     for c in (frm, to):
         if c not in money.CURRENCIES:
@@ -179,7 +157,6 @@ def rate(frm: str, to: str, table: Optional[dict] = None) -> dict:
 
 
 def convert_minor(minor: int, frm: str, to: str, table: Optional[dict] = None, quote: Optional[dict] = None) -> tuple[int, Optional[dict]]:
-    """Whole minor units from one currency to another. Same currency: unchanged and no quote. A `quote` (from an earlier rate()) pins the rate."""
     if frm.upper() == to.upper():
         return minor, None
     q = quote or rate(frm, to, table)
@@ -188,14 +165,12 @@ def convert_minor(minor: int, frm: str, to: str, table: Optional[dict] = None, q
 
 
 def convert_amount(amount: str, frm: str, to: str, table: Optional[dict] = None) -> dict:
-    """Decimal string in, everything needed to show the result and where it came from out."""
     minor = money.to_minor(amount)
     out_minor, q = convert_minor(minor, frm, to, table)
     return {"amount": money.s(minor), "from": frm.upper(), "to": to.upper(), "converted": money.s(out_minor), "converted_minor": out_minor, "quote": q}
 
 
 def ensure_fresh_async() -> None:
-    """Refresh the rate cache in the background when it has expired, so screens that only DISPLAY converted figures never wait on the network."""
     if not enabled():
         return
     row = _latest()
@@ -213,7 +188,6 @@ def ensure_fresh_async() -> None:
 
 
 def summary() -> dict:
-    """What Settings shows: the current rates with their provenance, or why there are none."""
     if not enabled():
         return {"available": False, "reason": "off", "message": "Exchange rates are switched off on this server (FX_PROVIDER=off)."}
     try:

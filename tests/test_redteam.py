@@ -44,10 +44,10 @@ def test_compliance_attacks_are_stopped_by_the_named_rule(report):
 
 def test_a_weakened_defence_is_reported_not_hidden(monkeypatch, report):
     from app.security import guard
-    monkeypatch.setattr(guard, "scan", lambda text: [])        # simulate a broken injection detector
+    monkeypatch.setattr(guard, "scan", lambda text: [])
     r = redteam.run_all()
     assert not r["summary"]["all_defended"] and "inj_en_0" in r["summary"]["failed"]
-    assert next(x for x in r["results"] if x["id"] == "ctl_0")["defended"]      # controls still pass: it is the attacks that fail
+    assert next(x for x in r["results"] if x["id"] == "ctl_0")["defended"]
 
 
 def test_a_crashing_attack_is_reported_as_a_failure(monkeypatch):
@@ -60,7 +60,7 @@ def test_a_crashing_attack_is_reported_as_a_failure(monkeypatch):
 
 def test_tampering_is_detected_only_in_the_copy_never_in_the_live_log(report):
     assert next(r for r in report["results"] if r["id"] == "tamper_delete")["defended"]
-    assert audit.verify()["valid"]                      # the live DB was not modified by the in-memory tampering
+    assert audit.verify()["valid"]
 
 
 def test_api_runs_the_battery_audits_it_and_the_ui_has_the_card():

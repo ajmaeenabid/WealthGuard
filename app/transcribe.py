@@ -1,13 +1,4 @@
-"""Speech-to-text with Whisper for voice commands.
-
-Two providers, both Whisper:
-  groq   Groq's hosted Whisper (whisper-large-v3-turbo by default) over HTTPS: no install, works on Vercel, uses the GROQ_API_KEY.
-  local  faster-whisper running on this machine (optional: pip install faster-whisper; the model downloads once). No audio leaves it.
-
-The transcript is only text for the chat box: the user still presses Send, so spoken and typed input take the same guarded path
-(injection guard, compliance, tiers). Uploads are size-limited and checked by their file signature, only the allowlisted Groq origin is
-contacted, the key never appears in a response or log, and silence (which Whisper tends to "hear" as stock phrases) yields no text.
-"""
+"""Speech-to-text with Whisper for voice commands."""
 import os
 import re
 import tempfile
@@ -20,22 +11,21 @@ from app import config
 GROQ_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
 GROQ_MODEL_DEFAULT = "whisper-large-v3-turbo"
 LOCAL_MODEL_DEFAULT = "base"
-MAX_BYTES = 2_000_000          # about 2 minutes of speech as webm/opus; Vercel bodies are limited to 4.5 MB
+MAX_BYTES = 2_000_000
 MAX_TEXT_CHARS = 1000
 LANGUAGES = {"en", "zh", "bn"}
-RATE_LIMIT = 20                # requests per client per minute
+RATE_LIMIT = 20
 TIMEOUT = 30.0
-_TRANSPORT = None              # tests inject httpx.MockTransport here
+_TRANSPORT = None
 _LOCK = threading.RLock()
 _LOCAL_MODEL = {}
 _HITS: dict = defaultdict(deque)
 
-PROMPTS = {  # a short vocabulary hint: Whisper spells product and regulator names correctly when it has seen them
+PROMPTS = {
     "en": "WealthGuard, NovaYield Note, CSRC, CNY, yuan, RMB, stress test, order ticket, risk bucket, purchase history.",
     "zh": "以下是普通话的句子。WealthGuard，NovaYield，证监会，压力测试，订单，风险档位，购买记录。",
     "bn": "আজ ৮৫০ টাকা বাজার করলাম। খরচ, আয়, বিকাশ, নগদ, ব্যাংক, বেতন, ভাড়া, বিদ্যুৎ বিল, রিকশা ভাড়া, ছাড়, ভ্যাট।",
 }
-# What Whisper tends to output for silence or noise. A transcript consisting only of these is treated as empty.
 HALLUCINATIONS = [
     "thank you for watching", "thanks for watching", "thank you", "thanks", "please subscribe", "subscribe to my channel",
     "like and subscribe", "you", "bye", "bye bye", "subtitles by the amara.org community", "字幕由amara.org社群提供",
@@ -50,17 +40,15 @@ class TranscribeError(Exception):
         self.message = message
 
 
-# ---------------------------------------------------------------------------------------------- configuration
 def _local_available() -> bool:
     try:
-        import faster_whisper  # noqa: F401
+        import faster_whisper
         return True
     except Exception:
         return False
 
 
 def provider() -> str:
-    """groq | local | off. Mock mode (USE_MOCK_LLM=1) turns it off so the offline demo stays deterministic."""
     want = (os.environ.get("WHISPER_PROVIDER") or "").strip().lower()
     if want == "off" or os.environ.get("USE_MOCK_LLM", "0") == "1":
         return "off"
@@ -82,9 +70,7 @@ def status() -> dict:
             "max_bytes": MAX_BYTES, "languages": sorted(LANGUAGES)}
 
 
-# ---------------------------------------------------------------------------------------------- validation
 def sniff(data: bytes) -> str | None:
-    """Audio container by file signature (not by what the client claims), or None."""
     if data[:4] == b"\x1aE\xdf\xa3":
         return "webm"
     if data[:4] == b"OggS":
@@ -117,7 +103,6 @@ def reset_limits() -> None:
         _HITS.clear()
 
 
-# ---------------------------------------------------------------------------------------------- cleaning
 def clean(text: str) -> str:
     t = re.sub(r"\s+", " ", text or "").strip()
     norm = re.sub(r"[\s\.,!?。，！？、\-]+$", "", t.lower())
@@ -128,7 +113,6 @@ def clean(text: str) -> str:
 
 
 def _from_segments(body: dict) -> str:
-    """Join segments, dropping the ones Whisper itself marks as probably silence."""
     segs = body.get("segments")
     if not isinstance(segs, list) or not segs:
         return str(body.get("text") or "")
@@ -136,10 +120,9 @@ def _from_segments(body: dict) -> str:
     return " ".join(keep)
 
 
-# ---------------------------------------------------------------------------------------------- providers
 def _groq(data: bytes, ext: str, language: str | None) -> str:
     import httpx
-    from app.security import tiers  # lazy: tiers imports modules that import config
+    from app.security import tiers
     if not tiers.is_url_allowed(GROQ_URL):
         raise TranscribeError(503, "Transcription is blocked: the speech service is not on the URL allowlist.")
     fields = {"model": model(), "response_format": "verbose_json", "temperature": "0",
@@ -202,7 +185,6 @@ def _local(data: bytes, ext: str, language: str | None) -> str:
             pass
 
 
-# ---------------------------------------------------------------------------------------------- public API
 def transcribe(data: bytes, language: str | None = None, client_id: str | None = None) -> dict:
     p = provider()
     if p == "off":

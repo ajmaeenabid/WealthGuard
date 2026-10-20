@@ -30,7 +30,7 @@ def run(fn, arg):
 
 def test_a_pipe_table_becomes_a_real_table_with_header_and_numeric_alignment():
     html = run("render", TABLE)
-    assert html.count("<table>") == 1 and html.count("</th>") == 3 and html.count("<tr>") == 3        # header row + 2 body rows
+    assert html.count("<table>") == 1 and html.count("</th>") == 3 and html.count("<tr>") == 3
     assert '<th>Product</th>' in html and "<td>P08 – Diversified Equity Fund</td>" in html
     assert 'class="a-right">20.0%' in html and "|---" not in html
     assert "<strong>40%</strong>" in html and "<ul>" in html and html.count("<li>") == 2

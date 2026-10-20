@@ -1,13 +1,4 @@
-"""The one place the finance module talks to Groq (openai/gpt-oss-20b through the OpenAI-compatible endpoint).
-
-Verified against the Groq documentation on 2026-10-19:
-  * model openai/gpt-oss-20b: 131,072-token context, tool use, JSON object mode and json_schema structured outputs
-    with strict:true (structured outputs cannot be combined with tool use or streaming, so this client uses structured
-    outputs and the application, not the model, performs every action);
-  * limits are per organisation and tier (the documented Developer-plan base for this model is 30 requests/min and
-    8K tokens/min), so the client paces itself, honours Retry-After, and never assumes a limit it was not told.
-Nothing here reaches the browser: the key is read from the environment on the server only.
-"""
+"""The one place the finance module talks to Groq (openai/gpt-oss-20b through the OpenAI-compatible endpoint)."""
 import json
 import logging
 import os
@@ -23,12 +14,10 @@ from app import config, db, store
 log = logging.getLogger("wealthguard.ai")
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 DEFAULT_MODEL = "openai/gpt-oss-20b"
-# USD per million tokens, from the Groq model page on 2026-10-19; override with GROQ_PRICE_INPUT_PER_M / GROQ_PRICE_OUTPUT_PER_M
 DEFAULT_PRICES = (0.075, 0.30)
 
 
 class AIError(Exception):
-    """kind: disabled | auth | rate_limited | timeout | unavailable | format"""
     def __init__(self, kind: str, message: str, *, retry_after: Optional[float] = None, correlation_id: str = ""):
         super().__init__(message)
         self.kind, self.message, self.retry_after, self.correlation_id = kind, message, retry_after, correlation_id
@@ -54,7 +43,6 @@ def _env_num(name: str, default: float) -> float:
 
 
 def enabled() -> bool:
-    """Live AI is on only when a Groq key exists and the mock switch is off. Otherwise callers use their offline path."""
     return os.environ.get("USE_MOCK_LLM", "0") != "1" and bool(config.groq_key())
 
 
@@ -68,7 +56,7 @@ def estimate_cost(prompt_tokens: int, completion_tokens: int) -> Optional[float]
     return round((prompt_tokens * pin + completion_tokens * pout) / 1_000_000, 8)
 
 
-class _Resp:                       # the small surface of an HTTP response this client relies on
+class _Resp:
     def __init__(self, status_code: int, headers: dict, body: Any):
         self.status_code, self.headers, self.body = status_code, {k.lower(): v for k, v in headers.items()}, body
 
@@ -91,10 +79,9 @@ class GroqClient:
         self._pace = threading.Lock()
         self._next_slot = 0.0
 
-    # ---- pacing: at most FIN_AI_RPM request starts per minute, at most FIN_AI_CONCURRENCY in flight
     def _wait_for_slot(self) -> None:
         rpm = _env_num("FIN_AI_RPM", 20)
-        if rpm <= 0:                                                        # 0 switches pacing off
+        if rpm <= 0:
             return
         interval = 60.0 / rpm
         with self._pace:
@@ -106,7 +93,7 @@ class GroqClient:
 
     def _backoff(self, attempt: int, retry_after: Optional[float]) -> float:
         cap = _env_num("FIN_AI_MAX_WAIT", 20)
-        jitter = random.uniform(0, min(cap, 1.0 * (2 ** attempt)))          # full jitter
+        jitter = random.uniform(0, min(cap, 1.0 * (2 ** attempt)))
         return min(cap, max(retry_after or 0.0, jitter)) if retry_after else jitter
 
     def chat(self, messages: list, *, purpose: str, user: Optional[str] = None, schema: Optional[dict] = None,
@@ -119,13 +106,13 @@ class GroqClient:
         started = time.monotonic()
         retries, repaired, dropped = 0, False, set()
         from app.finance import tokens
-        msgs, cut = tokens.fit_messages(list(messages))               # keep the request inside the input budget; the cut is logged, never silent
+        msgs, cut = tokens.fit_messages(list(messages))
         if cut["dropped_turns"] or cut["truncated_messages"]:
             log.warning("prompt trimmed purpose=%s %s", purpose, cut)
         max_tokens = tokens.clamp_output(max_tokens)
         max_retries = int(_env_num("FIN_AI_MAX_RETRIES", 3))
         timeout = _env_num("FIN_AI_TIMEOUT", 20)
-        deadline = started + _env_num("FIN_AI_DEADLINE", 25)            # one hard limit for the whole call, retries included: nobody waits minutes
+        deadline = started + _env_num("FIN_AI_DEADLINE", 25)
         status_label = "ok"
         try:
             while True:
@@ -146,7 +133,7 @@ class GroqClient:
                     self._wait_for_slot()
                     try:
                         resp = self._post(f"{self.base_url}/chat/completions", body, {"Authorization": f"Bearer {key}"}, timeout)
-                    except Exception as e:                                  # network failure or timeout
+                    except Exception as e:
                         kind = "timeout" if "timeout" in type(e).__name__.lower() else "unavailable"
                         if retries >= max_retries:
                             raise AIError(kind, "The AI service did not answer in time." if kind == "timeout" else "The AI service could not be reached.", correlation_id=cid)
@@ -160,7 +147,6 @@ class GroqClient:
                     result = self._finish(resp, cid, retries, started, schema, validate, user, purpose, prompt_version)
                     if result is not None:
                         return result
-                    # the reply was not valid JSON for the schema: one repair attempt, then give up
                     if repaired:
                         raise AIError("format", "The AI reply could not be understood.", correlation_id=cid)
                     repaired = True
@@ -174,7 +160,7 @@ class GroqClient:
                 if sc == 400 and "reasoning" in msg.lower() and "reasoning" not in dropped:
                     dropped.add("reasoning")
                     continue
-                if sc == 400 and schema and "schema" not in dropped:         # model or schema mode refused: fall back to JSON object mode
+                if sc == 400 and schema and "schema" not in dropped:
                     dropped.add("schema")
                     msgs = msgs + [{"role": "user", "content": "Reply with one JSON object only. Schema: " + json.dumps(schema)[:2500]}]
                     continue
@@ -234,7 +220,7 @@ class GroqClient:
                          "completion_tokens, est_cost_usd, latency_ms, retries, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                          (store.now(), user, purpose, model_name(), version, cid, usage.get("prompt_tokens"), usage.get("completion_tokens"),
                           cost, ms, retries, status))
-        except Exception:                                       # usage logging must never break a user request
+        except Exception:
             log.warning("could not record ai usage cid=%s", cid)
 
 
@@ -249,7 +235,6 @@ def client() -> GroqClient:
 
 
 def call(messages: list, **kw) -> AIResult:
-    """Module-level entry point used by the assistant and reports; tests replace `client()` or this function."""
     return client().chat(messages, **kw)
 
 

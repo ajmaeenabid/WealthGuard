@@ -29,7 +29,6 @@ def cash():
     return books.create_account(U, "Cash", "cash", "5000", opening_date=day(30))
 
 
-# ============================================================================================== preferences
 def test_settings_defaults_validation_and_audit():
     s = settings.get(U)
     assert (s["ai_reports"], s["assistant_lang"], s["ask_adjustments"], s["voice_replies"], s["history_days"]) == (True, "auto", "auto", False, 90)
@@ -38,14 +37,14 @@ def test_settings_defaults_validation_and_audit():
     for bad in [{"assistant_lang": "fr"}, {"ask_adjustments": "sometimes"}, {"history_days": 3}, {"history_days": 9999}, {"ai_reports": "yes"}, {"history_days": True}]:
         with pytest.raises(books.FinanceError):
             settings.update(U, bad)
-    assert settings.get("bob")["assistant_lang"] == "auto"                      # preferences are per account
+    assert settings.get("bob")["assistant_lang"] == "auto"
 
 
 def test_the_currency_can_change_any_time_without_touching_records_and_only_three_are_offered(cash):
     before = books.list_accounts(U)[0]
     assert settings.update(U, {"base_currency": "USD"})["base_currency"] == "USD"
     after = books.list_accounts(U)[0]
-    assert (after["currency"], after["opening_balance"]) == (before["currency"], before["opening_balance"])     # the account is not converted or relabelled
+    assert (after["currency"], after["opening_balance"]) == (before["currency"], before["opening_balance"])
     with pytest.raises(books.FinanceError, match="Choose one of"):
         settings.update(U, {"base_currency": "EUR"})
     assert settings.update("fresh", {"base_currency": "usd"})["base_currency"] == "USD"
@@ -89,7 +88,6 @@ def test_a_language_preference_is_respected_even_for_english_input(cash):
     assert r["language"] == "bn" and "কবে" in r["reply"]
 
 
-# ============================================================================================== privacy, redaction, minimal prompts
 @pytest.fixture
 def live(monkeypatch):
     monkeypatch.setattr(ai, "enabled", lambda: True)
@@ -121,7 +119,7 @@ def test_long_identifiers_are_hidden_before_the_model_and_the_history_see_them(c
     sid = assistant.open_session(U)["id"]
     stored = " ".join(m["text"] for m in assistant.messages(U, sid))
     assert "4111" not in stored and "01712345678" not in stored
-    assert privacy.redact("spent 850 on 12 oct, 1,250.50 total") == "spent 850 on 12 oct, 1,250.50 total"      # amounts and dates are untouched
+    assert privacy.redact("spent 850 on 12 oct, 1,250.50 total") == "spent 850 on 12 oct, 1,250.50 total"
 
 
 def test_prompts_carry_only_what_extraction_needs(cash, live):
@@ -151,11 +149,10 @@ def test_ai_logs_contain_ids_and_counts_never_message_text(cash, caplog):
     assert "987654" not in caplog.text and "salary" not in caplog.text and "gsk_" not in caplog.text and "purpose=t" in caplog.text
 
 
-# ============================================================================================== retention and deletion
 def test_old_finished_conversations_and_retry_records_expire_but_open_ones_stay(cash):
     say("spent 10 on tea today")
-    say("yes")                                                                  # completed conversation
-    say("spent 20 on tea today")                                               # still open
+    say("yes")
+    say("spent 20 on tea today")
     old = (datetime.now(timezone.utc) - timedelta(days=120)).isoformat(timespec="seconds")
     store._write("UPDATE fin_sessions SET updated=? WHERE state='completed'", (old,))
     store._write("UPDATE fin_requests SET created=?", (old,))
@@ -164,7 +161,7 @@ def test_old_finished_conversations_and_retry_records_expire_but_open_ones_stay(
     left = books._q("SELECT state FROM fin_sessions WHERE username=?", (U,))
     assert [r["state"] for r in left] == ["awaiting_confirmation"]
     assert books._one("SELECT COUNT(*) AS n FROM fin_messages WHERE session_id NOT IN (SELECT id FROM fin_sessions)")["n"] == 0
-    assert books.list_transactions(U)["total"] == 1                              # the ledger itself is never purged by retention
+    assert books.list_transactions(U)["total"] == 1
 
 
 def test_a_shorter_retention_setting_is_applied(cash):
@@ -195,13 +192,12 @@ def test_erasing_everything_needs_the_exact_phrase_removes_only_this_users_finan
     res = privacy.erase_all(U, privacy.CONFIRM_PHRASE)["erased"]
     assert res["transactions"] == 1 and res["accounts"] == 1 and res["budgets"] == 1 and res["goals"] == 1 and res["obligations"] == 1
     assert books.list_accounts(U, include_archived=True) == [] and planning.list_budgets(U) == [] and books._one("SELECT COUNT(*) AS n FROM fin_items")["n"] == 0
-    assert books.list_transactions("bob")["total"] == 1 and len(books.list_accounts("bob")) == 1          # nobody else is touched
-    assert books._one("SELECT COUNT(*) AS n FROM memories WHERE username='alice'")["n"] == 1             # the advisor's memory is a separate feature
+    assert books.list_transactions("bob")["total"] == 1 and len(books.list_accounts("bob")) == 1
+    assert books._one("SELECT COUNT(*) AS n FROM memories WHERE username='alice'")["n"] == 1
     audit = [e["action"] for e in __import__("app.security.audit", fromlist=["x"]).list_entries(None)]
     assert "fin_data_erased" in audit
 
 
-# ============================================================================================== migrations
 def build_old_database(path):
     con = sqlite3.connect(path)
     con.executescript("""
@@ -225,11 +221,11 @@ def test_an_older_database_keeps_its_data_and_gains_the_finance_tables_and_colum
     assert c.execute("SELECT data FROM clients WHERE id='c1'").fetchone()["data"] == '{"name": "Ms. Li"}'
     assert c.execute("SELECT text FROM memories").fetchone()["text"] == "likes bonds"
     u = c.execute("SELECT username, banned, permissions FROM users").fetchone()
-    assert (u["username"], u["banned"], u["permissions"]) == ("li", 0, "{}")                        # defaults for the new columns
+    assert (u["username"], u["banned"], u["permissions"]) == ("li", 0, "{}")
     tables = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"fin_accounts", "fin_transactions", "fin_budgets", "fin_goals", "fin_obligations", "fin_sessions", "fin_requests", "fin_ai_usage", "fin_reports"} <= tables
     c.close()
-    assert books.create_account("li", "Cash", "cash", "10")["balance"] == "10.00"                    # and the new module works on it
+    assert books.create_account("li", "Cash", "cash", "10")["balance"] == "10.00"
     assert settings.get("li")["history_days"] == 90
 
 
@@ -257,7 +253,6 @@ def test_the_migration_can_run_twice_without_changing_anything(tmp_path, monkeyp
     assert cols.count("banned") == 1 and c.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 1
 
 
-# ============================================================================================== integrity: rollback and failures
 def test_a_failure_while_saving_leaves_no_partial_record_and_no_balance_change(cash, monkeypatch):
     real_save = books._save_items
 
@@ -267,7 +262,7 @@ def test_a_failure_while_saving_leaves_no_partial_record_and_no_balance_change(c
     with pytest.raises(sqlite3.OperationalError):
         books.create_transaction(U, {"type": "expense", "account_id": cash["id"], "amount": "100", "category": "food", "items": [{"name": "x", "amount": "100"}]})
     assert books.list_transactions(U)["total"] == 0 and books.list_accounts(U)[0]["balance"] == "5000.00"
-    assert books._one("SELECT COUNT(*) AS n FROM fin_transactions")["n"] == 0                       # the insert itself was rolled back
+    assert books._one("SELECT COUNT(*) AS n FROM fin_transactions")["n"] == 0
     monkeypatch.setattr(books, "_save_items", real_save)
     assert books.create_transaction(U, {"type": "expense", "account_id": cash["id"], "amount": "100", "category": "food"})["final_amount"] == "100.00"
 
@@ -282,7 +277,7 @@ def test_the_assistant_never_reports_success_when_saving_failed(cash, monkeypatc
     with pytest.raises(books.FinanceError):
         say("yes")
     sess = assistant.open_session(U)
-    assert sess["state"] == "awaiting_confirmation"                                                  # still waiting: nothing was claimed as saved
+    assert sess["state"] == "awaiting_confirmation"
     monkeypatch.setattr(books, "create_transaction", real)
     assert say("yes")["state"] == "completed" and books.list_transactions(U)["total"] == 1
 
@@ -295,7 +290,6 @@ def test_invalid_model_output_and_service_failures_degrade_to_rules(cash, live):
         say("cancel")
 
 
-# ============================================================================================== HTTP: safe errors, limits, admin usage
 c = TestClient(app)
 
 
@@ -329,7 +323,7 @@ def test_write_report_and_erase_requests_are_rate_limited(web, monkeypatch):
     monkeypatch.setitem(routes.LIMITS, "report", (2, 3600))
     rc = [c.post("/api/fin/reports", headers=h, json={"kind": "month"}).status_code for _ in range(4)]
     assert rc == [200, 200, 429, 429]
-    assert c.post("/api/fin/reports", headers=h, json={"kind": "month", "ai": False}).status_code == 200       # the non-AI report is not metered
+    assert c.post("/api/fin/reports", headers=h, json={"kind": "month", "ai": False}).status_code == 200
     monkeypatch.setitem(routes.LIMITS, "erase", (1, 3600))
     assert c.post("/api/fin/privacy/erase", headers=h, json={"confirm": "nope"}).status_code == 400
     assert c.post("/api/fin/privacy/erase", headers=h, json={"confirm": "nope"}).status_code == 429
@@ -343,7 +337,7 @@ def test_settings_and_privacy_endpoints(web):
     assert r.json()["ask_adjustments"] == "always" and r.json()["ai_reports"] is False
     assert c.post("/api/fin/settings", headers=h, json={"assistant_lang": "xx"}).status_code == 400
     rep = c.post("/api/fin/reports", headers=h, json={"kind": "month"}).json()
-    assert rep["narrative"]["mode"] == "rules"                                                            # the account turned AI explanations off
+    assert rep["narrative"]["mode"] == "rules"
     assert c.get("/api/fin/settings", headers=web("li")).json()["ask_adjustments"] == "auto"
     assert c.post("/api/fin/privacy/clear-history", headers=h).json()["conversations_removed"] == 0
     assert c.post("/api/fin/privacy/erase", headers=h, json={"confirm": privacy.CONFIRM_PHRASE}).json()["erased"]["settings"] == 1
@@ -359,7 +353,6 @@ def test_only_the_admin_sees_ai_usage_totals_and_never_message_text(web):
     assert c.get("/api/fin/ai-usage", headers=h).json()["calls"] == 1 and c.get("/api/fin/ai-usage", headers=web("chen")).json()["calls"] == 0
 
 
-# ============================================================================================== time, scheduling, scale
 def test_future_dated_transactions_are_flagged_scheduled_and_not_counted(cash):
     t = books.create_transaction(U, {"type": "expense", "account_id": cash["id"], "amount": "100", "category": "food", "ts": day(-3)})
     now = books.create_transaction(U, {"type": "expense", "account_id": cash["id"], "amount": "10", "category": "food", "ts": day(0)})
@@ -372,7 +365,7 @@ def test_stored_timestamps_are_utc_with_an_offset_and_user_dates_are_dhaka_local
     assert row["created"].endswith("+00:00")
     local = money.now()
     utc = datetime.now(timezone.utc).replace(tzinfo=None)
-    assert 5 * 3600 <= (local - utc).total_seconds() + 60 <= 7 * 3600                                    # Asia/Dhaka is UTC+6, no daylight saving
+    assert 5 * 3600 <= (local - utc).total_seconds() + 60 <= 7 * 3600
 
 
 def test_a_large_ledger_still_loads_the_dashboard_quickly_and_lists_are_paginated(cash):

@@ -11,7 +11,7 @@ HISTORY_RANGE = (7, 730)
 
 
 def get(user: str) -> dict:
-    books.base_currency(user)                                  # makes sure the row exists
+    books.base_currency(user)
     r = books._one("SELECT * FROM fin_settings WHERE username=?", (user,))
     return {"base_currency": books.base_currency(user), "ai_reports": bool(r["ai_reports"]), "assistant_lang": r["assistant_lang"],
             "ask_adjustments": r["ask_adjustments"], "voice_replies": bool(r["voice_replies"]), "history_days": r["history_days"],
@@ -63,7 +63,7 @@ def update(user: str, patch: dict) -> dict:
     if "primary_account_id" in patch:
         books.set_primary_account(user, patch["primary_account_id"] or None)
     if "base_currency" in patch and (not cur["currency_chosen"] or books.valid_currency(patch["base_currency"]) != cur["base_currency"]):
-        books.set_base_currency(user, patch["base_currency"])                  # allowed any time: records are untouched and never converted
+        books.set_base_currency(user, patch["base_currency"])
     out.setdefault("ui_lang", cur["ui_lang"]); out.setdefault("speech_lang", cur["speech_lang"]); out.setdefault("jurisdiction", cur["jurisdiction"])
     out.setdefault("voice_enabled", cur["voice_enabled"]); out.setdefault("large_text", cur["large_text"])
     store._write("UPDATE fin_settings SET ai_reports=?, assistant_lang=?, ask_adjustments=?, voice_replies=?, history_days=?, ui_lang=?, jurisdiction=?, voice_enabled=?, speech_lang=?, large_text=? WHERE username=?",
@@ -72,11 +72,8 @@ def update(user: str, patch: dict) -> dict:
     books._audit(user, "fin_settings_updated", {"fields": sorted(patch)})
     res = get(user)
     if jur_changed:
-        # Financial records are untouched. Open conversations stay filed under the jurisdiction they started in; the next message opens a fresh one.
         res = get(user)
         books._audit(user, "fin_jurisdiction_changed", {"from": cur["jurisdiction"], "to": out["jurisdiction"], "config_version": jurisdictions.VERSION})
-        # Choosing a country sets the currency straight away (Bangladesh -> BDT, China -> CNY). Records are not converted; accounts in another
-        # currency stay listed and are left out of the totals. The person can still pick another currency afterwards (for example USD).
         books.set_base_currency(user, jurisdictions.currency(out["jurisdiction"]))
         res = get(user)
         res["new_conversation"] = True
@@ -85,8 +82,6 @@ def update(user: str, patch: dict) -> dict:
 
 
 def data_version(user: str) -> dict:
-    """A cheap fingerprint of everything the money screens show. The page polls it and reloads only when it changes, so a change made by the
-    assistant, another tab or another device appears without a manual refresh. It carries counts and timestamps, never any amounts."""
     import hashlib
     parts = []
     for table in ("fin_accounts", "fin_transactions", "fin_budgets", "fin_goals", "fin_obligations", "fin_sessions"):

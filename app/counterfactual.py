@@ -1,13 +1,4 @@
-"""Counterfactual compliance: "what would have to be true for this product to be allowed for this client?"
-
-For one product and the client's stored answers it reports, per rule, whether the product passes today, and searches the
-questionnaire (5 changeable answers, 720 combinations) for the smallest set of different answers under which the product
-would be eligible. Facts that cannot change (age, horizon, income) are respected, so an impossible case is said to be impossible
-and why.
-
-This is an explanation, never advice to change an answer: suitability depends on truthful answers, and nothing here changes
-the profile. The search uses the same scoring and eligibility code as the real engine (profiling + allocation.eligible).
-"""
+"""Counterfactual compliance: "what would have to be true for this product to be allowed for this client?" """
 import itertools
 
 from app import config, knowledge, profiling, store
@@ -88,7 +79,6 @@ def explain(client_id: str, product_id: str) -> dict:
     rules = _rule_status(p, facts, bucket)
     allowed = _eligible(p, facts, bucket)
 
-    # search over the changeable answers
     base = {q: facts.get(q) for q in MUTABLE if q in facts}
     names = [q for q in MUTABLE if q in base]
     candidates = []

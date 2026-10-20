@@ -15,7 +15,7 @@ async function api(path, body, method, signal) {
   if (signal) opt.signal = signal;
   const r = await fetch(path, opt);
   let data = null;
-  try { data = await r.json(); } catch (e) { /* non-JSON */ }
+  try { data = await r.json(); } catch (e) { }
   if (!r.ok) throw Object.assign(new Error((data && (data.detail && (data.detail.message || JSON.stringify(data.detail)))) || r.statusText), { status: r.status, data });
   return data;
 }
@@ -28,9 +28,9 @@ function addMsg(kind, text, animate) {
   const d = document.createElement("div");
   d.className = "msg " + kind;
   const raw = String(text);
-  const md = kind === "agent" && window.WGMarkdown;                  // replies are rendered as formatted text (tables, bold, lists); never as HTML
+  const md = kind === "agent" && window.WGMarkdown;
   const body = md ? raw : raw.replace(/\*\*(.+?)\*\*/g, "$1").replace(/^#+\s*/gm, "");
-  const m = kind === "agent" ? body.match(DISC) : null;   // the API keeps its fixed disclaimer; the chat does not repeat it
+  const m = kind === "agent" ? body.match(DISC) : null;
   const shown = m && m[1].trim() ? m[1] : body;
   $("messages").appendChild(d);
   if (md) d.classList.add("md");
@@ -67,7 +67,6 @@ function setQuick(question, zh) {
 }
 
 function setChips() {
-  // real situations people bring to an adviser; a click puts the question in the box so it can be edited before sending
   const items = [
     ["Start investing", "I'm 32, earn 15,000 a month and have 50,000 saved. How should I start investing?"],
     ["Child's education", "I want to save for my child's university in 10 years. What should I do with my savings?"],
@@ -85,7 +84,6 @@ function setChips() {
   });
 }
 
-// A chat is a saved advisory session: new chats are created on the server, old ones are reopened with their messages.
 function beginChat(s, msgs) {
   clientId = s.client_id;
   stressRan = false;
@@ -104,7 +102,6 @@ function beginChat(s, msgs) {
 
 function closeMobileSidebar() { if ($("sidebar").classList.contains("open") && $("scrim")) $("scrim").click(); }
 
-// The welcome page is where a new chat starts. The conversation itself is only created when the first message is sent.
 function newChatView() {
   beginChat({ client_id: null, name: "", story: null, next_question: null }, []);
   closeMobileSidebar();
@@ -182,7 +179,6 @@ async function refreshChats() {
   });
 }
 
-// Rename a chat in place: Enter or leaving the box saves, Escape cancels. The name is sent as plain text and shown as text.
 function renameChat(c, titleEl) {
   if (titleEl.querySelector("input")) return;
   const current = c.title === "New chat" ? t("New chat") : c.title;
@@ -208,7 +204,7 @@ function renameChat(c, titleEl) {
 
 async function send(text) {
   if (!text.trim()) return;
-  if (!clientId) {   // the first message of a new chat creates the conversation
+  if (!clientId) {
     try { await startSession(); } catch (e) { addMsg("sys", "Error: " + e.message); return; }
   }
   addMsg("user", text);
@@ -232,7 +228,7 @@ async function send(text) {
   } catch (e) {
     th.stop();
     const m = addMsg("sys", (e.timeout ? "" : "Error: ") + e.message + " ");
-    if (e.timeout || !e.status) {                      // no answer in time or no connection: offer a retry of the same message
+    if (e.timeout || !e.status) {
       const b = document.createElement("button");
       b.type = "button"; b.textContent = t("Try again"); b.className = "retry";
       b.onclick = () => { m.remove(); send(text); };
@@ -251,7 +247,6 @@ function detectScenario(t) {
   return "equity_-20";
 }
 
-// Send is available as soon as there is text (typed or spoken) and no reply is pending.
 function syncSend() { $("sendBtn").disabled = $("chatInput").disabled || !$("chatInput").value.trim(); }
 function setBusy(b) { $("chatInput").disabled = b; if (!b) $("chatInput").focus(); syncSend(); }
 
@@ -419,7 +414,6 @@ async function uploadDoc() {
 }
 
 
-// ---- revealed-risk replay ---------------------------------------------------------------------------------------------
 let rpChart = null, rpId = null;
 
 function rpDraw(history) {
@@ -484,7 +478,6 @@ async function rpApply() {
   } catch (e) { $("rpResult").innerHTML += `<div class="insight high">Error: ${esc(e.message)}</div>`; }
 }
 
-// ---- number provenance: click a number to see where it comes from --------------------------------------------------------
 const num = (text, kind, params) => `<a class="prov" tabindex="0" role="button" title="${esc(t("How is this calculated?"))}" data-kind="${esc(kind)}" data-params="${esc(JSON.stringify(params || {}))}">${text}</a>`;
 
 async function provShow(kind, params) {
@@ -514,7 +507,6 @@ document.addEventListener("click", (ev) => {
 });
 document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") $("provBox").hidden = true; });
 
-// ---- advice receipt ---------------------------------------------------------------------------------------------------
 function rcShow(res) {
   $("rcTag").textContent = res.valid ? t("Receipt is valid") : t("Receipt is NOT valid");
   $("rcTag").className = "tag " + (res.valid ? "good" : "bad");
@@ -546,7 +538,6 @@ async function rcVerifyFile(ev) {
   ev.target.value = "";
 }
 
-// ---- counterfactuals: what would it take? ----------------------------------------------------------------------------
 async function cfShow(pid, btn) {
   const box = btn.parentElement.querySelector(".cf");
   box.innerHTML = '<div class="muted small">...</div>';
@@ -563,7 +554,6 @@ async function cfShow(pid, btn) {
   } catch (e) { box.textContent = "Error: " + e.message; }
 }
 
-// ---- red-team arena -------------------------------------------------------------------------------------------------
 let lastRedteam = null;
 async function rtRun() {
   $("rtGo").disabled = true;
@@ -595,7 +585,6 @@ function rtDownload() {
   URL.revokeObjectURL(a.href);
 }
 
-// ---- self-inspection report (Art. 30) ------------------------------------------------------------------------------
 let lastReport = null;
 async function siGenerate() {
   const lang = I() && I().lang === "zh" ? "zh" : "en";
@@ -623,7 +612,6 @@ function siDownload() {
   URL.revokeObjectURL(a.href);
 }
 
-// ---- knowledge search (vector DB) ---------------------------------------------------------------------------------
 async function kbSearch() {
   const q = $("kbQuery").value.trim();
   if (q.length < 2) return;
@@ -639,7 +627,6 @@ async function kbSearch() {
   } catch (e) { $("kbResults").textContent = "Error: " + e.message; }
 }
 
-// ---- purchase history and behaviour -----------------------------------------------------------------------------
 async function showLedger(data) {
   const entries = data.entries || [], b = data.insights || {};
   const tb = $("ledgerTable").querySelector("tbody");
@@ -715,7 +702,6 @@ async function ledgerAdd() {
   $("lgItem").value = ""; $("lgAmount").value = ""; $("lgImpulse").checked = false;
 }
 
-// ---------------------------------------------------------------- memory panel: what the assistant remembers about this account
 const memMsg = (x, bad) => { $("memMsg").textContent = x || ""; $("memMsg").classList.toggle("bad", !!bad); };
 const memDay = (iso) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
@@ -765,7 +751,7 @@ function memRender(m) {
 
 async function memLoad() {
   if (window.WGAuth.user.role === "admin") return;
-  try { memRender(await api("/api/memory", undefined, "GET")); } catch (e) { /* the panel keeps what it had */ }
+  try { memRender(await api("/api/memory", undefined, "GET")); } catch (e) { }
 }
 
 function wireMemory() {
@@ -790,7 +776,6 @@ function wireMemory() {
   };
 }
 
-// ---------------------------------------------------------------- what this account may use (the server enforces it too)
 const FEATURE_PANELS = { ledger: ["ledgerCard"], replay: ["rpCard"], documents: ["docCard"], orders: ["approvalCard"],
   knowledge: ["kbCard"], receipt: ["rcCard"], insights: ["rtCard", "siCard"] };
 
@@ -811,7 +796,7 @@ async function init() {
   if (window.WGVoice) window.WGVoice.setClientIdGetter(() => clientId);
   const me = window.WGAuth.user;
   applyAccess(me);
-  if (me.role === "admin") return;           // the administration portal (admin.js) starts itself and needs nothing from the advisor screens
+  if (me.role === "admin") return;
   setChips();
   const [ps, pr, h] = await Promise.all([api("/api/personas", undefined, "GET"), api("/api/products", undefined, "GET"), api("/api/health", undefined, "GET")]);
   pr.forEach((p) => (products[p.id] = p));
@@ -844,7 +829,7 @@ async function init() {
   $("auditTag").textContent = "";
   wireMemory();
   await memLoad();
-  newChatView();          // land on the welcome page; earlier chats are one click away in the sidebar
+  newChatView();
 }
 window.WGAuth.onReady(() => init().catch((e) => { document.body.insertAdjacentHTML("beforeend", `<p class="warnbox">Failed to load: ${esc(e.message)}</p>`); }));
 window.WGApp = { redraw: () => { if (clientId) refresh(); }, syncSend };

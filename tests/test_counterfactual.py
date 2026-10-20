@@ -30,7 +30,7 @@ def test_ms_li_and_novayield_is_impossible_with_a_specific_reason():
 
 
 def test_a_single_different_answer_can_be_enough():
-    r = counterfactual.explain(probe("persona_li"), "P11")           # risk 4, needs the Growth bucket
+    r = counterfactual.explain(probe("persona_li"), "P11")
     assert not r["allowed_now"] and r["reachable_by_answers"]
     ch = r["paths"][0]["changes"]
     assert [(x["fact"], x["to"]) for x in ch] == [("loss_reaction", "buy_more")] and r["paths"][0]["bucket"] == "Growth"
@@ -111,12 +111,11 @@ def test_the_note_says_this_is_not_advice_to_change_answers():
 
 
 def test_errors_are_explicit():
-    cid = c.post("/api/session", json={"persona_id": "persona_li"}).json()["client_id"]     # profile still incomplete
+    cid = c.post("/api/session", json={"persona_id": "persona_li"}).json()["client_id"]
     assert "profile incomplete" in counterfactual.explain(cid, "P13")["error"]
     assert counterfactual.explain(probe(), "ZZ99")["ok"] is False and counterfactual.explain("nope", "P13")["ok"] is False
 
 
-# ------------------------------------------------------------------------------------------ API, tool, chat, UI
 def test_api_returns_the_explanation_and_audits_it_as_t1():
     cid = probe()
     r = c.get("/api/counterfactual", params={"client_id": cid, "product_id": "P13"})

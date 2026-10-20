@@ -1,6 +1,4 @@
 // Browser end-to-end check of the My money workspace (headless Edge or Chrome through the DevTools protocol, no extra packages).
-//   node scripts/e2e_money.mjs <baseUrl> <outDir>
-// Expects a FRESH server started with USE_MOCK_LLM=1 (deterministic) and the demo accounts (li / 123). Exits 1 if any check fails.
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 
@@ -16,7 +14,7 @@ fs.mkdirSync(OUT, { recursive: true });
 const proc = spawn(EXE, ["--headless=new", "--disable-gpu", `--remote-debugging-port=${PORT}`, "--hide-scrollbars", `--user-data-dir=${OUT}/profile-${PORT}`, "about:blank"], { stdio: "ignore" });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let targets;
-for (let i = 0; i < 50; i++) { try { targets = await (await fetch(`http://localhost:${PORT}/json`)).json(); if (targets.length) break; } catch { /* starting */ } await sleep(300); }
+for (let i = 0; i < 50; i++) { try { targets = await (await fetch(`http://localhost:${PORT}/json`)).json(); if (targets.length) break; } catch { } await sleep(300); }
 const ws = new WebSocket(targets.find((t) => t.type === "page").webSocketDebuggerUrl);
 await new Promise((r) => (ws.onopen = r));
 let id = 0; const pending = new Map(); const errors = [];
@@ -32,7 +30,7 @@ const ev = async (e) => { const r = await send("Runtime.evaluate", { expression:
 const shot = async (name) => { const r = await Promise.race([send("Page.captureScreenshot", { format: "png" }), sleep(10000).then(() => null)]); if (r && r.result) fs.writeFileSync(`${OUT}/${name}.png`, Buffer.from(r.result.data, "base64")); else console.log("NOTE  screenshot skipped (timed out): " + name); };
 const viewport = (w, h, mobile = false) => send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: 1, mobile });
 await send("Runtime.enable"); await send("Page.enable");
-await send("Page.addScriptToEvaluateOnNewDocument", { source: "window.WG_NO_ANIM = true;" });   // reply typing effect off, so checks read the full text at once
+await send("Page.addScriptToEvaluateOnNewDocument", { source: "window.WG_NO_ANIM = true;" });
 
 let failed = 0;
 const check = (name, ok, detail = "") => { console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  -> " + String(detail).slice(0, 160) : ""}`); if (!ok) failed++; };
@@ -49,7 +47,6 @@ await viewport(1440, 900);
 await send("Page.navigate", { url: BASE + "/" });
 await sleep(3500);
 
-// ---- sign in and enter the workspace
 await run(setv("authUser", "li") + ";" + setv("authPass", "123") + ";document.getElementById('authGo').click(); 'x'", 3500);
 check("signed in, workspace switch visible", await ev(`!document.getElementById('modeSwitch').hidden`));
 await run(click("#modeMoney"), 1800);
@@ -60,7 +57,6 @@ check("money mode hides the advisor chat", await ev(`getComputedStyle(document.q
 check("empty state asks for accounts instead of showing fake numbers", (await ev(`document.getElementById('finBanner').textContent`)).includes("Add your accounts"));
 check("no demo data on an empty ledger", await ev(`[...document.querySelectorAll('.kpi .v')].slice(0,2).every(v=>v.textContent.includes('0.00'))`));
 
-// ---- accounts through the form
 await run(click(".nav[data-tab=accounts]"), 900);
 for (const [name, type, open] of [["Cash", "cash", "5000"], ["bKash", "wallet", "1000"], ["Savings", "savings", "0"]]) {
   await run(click("#finAdd"), 500);
@@ -68,7 +64,6 @@ for (const [name, type, open] of [["Cash", "cash", "5000"], ["bKash", "wallet", 
 }
 check("three accounts with their balances", (await ev(`[...document.querySelectorAll('.acc-card')].map(c=>c.querySelector('b').textContent+c.querySelector('.bal').textContent).join('|')`)) === "Cash৳5,000.00|Savings৳0.00|bKash৳1,000.00");
 
-// ---- manual transaction with a discount: live preview, then saved with the three amounts kept apart
 await run(click(".nav[data-tab=transactions]"), 900);
 await run(click("#finAdd"), 600);
 await run(setv("tfGross", "850") + ";" + setv("tfDisc", "50") + ";" + setv("tfMer", "Shwapno") + ";" + setv("tfCat", "food"), 300);
@@ -79,7 +74,6 @@ const t1 = await ev(api("/transactions?q=Shwapno"));
 check("saved through the real API with gross, discount and final", t1.total === 1 && t1.items[0].gross_amount === "850.00" && t1.items[0].discount === "50.00" && t1.items[0].final_amount === "800.00");
 check("account balance changed by the final amount only", (await ev(api("/position"))).cash === "4200.00");
 
-// ---- edit and delete
 await run(click("#tqList tbody tr"), 800);
 await run(setv("tfNote", "weekly shop") + ";" + submit("#finModalBody form"), 1200);
 check("editing saves a note", (await ev(api("/transactions?q=weekly"))).total === 1);
@@ -92,12 +86,10 @@ await run(click("#tfDel"), 1200);
 check("deleting removes it from history and balance", (await ev(api("/transactions?q=Delete"))).total === 0 && (await ev(api("/position"))).cash === "4200.00");
 await run(setv("tqQ", ""), 800);
 
-// ---- filters
 await run(setv("tqType", "income"), 900);
 check("filter by type shows the empty message", (await ev(`document.getElementById('tqList').textContent`)).includes("Nothing matches"));
 await run(setv("tqType", ""), 700);
 
-// ---- income via form, then dashboard figures must equal the API
 await run(click("#finAdd"), 600);
 await run(click("#tfType button[data-v=income]") + ";" + setv("tfFinal", "30000") + ";" + setv("tfCat", "salary") + ";" + submit("#finModalBody form"), 1300);
 await run(click(".nav[data-tab=overview]"), 2200);
@@ -110,14 +102,12 @@ await run(setv("finPeriod", "lastmonth"), 1800);
 check("period filter reloads with last month's (empty) spending", (await ev(`document.querySelector('#finTab-overview .kpi:nth-child(2) .v').textContent`)) === "৳0.00");
 await run(setv("finPeriod", "month"), 1500);
 
-// ---- scheduled (future-dated) transactions are shown but not counted
 const cashBefore = (await ev(api("/position"))).cash;
 await ev(`(async()=>{const a=(await (await fetch('/api/fin/accounts')).json())[0]; await fetch('/api/fin/transactions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'expense',account_id:a.id,amount:'777',category:'food',ts:'2999-01-01'})}); return 1})()`);
 await run(click(".nav[data-tab=transactions]"), 1200);
 check("future-dated entry carries a scheduled chip", (await ev(`document.querySelector('#tqList .chip.scheduled') !== null`)));
 check("and is not part of the balance", (await ev(api("/position"))).cash === cashBefore);
 
-// ---- plan
 await run(click(".nav[data-tab=plan]"), 900);
 await run(click("#pnB"), 500); await run(setv("bfCat", "food") + ";" + setv("bfLimit", "1000") + ";" + submit("#finModalBody form"), 1200);
 await run(click("#pnG"), 500); await run(setv("gfName", "Laptop") + ";" + setv("gfTarget", "60000") + ";" + setv("gfSaved", "5000") + ";" + submit("#finModalBody form"), 1200);
@@ -130,13 +120,12 @@ await run(setv("pfAcc", (await ev(api("/accounts")))[0].id) + ";" + submit("#fin
 const paid = await ev(api("/transactions?q=Internet"));
 check("paying a bill records one linked expense and moves the due date", paid.total === 1 && paid.items[0].obligation_id !== null && (await ev(api("/obligations")))[0].status !== "overdue");
 
-// ---- assistant: default policy, then the spec conversation with 'always ask'
 await run(click(".nav[data-tab=assistant]"), 1000);
 check("empty assistant offers examples", (await ev(`document.querySelectorAll('#finMsgs [data-ex]').length`)) >= 4);
 await say("I spent 120 taka on tea today using cash", true);
 check("a clear message goes straight to a summary and nothing is saved yet", (await lastBot()).includes("Here is what I will record") && (await ev(api("/transactions?q=tea"))).total === 0);
 check("confirm bar offers Save, Edit details and Cancel", await ev(`['finYes','finEdit','finNo'].every(i=>!document.getElementById(i).offsetParent===false)`));
-await run(click("#finYes"), 1500);                    // confirmed by a typed/clicked yes: the entry was still started by voice
+await run(click("#finYes"), 1500);
 const tea = await ev(api("/transactions?q=tea"));
 check("a spoken message is saved as a voice transaction", tea.total === 1 && tea.items[0].source === "voice" && tea.items[0].final_amount === "120.00");
 await run(click(".nav[data-tab=settings]"), 1200);
@@ -164,18 +153,15 @@ await say("Cash");
 check("Bangla input gets a Bangla summary", (await lastBot()).includes("আমি এটা লিখে রাখব"));
 await run(click("#finNo"), 1000);
 
-// ---- reports
 await run(click(".nav[data-tab=reports]"), 900);
 await run(click("#rpGo"), 3500);
 check("report renders every section from stored data", (await ev(`['A · Financial overview','B · Spending analysis','C · Savings and goals','D · Bills and budgets','G · Forecast'].every(t=>document.getElementById('rpOut').textContent.includes(t))`)));
 check("report says how it was explained", (await ev(`document.querySelector('#rpOut .tag').textContent`)).includes("Built-in explanation"));
 
-// ---- settings & privacy
 await run(click(".nav[data-tab=settings]"), 1200);
 check("privacy page explains what is sent where", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("never sent"));
 await shot("e2e_03_settings");
 
-// ---- receipt photo: stored with metadata removed, shown in the edit form, marked in the list
 const PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 const rc = await ev(`(async()=>{const t=(await (await fetch('/api/fin/transactions?q=Shwapno')).json()).items[0]; const bytes=Uint8Array.from(atob('${PNG_B64}'),c=>c.charCodeAt(0)); const r=await fetch('/api/fin/transactions/'+t.id+'/receipt',{method:'POST',headers:{'Content-Type':'image/png'},body:bytes}); const bad=await fetch('/api/fin/transactions/'+t.id+'/receipt',{method:'POST',headers:{'Content-Type':'image/png'},body:new TextEncoder().encode('<script>alert(1)</script>')}); return {ok:r.status, bad:bad.status, id:t.id}})()`);
 check("a real photo is accepted and a script disguised as one is refused", rc.ok === 200 && rc.bad === 415);
@@ -183,19 +169,17 @@ await run(click(".nav[data-tab=transactions]"), 1200);
 await run(setv("tqQ", "Shwapno"), 1200);
 check("the list marks the transaction with a receipt", await ev(`document.querySelector('#tqList .chip[title*="receipt"]') !== null`));
 await run(click("#tqList tbody tr"), 1200);
-for (let k = 0; k < 20 && !(await ev(`document.querySelector('#tfRcpView img') !== null`)); k++) await sleep(300);     // the photo is fetched after the form opens
+for (let k = 0; k < 20 && !(await ev(`document.querySelector('#tfRcpView img') !== null`)); k++) await sleep(300);
 check("the edit form shows the attached photo", await ev(`document.querySelector('#tfRcpView img') !== null`));
 await run(click("#tfRcpDel"), 900);
 check("removing the photo clears it", (await ev(`fetch('/api/fin/transactions/${rc.id}').then(r=>r.json()).then(t=>t.has_receipt)`)) === false);
 await run(`document.getElementById('finModalClose').click(); 'ok'`, 300);
 await run(setv("tqQ", ""), 600);
 
-// ---- bill reminders: a bill due tomorrow lights the badge on the workspace switch
 await ev(`fetch('/api/fin/obligations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Gas',amount:'500',next_due:'${new Date(Date.now()+86400000).toISOString().slice(0,10)}',recurrence:'monthly'})}).then(r=>r.status)`);
 await run(`WGFinance.checkReminders(false); 'ok'`, 1200);
 check("the badge counts urgent reminders", (await ev(`!document.getElementById('modeBadge').hidden && Number(document.getElementById('modeBadge').textContent) >= 1`)));
 
-// ---- Bangla report: same figures, Bangla narrative and labels
 await run(click(".nav[data-tab=reports]"), 900);
 await run(setv("rpLang", "bn"), 200);
 await run(click("#rpGo"), 3500);
@@ -203,12 +187,10 @@ const bnOut = await ev(`document.getElementById('rpOut').textContent`);
 check("the Bangla report has Bangla section labels and narrative", bnOut.includes("ক · আর্থিক পরিস্থিতি") && bnOut.includes("এআই সেবা ছাড়াই"));
 check("and the same taka figures", bnOut.includes("৳30,000.00"));
 
-// ---- activity log in settings
 await run(click(".nav[data-tab=settings]"), 1300);
 check("settings lists my own activity with the chain status", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("My activity") && (await ev(`document.getElementById('finTab-settings').textContent`)).includes("log verified"));
 check("device notification toggle is explained honestly", (await ev(`document.getElementById('stNotifyHint').textContent`)).includes("only works while WealthGuard is open"));
 
-// ---- language and jurisdiction: three languages, saved to the account, separate from the jurisdiction
 await run(click(".nav[data-tab=settings]"), 1300);
 check("settings has the language and region card", (await ev(`document.getElementById('finTab-settings').textContent`)).includes("Language, region and currency"));
 await run(setv("uiLangSel", "zh"), 1500);
@@ -246,7 +228,6 @@ await run(setv("stJur", "BD"), 100).catch(() => {});
 await ev(`fetch('/api/fin/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jurisdiction:'BD',ui_lang:'en'})}).then(r=>r.status)`);
 await send("Page.reload"); await sleep(3500);
 
-// ---- mobile: tab bar, no horizontal overflow, assistant usable
 await viewport(390, 844, true);
 await send("Page.reload"); await sleep(3500);
 check("money mode restored after reload", await ev(`document.body.classList.contains('mode-money')`));

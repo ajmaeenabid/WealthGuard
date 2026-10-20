@@ -1,10 +1,6 @@
-
-/* Light theme layout and surfaces, after the "Patient Portal" reference: a soft grey canvas, white rounded cards, pill navigation with a charcoal
-   selected state, a lime accent for buttons and highlights, black text. Scoped to the light theme only. */
-
+/* Light theme layout and surfaces, after the "Patient Portal" reference. */
 :root:not([data-theme="dark"]) body { background: var(--color-bg-primary); }
 
-/* ---------------------------------------------------------------- floating white panels (desktop) */
 @media (min-width: 900px) {
   :root:not([data-theme="dark"]) .shell { padding: 12px; gap: 12px; background: var(--color-bg-primary); }
   :root:not([data-theme="dark"]) .sidebar { border: 1px solid var(--color-border); border-radius: 26px; padding: 18px 12px 12px; background: var(--color-bg-surface); box-shadow: var(--shadow-md); }
@@ -13,7 +9,6 @@
 }
 :root:not([data-theme="dark"]) .topbar { background: transparent; border: 0; }
 
-/* ---------------------------------------------------------------- sidebar */
 :root:not([data-theme="dark"]) .wordmark { color: var(--color-text-primary); }
 :root:not([data-theme="dark"]) .tagline::before { background: linear-gradient(90deg, var(--color-link), var(--color-brand-bronze)); }
 :root:not([data-theme="dark"]) .group-label { color: var(--color-text-muted); letter-spacing: .14em; }
@@ -41,7 +36,6 @@
 :root:not([data-theme="dark"]) .avatar { background: linear-gradient(160deg, #E3F27A, var(--color-action)); color: var(--color-on-action); }
 @media (min-width: 900px) { :root:not([data-theme="dark"]) .userbox { bottom: 10px; } }
 
-/* ---------------------------------------------------------------- hero, chat, composer */
 :root:not([data-theme="dark"]) .hero-seal img { filter: drop-shadow(0 12px 22px rgba(14, 16, 18, .22)); }
 :root:not([data-theme="dark"]) .msg.user { background: var(--color-bg-surface-2); border: 1px solid var(--color-border); color: var(--color-text-primary); border-radius: 20px; box-shadow: var(--shadow-sm); }
 :root:not([data-theme="dark"]) .msg.agent::before { background: var(--color-bg-surface); border-color: var(--color-border); }
@@ -56,7 +50,6 @@
 :root:not([data-theme="dark"]) .quick button, :root:not([data-theme="dark"]) .fin-quick button, :root:not([data-theme="dark"]) .chips button { background: var(--color-bg-surface); border: 1px solid var(--color-border); color: var(--color-text-primary); }
 :root:not([data-theme="dark"]) .quick button:hover, :root:not([data-theme="dark"]) .fin-quick button:hover, :root:not([data-theme="dark"]) .chips button:hover { background: var(--color-selected-bg); border-color: var(--color-link); }
 
-/* ---------------------------------------------------------------- controls: lime primary buttons, soft grey secondary pills */
 :root:not([data-theme="dark"]) button { background: var(--color-bg-surface-2); border: 1px solid var(--color-border-soft); color: var(--color-text-primary); border-radius: 999px; }
 :root:not([data-theme="dark"]) button:hover:not(:disabled) { background: var(--color-bg-surface-3); border-color: var(--color-border); }
 :root:not([data-theme="dark"]) button.primary { background: var(--color-action); border-color: transparent; color: var(--color-on-action); box-shadow: 0 10px 22px -12px rgba(110, 185, 20, .9); }
@@ -83,7 +76,6 @@
 :root:not([data-theme="dark"]) .flow .nav .node, :root:not([data-theme="dark"]) .flow::before { z-index: 0; }
 :root:not([data-theme="dark"]) .seg button[aria-pressed="true"], :root:not([data-theme="dark"]) .seg button[aria-selected="true"] { background: var(--color-nav-selected-bg); color: var(--color-nav-selected-text); }
 
-/* ---------------------------------------------------------------- cards, tables, dialogs */
 :root:not([data-theme="dark"]) .card, :root:not([data-theme="dark"]) .fcard, :root:not([data-theme="dark"]) .acc-card { background: var(--color-bg-surface); border: 1px solid var(--color-border-soft); border-radius: 24px; box-shadow: var(--shadow-md); }
 :root:not([data-theme="dark"]) .drawer .card { background: transparent; border: 0; box-shadow: none; padding-inline: 0; }
 :root:not([data-theme="dark"]) .kpi .v { color: var(--color-text-primary); }
@@ -95,7 +87,6 @@
 :root:not([data-theme="dark"]) .vm-orb { background: var(--color-action); box-shadow: 0 0 0 10px var(--color-selected-bg); }
 :root:not([data-theme="dark"]) .think-dots i { background: var(--color-link); }
 
-/* ---------------------------------------------------------------- sign-in page in the light theme: keep the artwork, use the new buttons and charcoal tabs */
 :root:not([data-theme="dark"]) #auth .auth-card { background: rgba(255, 255, 255, .94); border: 1px solid var(--color-border); box-shadow: 0 40px 90px -36px rgba(14, 16, 18, .4); }
 :root:not([data-theme="dark"]) #auth .auth-brand .wordmark { color: var(--color-text-primary); }
 :root:not([data-theme="dark"]) #auth .auth-lead { color: var(--color-text-secondary); }
@@ -116,7 +107,6 @@
 :root:not([data-theme="dark"]) .auth-tool { background: rgba(255, 255, 255, .92); border-color: var(--color-border); color: var(--color-text-primary); }
 :root:not([data-theme="dark"]) .auth-tool:hover:not(:disabled) { border-color: var(--color-link); background: #fff; }
 
-/* ---------------------------------------------------------------- green edges and richer green, as in the dark theme */
 :root:not([data-theme="dark"]) .sidebar, :root:not([data-theme="dark"]) .stage { border-color: var(--color-green-edge); }
 @media (min-width: 900px) { :root:not([data-theme="dark"]) .drawer { border-color: var(--color-green-edge); } }
 :root:not([data-theme="dark"]) .modeswitch { border: 1px solid var(--color-green-edge); background: linear-gradient(165deg, var(--color-green-soft), rgba(255, 255, 255, .6)); }
@@ -133,7 +123,6 @@
 :root:not([data-theme="dark"]) .drawer .card { border: 0; }
 :root:not([data-theme="dark"]) #llmBadge, :root:not([data-theme="dark"]) .pill, :root:not([data-theme="dark"]) .chip { border-color: var(--color-green-edge); }
 
-/* the message box: one clean green outline, no inner borders */
 :root:not([data-theme="dark"]) .composer, :root:not([data-theme="dark"]) .fin-composer { border: 1px solid var(--color-green-edge); background: linear-gradient(180deg, #fff, rgba(251, 253, 232, .95)); }
 :root:not([data-theme="dark"]) .composer:focus-within, :root:not([data-theme="dark"]) .fin-composer:focus-within { border-color: rgba(110, 185, 20, .9); box-shadow: 0 0 0 4px rgba(179, 249, 72, .5), var(--shadow-md); }
 :root:not([data-theme="dark"]) .composer textarea, :root:not([data-theme="dark"]) .fin-composer textarea, :root:not([data-theme="dark"]) .composer textarea:focus, :root:not([data-theme="dark"]) .fin-composer textarea:focus { border: 0; outline: none; box-shadow: none; background: transparent; }
@@ -144,7 +133,6 @@
 :root:not([data-theme="dark"]) #sendBtn:disabled, :root:not([data-theme="dark"]) .composer .send:disabled, :root:not([data-theme="dark"]) .fin-composer .send:disabled { background: rgba(179, 249, 72, .22); border-color: rgba(110, 185, 20, .35); color: rgba(63, 107, 14, .6); }
 :root:not([data-theme="dark"]) #sendBtn:not(:disabled), :root:not([data-theme="dark"]) .composer .send:not(:disabled), :root:not([data-theme="dark"]) .fin-composer .send:not(:disabled) { background: linear-gradient(160deg, #CBFB7E, #B3F948); border-color: transparent; color: var(--color-on-action); box-shadow: 0 10px 24px -8px rgba(110, 185, 20, .9); }
 
-/* your messages: a rich green glass bubble */
 :root:not([data-theme="dark"]) .msg.user { background: linear-gradient(150deg, rgba(179, 249, 72, .78), rgba(210, 252, 140, .5) 62%, rgba(179, 249, 72, .22)); border: 1px solid rgba(110, 185, 20, .6); color: var(--color-text-primary); box-shadow: 0 12px 28px -14px rgba(110, 185, 20, .6), inset 0 1px 0 rgba(255, 255, 255, .6); }
 :root:not([data-theme="dark"]) .msg.agent::before { border-color: var(--color-green-edge); }
 :root:not([data-theme="dark"]) .msg.agent::after { border-color: var(--p-lime); }
@@ -153,7 +141,6 @@
 :root:not([data-theme="dark"]) #auth .primary { box-shadow: 0 14px 28px -14px rgba(110, 185, 20, .95); }
 :root:not([data-theme="dark"]) .md-table th { background: var(--color-action); }
 
-/* ---------------------------------------------------------------- left-side buttons: visible borders and a soft shade for depth */
 :root:not([data-theme="dark"]) .sidebar { background: linear-gradient(180deg, #FFFFFF 0%, #FBFFF1 55%, rgba(179, 249, 72, .16) 100%); }
 :root:not([data-theme="dark"]) .nav { border: 0; background: transparent; box-shadow: none; transition: background .22s, transform .22s var(--ease), box-shadow .22s; }
 :root:not([data-theme="dark"]) .nav:hover:not([aria-pressed="true"]) { background: linear-gradient(90deg, rgba(179, 249, 72, .55), rgba(179, 249, 72, .14)); color: var(--color-text-primary); transform: translateX(3px); box-shadow: 0 6px 14px -9px rgba(110, 185, 20, .85); }
@@ -167,7 +154,6 @@
 :root:not([data-theme="dark"]) .session { background: linear-gradient(170deg, rgba(179, 249, 72, .22), rgba(255, 255, 255, .6)); box-shadow: 0 6px 16px -12px rgba(14, 16, 18, .25); }
 :root:not([data-theme="dark"]) .flow .nav { padding-left: 38px; }
 
-/* the conversation area: a living green gradient behind the messages */
 :root:not([data-theme="dark"]) .stage {
   background:
     radial-gradient(900px 480px at 50% -10%, rgba(179, 249, 72, .42), transparent 66%),

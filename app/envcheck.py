@@ -1,9 +1,4 @@
-"""Configuration inventory and validation. Reports variable NAMES, presence and validity only: a value is never read into a
-report, logged or returned. `python scripts/check_env.py` prints the table; the server runs `startup_report()` when it starts.
-
-Required vs optional: nothing is strictly required, because the app runs fully on its offline mock and built-in rules. What each
-variable unlocks (live AI, speech-to-text, vector database, ...) is listed in `feature` so a missing key is explained, not just flagged.
-"""
+"""Configuration inventory and validation. Reports variable NAMES, presence and validity only: a value is never read into a report, logged or returned. `python scripts/check_env.py` prints the table; the server runs."""
 import os
 import re
 from dataclasses import dataclass, field
@@ -45,7 +40,7 @@ class Var:
     purpose: str
     feature: str
     used_by: str
-    requirement: str = "optional"          # optional | conditional | deployment
+    requirement: str = "optional"
     secret: bool = False
     validator: Optional[Callable[[str], Optional[str]]] = None
     obtain: str = ""
@@ -119,7 +114,6 @@ def audit(environ: Optional[dict] = None) -> list[dict]:
 
 
 def feature_status(environ: Optional[dict] = None) -> dict:
-    """What works with the current configuration (names and booleans only)."""
     env = os.environ if environ is None else environ
     ok = lambda n: (env.get(n) or "").strip().lower() not in PLACEHOLDERS
     mock = env.get("USE_MOCK_LLM") == "1"
@@ -155,7 +149,6 @@ def startup_report(environ: Optional[dict] = None) -> dict:
 
 
 def enforce_at_startup(environ: Optional[dict] = None) -> dict:
-    """Print a safe summary. With WEALTHGUARD_STRICT_CONFIG=1 an invalid value stops the server instead of being silently defaulted."""
     rep = startup_report(environ)
     for p in rep["problems"]:
         print(f"WealthGuard config warning: {p}", flush=True)

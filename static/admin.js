@@ -1,6 +1,4 @@
-// Administration portal. Self-contained on purpose: it only needs the sign-in (auth.js) and the /api/admin/* routes, so nothing in the
-// advisor screens can stop it from working. Every view is fetched from the database when you open it, and again after each change.
-// An administrator sees counts and account state, never chat or finance contents.
+// Administration portal.
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -12,7 +10,7 @@
     const opt = body === undefined && !method ? {} : { method: method || "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
     const r = await fetch("/api/admin" + path, opt);
     let data = null;
-    try { data = await r.json(); } catch (e) { /* not JSON */ }
+    try { data = await r.json(); } catch (e) { }
     if (!r.ok) {
       const d = data && data.detail;
       throw Object.assign(new Error(typeof d === "string" ? d : Array.isArray(d) ? d.map((x) => x.msg).join("; ") : r.statusText || "Request failed"), { status: r.status });
@@ -31,7 +29,6 @@
   }
   const initial = (u) => (u.display_name || u.username).replace(/^(Ms|Mr)\.\s*/i, "").charAt(0).toUpperCase();
 
-  // ------------------------------------------------------------------ data
   async function load() {
     st.loading = true;
     if (st.open) renderPortal();
@@ -57,7 +54,7 @@
         <div><b>Estimated cost</b>$${Number(u.est_cost_usd).toFixed(4)}</div><div><b>Failed calls</b>${u.failed_calls}</div>
         <div><b>Average latency</b>${u.avg_latency_ms} ms</div><div><b>By purpose</b>${purposes}</div></div>
         <p class="small muted">${esc(u.note)} Counts only, never message text.</p>`;
-    } catch (e) { /* informational */ }
+    } catch (e) { }
   }
 
   function renderStats() {
@@ -69,7 +66,6 @@
       card("Signed in (24 h)", s.signed_in_24h, `${s.active_sessions} live sessions`) + card("New (7 days)", s.new_7_days, `${s.never_signed_in} never signed in`) + card("Saved chats", s.chats, "counts only");
   }
 
-  // ------------------------------------------------------------------ the account list
   function visible() {
     const q = st.q.trim().toLowerCase();
     let list = st.users.filter((u) => (!q || u.username.includes(q) || (u.display_name || "").toLowerCase().includes(q)) &&
@@ -118,7 +114,6 @@
     box.querySelectorAll("tr[data-u]").forEach((r) => { r.onclick = () => manage(r.dataset.u); r.onkeydown = (e) => { if (e.key === "Enter") manage(r.dataset.u); }; });
   }
 
-  // ------------------------------------------------------------------ dialogs
   function dialog(title, html) {
     $("adminModalTitle").textContent = title;
     $("adminModalBody").innerHTML = html;
@@ -182,7 +177,6 @@
     };
   }
 
-  // ------------------------------------------------------------------ recent activity
   async function activity() {
     const box = $("adminActivity");
     box.hidden = !box.hidden;
@@ -202,7 +196,6 @@
     } catch (e) { box.innerHTML = `<div class="fin-err">${esc(e.message)}</div>`; }
   }
 
-  // ------------------------------------------------------------------ start
   function init(user) {
     if (user.role !== "admin") return;
     st.me = user;
@@ -212,7 +205,7 @@
       st.open = !st.open;
       $("adminManage").setAttribute("aria-expanded", String(st.open));
       $("adminManage").textContent = st.open ? "Hide accounts" : "Manage accounts";
-      if (st.open) await load(); else renderPortal();       // opening always reads the database again
+      if (st.open) await load(); else renderPortal();
     };
     $("adminActivityBtn").onclick = activity;
     $("adminModalClose").onclick = closeDialog;

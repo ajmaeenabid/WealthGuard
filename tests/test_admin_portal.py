@@ -70,7 +70,7 @@ def test_sign_out_everywhere_revokes_every_session_of_that_account_only():
     assert c.post("/api/admin/users/li/signout", headers=ha).json() == {"signed_out": 2}
     assert c.get("/api/auth/me", headers=h1).status_code == 401 and c.get("/api/auth/me", headers=h2).status_code == 401
     assert c.get("/api/auth/me", headers=hc).status_code == 200
-    assert login("li")[0].status_code == 200                                      # not suspended: they can sign in again
+    assert login("li")[0].status_code == 200
     assert c.post("/api/admin/users/nobody/signout", headers=ha).status_code == 404
     assert c.post("/api/admin/users/li/signout", headers=hc).status_code == 403
 
@@ -87,15 +87,15 @@ def test_deleting_an_account_removes_it_and_everything_it_owns_and_nothing_else(
     chat(hc, other, "hello")
     c.post("/api/fin/accounts", headers=hc, json={"name": "Cash", "type": "cash", "opening_balance": "50"})
     assert c.post("/api/admin/users/li/delete", headers=ha, json={"confirm": "wrong"}).status_code == 400
-    assert c.post("/api/admin/users/admin/delete", headers=ha, json={"confirm": "admin"}).status_code == 400          # not yourself
-    r = c.post("/api/admin/users/li/delete", headers=ha, json={"confirm": "LI"})                                      # confirmation is case-insensitive
+    assert c.post("/api/admin/users/admin/delete", headers=ha, json={"confirm": "admin"}).status_code == 400
+    r = c.post("/api/admin/users/li/delete", headers=ha, json={"confirm": "LI"})
     assert r.status_code == 200 and r.json() == {"deleted": "li", "conversations": 1}
     for table in ("users", "conversations", "memories", "fin_accounts", "fin_transactions", "auth_tokens"):
         assert store._one(f"SELECT COUNT(*) AS n FROM {table} WHERE username='li'", ())["n"] == 0, table
     assert store._one("SELECT COUNT(*) AS n FROM clients WHERE id=?", (cid,))["n"] == 0
     assert store._one("SELECT COUNT(*) AS n FROM messages WHERE client_id=?", (cid,))["n"] == 0
     assert login("li")[0].status_code == 401 and c.get("/api/auth/me", headers=hl).status_code == 401
-    assert c.get("/api/fin/accounts", headers=hc).json()[0]["name"] == "Cash" and c.get(f"/api/conversations/{other}", headers=hc).status_code == 200   # chen untouched
+    assert c.get("/api/fin/accounts", headers=hc).json()[0]["name"] == "Cash" and c.get(f"/api/conversations/{other}", headers=hc).status_code == 200
     assert "admin_user_deleted" in c.get("/api/admin/activity", headers=ha).text
 
 
@@ -103,9 +103,9 @@ def test_the_last_administrator_cannot_be_deleted_and_members_cannot_use_the_por
     ha = admin()
     c.post("/api/admin/users", headers=ha, json={"username": "boss", "password": "temp-pass-1", "role": "admin"})
     hb = login("boss", "temp-pass-1")[1]
-    c.post("/api/admin/users/admin/ban", headers=hb, json={"banned": True})                     # boss suspends the original admin
+    c.post("/api/admin/users/admin/ban", headers=hb, json={"banned": True})
     r = c.post("/api/admin/users/boss/delete", headers=hb, json={"confirm": "boss"})
-    assert r.status_code == 400                                                               # cannot delete yourself
+    assert r.status_code == 400
     hm = login("wang")[1]
     for method, path, body in [("get", "/api/admin/activity", None), ("post", "/api/admin/users/li/signout", None), ("post", "/api/admin/users/li/delete", {"confirm": "li"})]:
         r = getattr(c, method)(path, headers=hm, **({"json": body} if body else {}))
@@ -130,7 +130,7 @@ def test_the_admin_page_wiring_is_independent_of_the_advisor_screens():
     admin_js = Path("static/admin.js").read_text(encoding="utf-8")
     html = Path("static/index.html").read_text(encoding="utf-8")
     start = app_js.index("async function init() {")
-    assert start < app_js.index('if (me.role === "admin") return;', start) < app_js.index("await Promise.all", start)       # before any advisor request
+    assert start < app_js.index('if (me.role === "admin") return;', start) < app_js.index("await Promise.all", start)
     assert "WGAuth.onReady(init)" in admin_js and html.index("/static/admin.js") > html.index("/static/auth.js")
     for ep in ["/users", "/activity", "/signout", "/delete", "/ban", "/role", "/permissions", "/password", "/ai-usage"]:
         assert ep in admin_js, ep

@@ -1,14 +1,4 @@
-"""The ledger: accounts and transactions. One validation path for manual entry, the assistant, imports and obligations.
-
-Accounting rules (the single source of truth for every total in the module):
-  expense     account -= final                 counts as spending
-  income      account += final                 counts as income
-  refund      account += final                 counts against spending (never as income)
-  transfer    from -= final, to += final       counts as neither; moving money to a savings account is a transfer
-  adjustment  account +/- final (direction)    reconciliation only; counts as neither
-Liabilities (credit card, loan) carry negative balances: a card purchase is an expense that makes the card more negative,
-and paying the card is a transfer from a bank account, so nothing is counted twice.
-"""
+"""The ledger: accounts and transactions. One validation path for manual entry, the assistant, imports and obligations."""
 import json
 import sqlite3
 import uuid
@@ -52,9 +42,7 @@ def _audit(user: str, action: str, payload: dict) -> None:
     audit.append("client", action, "T1", dict(payload, user=user))
 
 
-# ---------------------------------------------------------------------------------------------- settings
 def currency_chosen(user: str) -> bool:
-    """True once the person picked a currency (Settings or first account). People who already have accounts count as having chosen."""
     r = _one("SELECT currency_set FROM fin_settings WHERE username=?", (user,))
     if r and r["currency_set"]:
         return True
@@ -65,7 +53,6 @@ def currency_chosen(user: str) -> bool:
 
 
 def base_currency(user: str) -> str:
-    """The currency totals are shown in: the person's choice, or (until they choose) the one for their active jurisdiction."""
     r = _one("SELECT base_currency, jurisdiction FROM fin_settings WHERE username=?", (user,))
     if not r:
         store._write("INSERT OR IGNORE INTO fin_settings (username, base_currency, created) VALUES (?,?,?)", (user, money.DEFAULT_CURRENCY, store.now()))
@@ -77,7 +64,6 @@ def base_currency(user: str) -> str:
 
 
 def primary_account(user: str) -> Optional[dict]:
-    """The account that receives income and pays for spending when the person does not name one. None if unset or no longer usable."""
     base_currency(user)
     r = _one("SELECT primary_account_id FROM fin_settings WHERE username=?", (user,))
     if not r or not r["primary_account_id"]:
@@ -89,7 +75,7 @@ def primary_account(user: str) -> Optional[dict]:
 def set_primary_account(user: str, account_id: Optional[str]) -> Optional[dict]:
     base_currency(user)
     if account_id:
-        a = get_account(user, account_id)                      # 404 if it is not this user's
+        a = get_account(user, account_id)
         if a["archived"]:
             raise FinanceError("An archived account cannot be the primary account.")
     store._write("UPDATE fin_settings SET primary_account_id=? WHERE username=?", (account_id or None, user))
@@ -105,7 +91,6 @@ def valid_currency(currency: Optional[str]) -> str:
 
 
 def set_base_currency(user: str, currency: str) -> str:
-    """Totals are shown in this currency. Existing records are untouched and nothing is converted; accounts in other currencies stay listed."""
     currency = valid_currency(currency)
     base_currency(user)
     store._write("UPDATE fin_settings SET base_currency=?, currency_set=1 WHERE username=?", (currency, user))
@@ -113,7 +98,6 @@ def set_base_currency(user: str, currency: str) -> str:
     return currency
 
 
-# ---------------------------------------------------------------------------------------------- accounts
 def _account_out(r, balance: Optional[int] = None) -> dict:
     d = {"id": r["id"], "name": r["name"], "type": r["type"], "currency": r["currency"], "opening_balance": money.s(r["opening_minor"]),
          "opening_date": r["opening_date"], "archived": bool(r["archived"]), "liability": r["type"] in taxonomy.LIABILITY_TYPES,
@@ -139,7 +123,7 @@ def create_account(user: str, name: str, type: str, opening="0", opening_date=No
         raise FinanceError("Account type must be one of: " + ", ".join(taxonomy.ACCOUNT_TYPES) + ".")
     cur = valid_currency(currency) if currency else base_currency(user)
     if not currency_chosen(user):
-        set_base_currency(user, cur)                       # the first account's currency becomes the person's currency
+        set_base_currency(user, cur)
     try:
         opening_minor = money.to_minor(opening or "0", allow_negative=True)
         odate = (money.parse_ts(opening_date)[:10] if opening_date else money.today().isoformat())
@@ -148,7 +132,7 @@ def create_account(user: str, name: str, type: str, opening="0", opening_date=No
     if type not in taxonomy.LIABILITY_TYPES and opening_minor < 0:
         raise FinanceError("Only a credit card or loan can start with a negative balance.")
     if type in taxonomy.LIABILITY_TYPES and opening_minor > 0:
-        opening_minor = -opening_minor                    # "I owe 5000" is stored as -5000
+        opening_minor = -opening_minor
     aid, now = new_id("acc"), store.now()
     try:
         store._write("INSERT INTO fin_accounts (id, username, name, type, currency, opening_minor, opening_date, archived, created, updated) "
@@ -160,9 +144,6 @@ def create_account(user: str, name: str, type: str, opening="0", opening_date=No
 
 
 def relabel_currency(user: str, currency: str, account_id: Optional[str] = None) -> dict:
-    """Change the currency LABEL on one account (or, with no account_id, on every account plus the budgets, goals and bills). Amounts are NOT converted:
-    the person is saying "these figures were in this currency all along". One database transaction; refused for a single account that has transfers
-    with an account in another currency, because both sides of a transfer must share a currency."""
     currency = valid_currency(currency)
     accts = _q("SELECT id, name, currency FROM fin_accounts WHERE username=?", (user,))
     if account_id:
@@ -222,7 +203,6 @@ def update_account(user: str, account_id: str, patch: dict) -> dict:
 
 
 def balances(user: str, as_of: Optional[str] = None) -> dict[str, int]:
-    """account_id -> balance in minor units, from the opening balance plus every posted transaction effective by `as_of`."""
     as_of = as_of or money.iso(money.now())
     accounts = _q("SELECT id, opening_minor, opening_date FROM fin_accounts WHERE username=?", (user,))
     out = {a["id"]: (a["opening_minor"] if a["opening_date"] <= as_of[:10] else 0) for a in accounts}
@@ -248,7 +228,6 @@ def list_accounts(user: str, include_archived: bool = False, as_of: Optional[str
 
 
 def position(user: str, as_of: Optional[str] = None) -> dict:
-    """Liquid funds, liabilities and net worth in the base currency. Accounts in other currencies are listed, not added."""
     base = base_currency(user)
     accts = list_accounts(user, as_of=as_of)
     ins = [a for a in accts if a["currency"] == base]
@@ -269,8 +248,6 @@ def position(user: str, as_of: Optional[str] = None) -> dict:
 
 
 def _converted_estimate(accts: list, base: str, liquid: int, net: int) -> Optional[dict]:
-    """What the accounts in OTHER currencies are worth in the base currency at the latest known rate. An estimate shown next to the exact figures,
-    never mixed into them. Uses cached rates only (a screen must not wait on the network); None when there are no other-currency accounts or no rate."""
     others = [a for a in accts if a["currency"] != base]
     if not others:
         return None
@@ -293,7 +270,6 @@ def _converted_estimate(accts: list, base: str, liquid: int, net: int) -> Option
 
 
 def reconcile(user: str, account_id: str, actual, as_of: Optional[str] = None, apply: bool = False) -> dict:
-    """Compare the ledger with the real balance (bank statement, cash in hand). With apply=True posts one adjustment."""
     acct = get_account(user, account_id)
     try:
         actual_minor = money.to_minor(actual, allow_negative=True)
@@ -309,7 +285,6 @@ def reconcile(user: str, account_id: str, actual, as_of: Optional[str] = None, a
     return out
 
 
-# ---------------------------------------------------------------------------------------------- transactions
 def _tx_out(r, items: Optional[list] = None) -> dict:
     d = {"id": r["id"], "type": r["type"], "ts": r["ts"], "account_id": r["account_id"], "to_account_id": r["to_account_id"],
          "direction": r["direction"], "merchant": r["merchant"], "item_name": r["item_name"], "quantity": r["quantity"],
@@ -322,14 +297,13 @@ def _tx_out(r, items: Optional[list] = None) -> dict:
          "tags": json.loads(r["tags"] or "[]"), "note": r["note"], "receipt_ref": r["receipt_ref"], "source": r["source"],
          "confidence": r["confidence"], "confirmed": bool(r["confirmed"]), "created": r["created"], "updated": r["updated"],
          "original": _original(r), "to_amount": None if r["to_final_minor"] is None else money.s(r["to_final_minor"]),
-         "has_receipt": bool(r["receipt_ref"]), "scheduled": r["ts"] > money.iso(money.now())}      # dated in the future: planned, not yet part of any balance or total
+         "has_receipt": bool(r["receipt_ref"]), "scheduled": r["ts"] > money.iso(money.now())}
     if items is not None:
         d["items"] = items
     return d
 
 
 def _original(r) -> Optional[dict]:
-    """What the person actually said/paid, when it was in a different currency from the account (with the rate that was applied)."""
     if not r["orig_currency"]:
         return None
     return {"currency": r["orig_currency"], "amount": money.s(r["orig_final_minor"]), "rate": r["fx_rate"], "source": r["fx_source"], "fetched": r["fx_ts"],
@@ -360,7 +334,6 @@ def _amount(v, label: str, allow_none: bool = True) -> Optional[int]:
 
 
 def _quote(frm: str, to: str, pinned: Optional[dict] = None) -> dict:
-    """The rate to apply. A pinned quote (the one the person confirmed) is honoured exactly; otherwise today's rate. No rate means no conversion."""
     if pinned and pinned.get("from") == frm and pinned.get("to") == to and pinned.get("rate"):
         return pinned
     try:
@@ -370,7 +343,6 @@ def _quote(frm: str, to: str, pinned: Optional[dict] = None) -> dict:
 
 
 def _normalise(user: str, data: dict, source: str, existing=None) -> dict:
-    """Validate and complete a transaction. Returns column values. Raises FinanceError with a message a person can act on."""
     g = lambda k, default=None: data.get(k, existing[k] if (existing is not None and k in existing.keys()) else default)
     typ = data.get("type", existing["type"] if existing is not None else None)
     if typ not in TYPES:
@@ -393,15 +365,14 @@ def _normalise(user: str, data: dict, source: str, existing=None) -> dict:
     elif data.get("to_account_id"):
         raise FinanceError("Only a transfer has a destination account.")
     cur = acct["currency"]
-    spoken = (data.get("currency") or "").upper() or None          # the currency the amounts in this request are written in
+    spoken = (data.get("currency") or "").upper() or None
     quote = None
     if spoken and spoken != cur:
         if not data.get("convert"):
             raise FinanceError(f"The account '{acct['name']}' uses {cur}; the transaction cannot be in {spoken} unless it is converted at today's exchange rate.")
         quote = _quote(spoken, cur, data.get("fx_quote"))
 
-    # amounts: final = gross - discount + tax + service charge
-    if "amount" in data and "final_amount" not in data:                       # "amount" is the amount paid
+    if "amount" in data and "final_amount" not in data:
         data = dict(data, final_amount=data["amount"])
     conv = (lambda v: v) if quote is None else (lambda v: None if v is None else fx.convert_minor(v, spoken, cur, quote=quote)[0])
     discount = conv(_amount(data.get("discount", None if existing is None else money.s(existing["discount_minor"])), "Discount")) or 0
@@ -413,13 +384,12 @@ def _normalise(user: str, data: dict, source: str, existing=None) -> dict:
     gross = _amount(data.get("gross_amount"), "Gross amount")
     orig_final = None
     if quote is not None:
-        # what was actually paid, in the currency it was paid in (kept next to the converted figure)
         if final is not None:
             orig_final = final
         elif gross is not None:
             orig_final = gross - (_amount(data.get("discount"), "Discount") or 0) + (_amount(data.get("tax"), "Tax") or 0) + (_amount(data.get("service_charge"), "Service charge") or 0)
-        final, gross = conv(final), None if final is not None else conv(gross)       # converted pieces re-derive the rest, so the sums always add up
-    if not touched and existing is not None:                 # editing something else: keep the stored amounts consistent
+        final, gross = conv(final), None if final is not None else conv(gross)
+    if not touched and existing is not None:
         gross, final = existing["gross_minor"], existing["final_minor"]
         if any(k in data for k in ("discount", "tax", "service_charge")):
             final = gross - discount + tax + service
@@ -497,7 +467,7 @@ def _normalise(user: str, data: dict, source: str, existing=None) -> dict:
     if quote is not None and unit_price is not None:
         unit_price = fx.convert_minor(unit_price, spoken, cur, quote=quote)[0]
     to_final = None
-    if to_acct is not None and to_acct["currency"] != cur:                      # a transfer between currencies: the destination receives the converted amount
+    if to_acct is not None and to_acct["currency"] != cur:
         to_quote = _quote(cur, to_acct["currency"], data.get("fx_transfer_quote"))
         to_final = fx.convert_minor(final, cur, to_acct["currency"], quote=to_quote)[0]
         if to_final <= 0:
@@ -508,7 +478,7 @@ def _normalise(user: str, data: dict, source: str, existing=None) -> dict:
         fxcols = {"orig_currency": spoken, "orig_final_minor": orig_final, "fx_rate": quote["rate"], "fx_source": f"{quote['source']}@{quote['provider_date']}", "fx_ts": quote["fetched"]}
     elif existing is not None and not touched:
         fxcols = {k: existing[k] for k in ("orig_currency", "orig_final_minor", "fx_rate", "fx_source", "fx_ts")}
-    else:                                                                       # amounts edited by hand: the old conversion record no longer describes them
+    else:
         fxcols = {"orig_currency": None, "orig_final_minor": None, "fx_rate": None, "fx_source": None, "fx_ts": None}
     return {**fxcols, "to_final_minor": to_final, "type": typ, "ts": ts, "account_id": acct["id"], "to_account_id": to_acct["id"] if to_acct else None, "direction": direction,
             "merchant": (g("merchant") or None) and str(g("merchant")).strip()[:80], "item_name": (g("item_name") or None) and str(g("item_name")).strip()[:120],
@@ -539,7 +509,6 @@ def _save_items(c, txn_id: str, items) -> None:
 
 
 def create_transaction(user: str, data: dict, *, source: str = "manual", idempotency_key: Optional[str] = None) -> dict:
-    """Validated, atomic, idempotent. The same idempotency_key returns the record created the first time."""
     if source not in SOURCES:
         raise FinanceError("Unknown source.")
     key = idempotency_key or data.get("idempotency_key")
@@ -561,7 +530,7 @@ def create_transaction(user: str, data: dict, *, source: str = "manual", idempot
         except sqlite3.IntegrityError:
             c.rollback()
             prior = _one("SELECT id FROM fin_transactions WHERE username=? AND idempotency_key=?", (user, key)) if key else None
-            if prior:                                             # a parallel retry won the race
+            if prior:
                 return dict(get_transaction(user, prior["id"], include_void=True), duplicate=True)
             raise FinanceError("That transaction could not be saved because it breaks a data rule.")
         except Exception:
@@ -611,7 +580,7 @@ def void_transaction(user: str, txn_id: str) -> dict:
             c.execute("BEGIN IMMEDIATE")
             c.execute("UPDATE fin_transactions SET deleted_at=?, updated=? WHERE id=? AND username=?", (now, now, txn_id, user))
             pay = c.execute("SELECT obligation_id, due_date FROM fin_obligation_payments WHERE txn_id=?", (txn_id,)).fetchone()
-            if pay:                                                                      # the bill becomes unpaid again for that due date
+            if pay:
                 c.execute("DELETE FROM fin_obligation_payments WHERE txn_id=?", (txn_id,))
                 c.execute("UPDATE fin_obligations SET next_due=?, active=1 WHERE id=? AND username=?", (pay["due_date"], pay["obligation_id"], user))
             c.commit()

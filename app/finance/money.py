@@ -4,10 +4,10 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Optional
 
 SCALE = 100
-MAX_MINOR = 10**14            # 1 trillion units; anything above is a typo
+MAX_MINOR = 10**14
 SYMBOLS = {"BDT": "৳", "CNY": "¥", "USD": "$", "EUR": "€", "GBP": "£", "INR": "₹"}
-DEFAULT_CURRENCY = "BDT"            # only the fallback before a person picks one (see books.base_currency); the interface asks them to choose
-CURRENCIES = ("USD", "CNY", "BDT")   # the currencies a person can choose; nothing is ever converted between them
+DEFAULT_CURRENCY = "BDT"
+CURRENCIES = ("USD", "CNY", "BDT")
 CURRENCY_NAMES = {"USD": "US dollar", "CNY": "Chinese yuan (RMB)", "BDT": "Bangladeshi taka"}
 
 
@@ -16,7 +16,6 @@ class MoneyError(ValueError):
 
 
 def to_minor(value, *, allow_negative: bool = False) -> int:
-    """'850', '1,250.50', Decimal, int -> minor units. Floats are rejected on purpose: they are not exact."""
     if isinstance(value, float):
         raise MoneyError("Amounts must be sent as strings or integers, not floating point numbers.")
     if isinstance(value, bool) or value is None:
@@ -40,7 +39,6 @@ def to_dec(minor: Optional[int]) -> Optional[Decimal]:
 
 
 def s(minor: Optional[int]) -> Optional[str]:
-    """Minor units -> '850.00' (a string, never a float)."""
     return None if minor is None else f"{to_dec(minor):.2f}"
 
 
@@ -50,16 +48,13 @@ def fmt(minor: int, currency: str = DEFAULT_CURRENCY) -> str:
 
 
 def ratio(a: int, b: int) -> Optional[float]:
-    """a / b as a float for display only (percentages), None when b is zero."""
     return None if not b else round(a / b, 4)
 
 
-# ---------------------------------------------------------------------------------------------- time
 _TZ = None
 
 
 def tz():
-    """The user's time zone (Dhaka by default; FIN_TZ overrides). Falls back to a fixed UTC+6 when tzdata is missing."""
     global _TZ
     if _TZ is None:
         import os
@@ -85,7 +80,6 @@ def iso(dt: datetime) -> str:
 
 
 def parse_ts(value) -> str:
-    """Accepts 'YYYY-MM-DD' (taken as that day at the current time of day if today, else noon) or a full ISO datetime."""
     if isinstance(value, datetime):
         return iso(value)
     if isinstance(value, date):

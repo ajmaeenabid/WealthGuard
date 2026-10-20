@@ -1,8 +1,4 @@
-"""Deterministic compliance rule engine (R1-R9) plus an LLM second-opinion reviewer.
-
-The engine is independent of the agent: it re-derives everything from the stored profile and product data. The LLM
-reviewer can only add a failing check, never turn a failed rule into a pass.
-"""
+"""Deterministic compliance rule engine (R1-R9) plus an LLM second-opinion reviewer."""
 import re
 from typing import Optional
 
@@ -17,7 +13,6 @@ BANNED = [
     r"\bguarantee[sd]?\b", r"\brisk[- ]?free\b", r"\bcan(?:'|’)?t lose\b", r"\bcannot lose\b", r"\bcan not lose\b",
     r"\bno risk\b", r"\bzero risk\b", r"\bwithout risk\b", r"\b100% safe\b", r"\bsure (profit|thing|win)\b",
     r"\bnever lose\b", r"\bcertain (return|profit)s?\b", r"\bassured returns?\b",
-    # Chinese equivalents (no \b: CJK has no word boundaries). 保证金 (margin deposit) is not a promise.
     r"保证(?!金)", r"保本", r"保收益", r"稳赚", r"包赚", r"必赚", r"一定赚", r"零风险", r"无风险", r"没有风险",
     r"不会亏", r"绝不亏", r"绝对安全", r"百分之百安全", r"100%安全", r"稳赢", r"确定的?收益",
 ]
@@ -29,7 +24,6 @@ ZH_NEGATION = re.compile(r"(不|无法|不能|不会|并不|并非|没有|不可
                          r"(任何)?(保证|保本|保收益|承诺保证)|(不是|并非|没有|不存在|不可能有|不等于)(任何)?(零风险|无风险|没有风险)")
 
 
-# "advice does not indicate any judgment or guarantee" statements (e.g. CSRC Measures Art. 4) deny a guarantee.
 ZH_DENIAL = re.compile(r"(不表明|不代表|并不代表|不意味着|并不意味着|不构成)[^。；]{0,40}?(保证|保本|保收益)")
 
 
@@ -154,7 +148,6 @@ def r8_minimums(a, prof, products):
     return _chk("R8", True, f"All lines meet minimums on CNY {prof.investable_amount_cny:,.0f}")
 
 
-# ---- R9 plain language (CSRC Suitability Measures Art. 24: warnings must be easy to understand) ---------------------
 MAX_AVG_SENTENCE_WORDS = 24
 MAX_SENTENCE_WORDS = 40
 MIN_FLESCH = 40.0
@@ -188,7 +181,6 @@ def flesch_reading_ease(text: str) -> float:
 
 
 def _unexplained_jargon(text: str, terms: list[str]) -> list[str]:
-    """Jargon terms that are not followed by a bracketed plain-language explanation."""
     low = text.lower()
     out = []
     for t in terms:
@@ -236,11 +228,10 @@ RULES = [r1_suitability, r2_concentration, r3_complexity, r4_liquidity, r5_vulne
 
 
 def llm_review(a: Allocation) -> Optional[ComplianceCheck]:
-    """Second opinion on explanation quality. Returns a check only; failure can only make the result stricter."""
     try:
         from app.agent import llm
         verdict = llm.review(a.client_text)
-    except Exception:  # reviewer unavailable: deterministic rules alone decide
+    except Exception:
         return None
     if verdict.get("approve", True):
         return _chk("LLM", True, "Reviewer found no explanation-quality concerns")
@@ -258,7 +249,6 @@ def check(a: Allocation, prof: ClientProfile, products: dict[str, Product], use_
 
 
 def violating_products(a: Allocation, prof: ClientProfile, products: dict[str, Product]) -> list[str]:
-    """Product ids that individually break R1/R3/R4/R5/R8 - the agent drops these when revising."""
     lim = BUCKETS[prof.bucket]
     vcap = BUCKETS[config.VULNERABLE_CAP_BUCKET] if vulnerable(prof) else None
     out = []

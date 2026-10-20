@@ -45,7 +45,7 @@ def test_expected_return_matches_a_hand_calculation():
     by_hand = round(sum(l.weight * (prods[l.product_id].expected_return - prods[l.product_id].annual_fee_pct / 100) for l in alloc.lines), 4)
     r = provenance.explain(cid, "expected_return", aid)
     assert r["value"] == by_hand == r["recomputed"]
-    assert any(i.get("sha256") for i in r["inputs"])                    # the synthetic assumptions file is hashed too
+    assert any(i.get("sha256") for i in r["inputs"])
 
 
 def test_historical_stress_is_recomputed_independently_from_the_raw_csv_and_lists_hashed_datasets():
@@ -95,7 +95,7 @@ def test_capacity_explanation_includes_the_behaviour_penalty():
 def test_a_wrong_displayed_number_is_caught_by_the_recomputation():
     cid, _ = setup_client()
     d = store.load_client(cid)
-    d["profile"]["risk_capacity_score"] = 99.0                          # a stale or forged stored value
+    d["profile"]["risk_capacity_score"] = 99.0
     store.save_client(cid, d)
     r = provenance.explain(cid, "capacity")
     assert r["matches"] is False and r["value"] == 99.0 and r["recomputed"] != 99.0
@@ -115,7 +115,6 @@ def test_another_clients_allocation_cannot_be_explained():
     assert provenance.explain(cid, "expected_return", other_aid)["ok"] is False
 
 
-# ------------------------------------------------------------------------------------------ API and UI
 def test_api_returns_the_explanation_and_audits_it():
     cid, aid = setup_client()
     r = c.get("/api/provenance", params={"client_id": cid, "kind": "stress_loss", "allocation_id": aid, "scenario": "rate_+2"})

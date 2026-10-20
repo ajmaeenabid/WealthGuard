@@ -1,5 +1,4 @@
-// A small, safe Markdown renderer for chat replies: tables, bold/italic, inline code, headings, bullet and numbered lists, paragraphs.
-// Everything is HTML-escaped FIRST and only a fixed set of tags is produced, so a reply can never inject markup or script. No links or images.
+// A small, safe Markdown renderer for chat replies.
 (function () {
   const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const inline = (s) => esc(s)
@@ -29,7 +28,7 @@
     while (i < lines.length) {
       const l = lines[i];
       if (!l.trim()) { flush(); i++; continue; }
-      if (isRow(l) && i + 1 < lines.length && isSep(lines[i + 1])) {           // a table: header, separator, then rows
+      if (isRow(l) && i + 1 < lines.length && isSep(lines[i + 1])) {
         flush();
         const rows = [l, lines[i + 1]];
         i += 2;
@@ -59,7 +58,6 @@
     return out.join("");
   }
 
-  // Plain text for reading aloud and for copying: no pipes, asterisks or hashes.
   function plain(text) {
     const lines = String(text || "").replace(/\r/g, "").split("\n");
     const res = [];

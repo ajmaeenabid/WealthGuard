@@ -1,15 +1,10 @@
 // "Thinking" indicator and reply reveal for both chats.
-//
-// Honest about what it is: the AI service answers in one piece (the structured-output API does not stream), so the dots and the changing
-// status line only show that the request is in progress, and the typing effect reveals the finished answer in a few seconds at most.
-// If the service is slow the person sees how long it has been and, past a limit, a clear notice instead of silence.
 (function () {
   const L = () => window.WGLang;
   const T = (s) => (L() ? L().t(s) : s);
   const reduced = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const PHASES = ["Thinking…", "Reading your message…", "Working on the answer…"];
 
-  // Shows a pending reply bubble in `box`. Returns { stop(), seconds() }.
   function start(box, opts) {
     opts = opts || {};
     const phases = opts.phases || PHASES;
@@ -40,7 +35,6 @@
     };
   }
 
-  // Reveals `text` inside `el` progressively (at most ~maxMs in total, so a long answer is never slow to read).
   function type(el, text, opts) {
     opts = opts || {};
     const maxMs = opts.maxMs || 2600, cps = opts.cps || 140;
@@ -64,7 +58,6 @@
     });
   }
 
-  // fetch with a hard client-side limit, so a hung connection ends in an error message rather than an endless spinner
   async function withTimeout(promiseFactory, ms) {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), ms || 75000);

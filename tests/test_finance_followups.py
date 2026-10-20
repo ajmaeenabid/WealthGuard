@@ -28,7 +28,6 @@ def cash():
     return books.create_account(U, "Cash", "cash", "5000", opening_date=day(60))
 
 
-# ---- tiny valid images, built by hand so the tests need no imaging library
 def png(extra_chunks=b""):
     def chunk(kind, data):
         return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
@@ -47,7 +46,6 @@ def webp():
     return b"RIFF" + struct.pack("<I", 12) + b"WEBPVP8 " + b"\x00" * 4
 
 
-# ============================================================================================== receipts
 def test_receipts_are_checked_by_content_stripped_of_metadata_and_owner_only(cash):
     t = books.create_transaction(U, {"type": "expense", "account_id": cash["id"], "amount": "100", "category": "food"})
     j = jpeg()
@@ -60,7 +58,7 @@ def test_receipts_are_checked_by_content_stripped_of_metadata_and_owner_only(cas
         receipts.get("bob", t["id"])
     assert e.value.status == 404
     with pytest.raises(books.FinanceError):
-        receipts.attach("bob", t["id"], png(), "image/png")                         # not their transaction
+        receipts.attach("bob", t["id"], png(), "image/png")
 
 
 def test_png_text_chunks_are_removed_and_webp_is_accepted(cash):
@@ -70,7 +68,7 @@ def test_png_text_chunks_are_removed_and_webp_is_accepted(cash):
     receipts.attach(U, t["id"], png(chunk(b"tEXt", b"GPS\x0023.81,90.41")), "image/png")
     mime, stored = receipts.get(U, t["id"])
     assert mime == "image/png" and b"23.81" not in stored and stored.startswith(b"\x89PNG") and b"IDAT" in stored
-    receipts.attach(U, t["id"], webp(), "image/webp")                               # replaces the previous receipt
+    receipts.attach(U, t["id"], webp(), "image/webp")
     assert receipts.get(U, t["id"])[0] == "image/webp"
     assert books._one("SELECT COUNT(*) AS n FROM fin_receipts")["n"] == 1
 
@@ -93,7 +91,7 @@ def test_a_file_that_pretends_to_be_another_type_is_refused(cash):
     t = books.create_transaction(U, {"type": "expense", "account_id": cash["id"], "amount": "100", "category": "food"})
     with pytest.raises(books.FinanceError, match="does not match"):
         receipts.attach(U, t["id"], png(), "image/jpeg")
-    receipts.attach(U, t["id"], png(), "application/octet-stream")                  # browsers sometimes send this; the bytes decide
+    receipts.attach(U, t["id"], png(), "application/octet-stream")
 
 
 def test_a_per_account_limit_protects_storage(cash, monkeypatch):
@@ -102,7 +100,7 @@ def test_a_per_account_limit_protects_storage(cash, monkeypatch):
     receipts.attach(U, ids[0], png()); receipts.attach(U, ids[1], png())
     with pytest.raises(books.FinanceError, match="limit"):
         receipts.attach(U, ids[2], png())
-    receipts.attach(U, ids[1], png())                                                # replacing one is still allowed
+    receipts.attach(U, ids[1], png())
 
 
 def test_removing_and_erasing_clear_receipts(cash):
@@ -160,7 +158,6 @@ def test_activity_log_shows_only_my_actions_and_the_chain_status(web):
     assert c.get("/api/fin/activity", headers=other).json()["entries"] == []
 
 
-# ============================================================================================== reminders
 def test_alerts_carry_a_stable_key_so_a_device_can_notify_once(cash):
     planning.create_obligation(U, {"name": "Wifi", "amount": "500", "next_due": day(-1), "reminder_days": 3})
     planning.create_budget(U, {"category": "food", "limit": "100", "alert_pct": 50})
@@ -170,10 +167,9 @@ def test_alerts_carry_a_stable_key_so_a_device_can_notify_once(cash):
     assert all(x["key"] for x in a1) and [x["key"] for x in a1] == [x["key"] for x in a2]
     assert any(x["key"].startswith("bill_due:") for x in a1) and any(x["key"].startswith("budget_warning:") for x in a1)
     books.create_transaction(U, {"type": "expense", "account_id": cash["id"], "amount": "60", "category": "food", "ts": day(0)})
-    assert any(x["key"].startswith("budget_over:") for x in planning.alerts(U))                  # a new level is a new notification
+    assert any(x["key"].startswith("budget_over:") for x in planning.alerts(U))
 
 
-# ============================================================================================== Bangla answers
 def test_questions_are_answered_in_bangla_with_the_same_figures(cash):
     books.create_transaction(U, {"type": "income", "account_id": cash["id"], "amount": "9000", "category": "salary", "ts": day(1)})
     books.create_transaction(U, {"type": "expense", "account_id": cash["id"], "amount": "700", "category": "food", "merchant": "Shwapno", "ts": day(1)})
@@ -200,7 +196,6 @@ def test_bangla_empty_states_are_honest(cash):
     assert "কোনো লক্ষ্য নেই" in say("how are my goals", "fresh")["reply"]
 
 
-# ============================================================================================== Bangla reports
 def populate(cash):
     bank = books.create_account(U, "Bank", "bank", "40000", opening_date=day(200))
     for m in range(4):
@@ -242,7 +237,7 @@ def test_the_ai_is_told_to_write_bangla_and_bangla_digits_do_not_defeat_the_figu
     populate(cash)
     spent = int(float(reports.build(U, "month")["overview"]["spending"]))
     assert spent >= 100
-    bd = str(spent).translate(str.maketrans("0123456789", "০১২৩৪৫৬৭৮৯"))                # the same real figure written with Bangla digits
+    bd = str(spent).translate(str.maketrans("0123456789", "০১২৩৪৫৬৭৮৯"))
     monkeypatch.setattr(ai, "enabled", lambda: True)
     seen = []
 
@@ -255,7 +250,7 @@ def test_the_ai_is_told_to_write_bangla_and_bangla_digits_do_not_defeat_the_figu
     monkeypatch.setattr(ai, "call", fake)
     rep = reports.generate(U, "month", lang="bn")
     assert "Bangla" in seen[0] and rep["narrative"]["mode"] == "ai"
-    assert [f["title"] for f in rep["narrative"]["findings"]] == ["খাবার"]                      # the invented 987654 was removed even in Bangla digits
+    assert [f["title"] for f in rep["narrative"]["findings"]] == ["খাবার"]
     assert "কিছু এআই বক্তব্য বাদ" in " ".join(rep["narrative"]["caveats"])
 
 

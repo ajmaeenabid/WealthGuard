@@ -29,7 +29,7 @@ def exp(a, amount, cat="food", ago=1, **kw):
 
 def populate(world):
     cash, bank, sav = world
-    for m in range(0, 4):                                                       # four months of salary and habits
+    for m in range(0, 4):
         books.create_transaction(U, {"type": "income", "account_id": bank["id"], "amount": "30000", "category": "salary", "ts": day(m * 30 + 2)})
         exp(cash, 2000, "food", m * 30 + 3, merchant="Shwapno", subcategory="groceries")
         exp(cash, 1500, "entertainment", m * 30 + 4, merchant="Cineplex")
@@ -39,7 +39,6 @@ def populate(world):
         exp(cash, 60, "food", i + 1, merchant="Tea Stall")
 
 
-# ============================================================================================== deterministic report
 def test_report_has_every_section_and_its_numbers_come_from_the_ledger(world):
     populate(world)
     planning.create_obligation(U, {"name": "Rent", "amount": "8000", "next_due": day(-5), "account_id": world[1]["id"], "category": "housing"})
@@ -75,7 +74,7 @@ def test_recommendations_carry_evidence_impact_and_assumptions_and_budgets_come_
     assert "entertainment" in sug and sug["entertainment"]["type"] == "flexible" and "minus 10%" in sug["entertainment"]["basis"]
     assert sug["transport"]["type"] == "essential" and "last" in sug["transport"]["basis"]
     planning.create_budget(U, {"category": "entertainment", "limit": "1500"})
-    assert "entertainment" not in {s["category"] for s in reports.build(U, "month")["recommendations"]["suggested_budgets"]}      # already budgeted
+    assert "entertainment" not in {s["category"] for s in reports.build(U, "month")["recommendations"]["suggested_budgets"]}
     assert r["scenario"]["is_estimate"] and r["scenario"]["scenario"]["reductions_pct"]
 
 
@@ -91,7 +90,6 @@ def test_zero_opening_balance_is_called_out_as_possibly_wrong():
     assert any("opening balance of Bank is zero" in q for q in reports.build(U, "month")["data_quality"])
 
 
-# ============================================================================================== the explanation
 def good(**over):
     base = {"headline": "A steady month with room to save.", "summary": "You spent a little less than you earned.",
             "findings": [{"title": "Entertainment is your flexible lever", "what_we_saw": "Entertainment was 1,500 this month.", "why_it_matters": "It is optional spending.",
@@ -167,7 +165,6 @@ def test_reports_are_stored_listed_isolated_and_exportable(world):
     assert md.startswith("# Financial report:") and "Forecast (estimate)" in md and "Assumption:" in md
 
 
-# ============================================================================================== CSV
 def test_export_then_import_round_trips_without_duplicates(world):
     cash, bank, sav = world
     exp(cash, 800, "food", 3, merchant="Shwapno", discount="50", note="weekly shop", tags=["home"])

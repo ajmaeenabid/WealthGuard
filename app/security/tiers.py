@@ -1,9 +1,4 @@
-"""Permission tiers, enforced in code (not in the prompt).
-
-T0 read, T1 suggest (audited), T2 act (staged only; needs the client's approval click via `approve_ticket`),
-T3 forbidden (always refused and logged). There is deliberately no auto-execute tier: nothing in `execute` can move a
-ticket to 'approved'.
-"""
+"""Permission tiers, enforced in code (not in the prompt)."""
 from urllib.parse import urlparse
 
 from pydantic import ValidationError
@@ -38,7 +33,6 @@ def _digest(result) -> dict:
 
 
 def execute(tool: str, args, ctx, actor: str = "agent") -> dict:
-    """Single entry point for every agent tool call. Returns a dict; refusals have ok=False, refused=True."""
     from app.agent import tools
     cid = ctx.client_id
     tier = tier_of(tool)
@@ -60,7 +54,7 @@ def execute(tool: str, args, ctx, actor: str = "agent") -> dict:
         return {"ok": False, "refused": True, "error": f"Invalid arguments for {tool}: {e.errors()[0]['msg']}"}
     try:
         result = spec.handler(parsed, ctx)
-    except Exception as e:  # never leak internals to the model
+    except Exception as e:
         audit.append(actor, f"tool_error:{tool}", tier, {"args": args, "error": type(e).__name__}, cid)
         return {"ok": False, "error": f"{tool} failed ({type(e).__name__})."}
     audit.append(actor, f"tool:{tool}", tier, {"args": parsed.model_dump(), "result": _digest(result)}, cid)
@@ -68,7 +62,6 @@ def execute(tool: str, args, ctx, actor: str = "agent") -> dict:
 
 
 def approve_ticket(ticket_id: str, client_id: str) -> dict:
-    """T2 execution. Only the approval endpoint (an explicit client click) may call this."""
     t = store.load_ticket(ticket_id)
     if not t or t.client_id != client_id:
         audit.append("client", "refused_approve_unknown_ticket", "T2", {"ticket_id": ticket_id}, client_id)

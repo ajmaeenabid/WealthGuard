@@ -1,10 +1,4 @@
-# Render Blueprint (free plan): one web service, so every request reaches the same instance and sessions stay valid.
-# Free instances have no persistent disk: the database lives in /tmp, resets on a redeploy, and the service sleeps after
-# about 15 minutes idle (the first request then takes up to a minute). Demo users are re-created automatically.
-# For permanent data: set plan to starter and add
-#   disk: {name: wealthguard-data, mountPath: /var/data, sizeGB: 1}
-# and set WEALTHGUARD_DB to /var/data/wealthguard.db.
-# Secrets are entered in the Render dashboard, never here.
+# Render blueprint: free plan, one instance, database in /tmp
 services:
   - type: web
     name: wealthguard-ajmaeenabid

@@ -40,7 +40,7 @@ def test_whole_call_gives_up_at_the_deadline_even_with_retries_left(monkeypatch)
 
     def post(url, payload, headers, timeout):
         calls.append(timeout)
-        clock.t += min(4, timeout)                          # every attempt takes up to 4 s (never longer than its timeout) and the service says it is busy
+        clock.t += min(4, timeout)
         return _Resp(503, {}, {"error": {"message": "busy"}})
     with pytest.raises(AIError) as e:
         GroqClient(post=post, sleep=clock.sleep).chat(MSG, purpose="t")
@@ -100,7 +100,7 @@ def test_advisor_failure_is_flagged_so_the_page_can_tell_the_person(monkeypatch)
 
 def test_chats_show_thinking_then_reveal_and_report_slow_or_failed_calls():
     think = (STATIC / "thinking.js").read_text(encoding="utf-8")
-    assert "Still working" in think and "taking longer than usual" in think and "does not stream" in think and "AbortController" in think
+    assert "Still working" in think and "taking longer than usual" in think and "AbortController" in think
     app = (STATIC / "app.js").read_text(encoding="utf-8")
     fin = (STATIC / "finance.js").read_text(encoding="utf-8")
     for js in (app, fin):

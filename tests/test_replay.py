@@ -45,7 +45,6 @@ def prices():
         return {r["month"]: float(r["sp500"]) for r in csv.DictReader(f)}
 
 
-# ------------------------------------------------------------------------------------------ the paths are the real data
 def test_equity_replay_matches_an_independent_computation_from_the_raw_csv():
     cid = client_with_allocation()
     a, b, _ = replay.EPISODES["crash_2008"]
@@ -84,10 +83,9 @@ def test_my_allocation_replay_uses_the_clients_mix_and_is_deterministic():
     cid = client_with_allocation()
     r1 = play(cid, "dotcom_bust", "mine")
     r2 = play(cid, "dotcom_bust", "mine")
-    assert r1["history"] == r2["history"] and r1["result"]["worst_drawdown"] > -0.2    # a cautious mix barely falls
+    assert r1["history"] == r2["history"] and r1["result"]["worst_drawdown"] > -0.2
 
 
-# ------------------------------------------------------------------------------------------ choices
 def test_selling_before_a_crash_helps_and_the_cost_is_reported_honestly():
     cid = client_with_allocation()
     r = play(cid, "crash_2008", "equity", ("sell_all",))
@@ -97,7 +95,7 @@ def test_selling_before_a_crash_helps_and_the_cost_is_reported_honestly():
 
 def test_selling_at_the_bottom_costs_money_in_a_recovery():
     cid = client_with_allocation()
-    r = play(cid, "rate_+2", "equity", ("hold", "sell_all"))       # sells at the -20% point of 2022
+    r = play(cid, "rate_+2", "equity", ("hold", "sell_all"))
     assert r["result"]["cost_of_acting"] != 0 and r["result"]["decisions"][-1]["choice"] == "sell_all"
 
 
@@ -108,7 +106,7 @@ def test_sell_some_moves_a_quarter_and_buy_more_adds_ten_percent_of_the_start():
     s = replay.SESSIONS[r["id"]]
     risky = s["risky"]
     replay.step(r["id"], cid, "sell_some")
-    assert s["cash"] > 0 and s["cash"] == pytest.approx(0.25 * risky, rel=0.05)       # the cash then earns T-bill interest until the next prompt
+    assert s["cash"] > 0 and s["cash"] == pytest.approx(0.25 * risky, rel=0.05)
     r = replay.start(cid, "crash_2008", "equity")
     replay.step(r["id"], cid, "buy_more")
     assert replay.SESSIONS[r["id"]]["added"] == pytest.approx(0.1 * start)
@@ -122,7 +120,7 @@ def test_choice_validation_and_ownership():
     assert replay.step("rpl_nope", cid, "hold")["status"] == 403
     while r["state"] == "decision":
         r = replay.step(r["id"], cid, "hold")
-    assert replay.step(r["id"], cid, "hold")["status"] == 409            # nothing pending after the end
+    assert replay.step(r["id"], cid, "hold")["status"] == 409
 
 
 def test_start_needs_a_profile_and_an_approved_allocation_and_a_known_episode():
@@ -132,14 +130,13 @@ def test_start_needs_a_profile_and_an_approved_allocation_and_a_known_episode():
     assert "unknown episode" in replay.start(cid, "mars")["error"] and "portfolio" in replay.start(cid, "crash_2008", "x")["error"]
 
 
-# ------------------------------------------------------------------------------------------ revealed vs stated
 @pytest.mark.parametrize("stated,revealed,more_cautious", [
     ("hold", "sell_all", True), ("hold", "sell_some", True), ("buy_more", "hold", True), ("sell_some", "sell_all", True),
     ("sell_some", "sell_some", False), ("sell_all", "hold", False), ("hold", "buy_more", False), ("sell_all", "sell_all", False),
 ])
 def test_comparison_is_more_cautious_only_when_the_reaction_was_more_cautious(stated, revealed, more_cautious):
     cid = client_with_allocation(stated=stated)
-    r = play(cid, "crash_2008", "equity", ("hold", revealed, revealed))     # the -20% decision is the second prompt
+    r = play(cid, "crash_2008", "equity", ("hold", revealed, revealed))
     x = r["result"]
     assert x["stated_loss_reaction"] == stated and x["revealed_loss_reaction"] == revealed
     assert (x["comparison"] == "more_cautious") is more_cautious and x["can_apply"] is more_cautious
@@ -169,7 +166,6 @@ def test_applying_makes_the_profile_more_cautious_and_is_audited_and_single_use(
 @pytest.mark.parametrize("stated", profiling.QBY["loss_reaction"]["options"].keys())
 @pytest.mark.parametrize("revealed", replay.CHOICES)
 def test_behaviour_can_never_make_the_profile_less_cautious(stated, revealed):
-    """Property: apply succeeds only if the revealed reaction ranks strictly more cautious, and never raises the answer."""
     cid = client_with_allocation(stated=stated)
     r = play(cid, "crash_2008", "equity", ("hold", revealed, revealed))
     out = replay.apply(r["id"], cid)
@@ -188,7 +184,6 @@ def test_another_client_cannot_apply_my_replay():
     assert replay.apply(r["id"], other)["status"] == 403 and store.load_client(cid)["facts"]["loss_reaction"] == "hold"
 
 
-# ------------------------------------------------------------------------------------------ API and UI
 def test_api_round_trip():
     cid = client_with_allocation(stated="hold")
     r = c.post("/api/replay/start", json={"client_id": cid, "episode": "crash_2008", "portfolio": "equity"}).json()
@@ -224,7 +219,6 @@ def test_ui_has_the_replay_card():
 
 
 def test_selling_out_at_the_first_prompt_still_reveals_the_reaction():
-    """Selling everything at -10% shows how the client reacts to -20%, even though the portfolio is then all cash."""
     cid = client_with_allocation(stated="hold")
     r = play(cid, "crash_2008", "equity", ("sell_all",))
     x = r["result"]

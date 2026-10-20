@@ -1,12 +1,4 @@
-"""Revealed-risk replay: live through a real market episode with your own money and see what you actually do.
-
-The client's compliance-approved allocation (or a 100% stock portfolio) is replayed month by month through a real episode using the
-real data (S&P 500 monthly price index from Shiller; annual Damodaran returns spread evenly over the months for bonds, cash and gold).
-At each first-time drawdown of 10%, 20% and 30% from the peak the client chooses to hold, sell some, sell all or buy more. At the end
-we compare the choice made at the -20% point with the answer given to the questionnaire ("if your portfolio fell 20%..."): if the client
-behaved more cautiously than they said, they may apply it to the profile. Behaviour can only make the profile *more* cautious: a bolder
-reaction never changes it. Nothing is applied without an explicit click.
-"""
+"""Revealed-risk replay: live through a real market episode with your own money and see what you actually do."""
 from collections import OrderedDict
 
 from app import realdata, store
@@ -24,7 +16,7 @@ CHOICES = ["hold", "sell_some", "sell_all", "buy_more"]
 LABELS = {"hold": "Hold and wait", "sell_some": "Sell some (25% to cash)", "sell_all": "Sell everything to cash",
           "buy_more": "Buy more (add 10% of the starting amount)"}
 THRESHOLDS = [-0.10, -0.20, -0.30]
-REACTION_ORDER = ["sell_all", "sell_some", "hold", "buy_more"]   # most cautious first (same keys as the questionnaire)
+REACTION_ORDER = ["sell_all", "sell_some", "hold", "buy_more"]
 SESSIONS: "OrderedDict[str, dict]" = OrderedDict()
 MAX_SESSIONS = 200
 NOTE = ("Replay of real market history using the S&P 500 monthly price index (dividends omitted) and annual bond, cash and gold returns "
@@ -132,8 +124,6 @@ def _result(s: dict) -> dict:
     for x in v:
         peak = max(peak, x)
         worst = min(worst, x / peak - 1)
-    # What the client did when the drop reached -20% (the questionnaire's situation), plus any cautious move at the milder -10% point:
-    # someone who sold everything at -10% has shown how they react to -20%, even though the portfolio then never fell further.
     at20 = next((d for d in s["decisions"] if d["threshold"] <= -0.20), None)
     earlier_sells = [d["choice"] for d in s["decisions"] if d["threshold"] > -0.20 and d["choice"] in ("sell_all", "sell_some")]
     cands = ([at20["choice"]] if at20 else []) + earlier_sells
@@ -141,7 +131,7 @@ def _result(s: dict) -> dict:
     if not cands or stated not in REACTION_ORDER:
         comparison, revealed = "not_tested", None
     else:
-        revealed = min(cands, key=REACTION_ORDER.index)  # the most cautious of them
+        revealed = min(cands, key=REACTION_ORDER.index)
         comparison = "more_cautious" if REACTION_ORDER.index(revealed) < REACTION_ORDER.index(stated) else "same_or_bolder"
     final = _value(s)
     return {"final_value": round(final, 2), "held_value": round(s["held"], 2), "contributions": round(s["added"], 2),
@@ -177,7 +167,7 @@ def step(session_id: str, client_id: str, choice: str | None) -> dict:
     elif choice == "buy_more":
         add = 0.10 * s["start"]
         s["risky"] += add
-        s["added"] += add  # the "held everything" comparison never adds money
+        s["added"] += add
     s["decisions"].append({"month": p["month"], "drawdown": p["drawdown"], "threshold": p["threshold"], "choice": choice})
     s["state"], s["prompt"] = "running", None
     _advance(s, _shiller_prices())
@@ -187,7 +177,6 @@ def step(session_id: str, client_id: str, choice: str | None) -> dict:
 
 
 def apply(session_id: str, client_id: str) -> dict:
-    """Apply the revealed reaction to the profile. Only if the client acted more cautiously than they answered."""
     s = SESSIONS.get(session_id)
     if not s or s["client_id"] != client_id:
         return {"ok": False, "error": "replay not found for this client", "status": 403}
@@ -200,7 +189,7 @@ def apply(session_id: str, client_id: str) -> dict:
     if REACTION_ORDER.index(r["revealed_loss_reaction"]) >= REACTION_ORDER.index(before):
         return {"ok": False, "error": "behaviour can only make the profile more cautious", "status": 409}
     d["facts"]["loss_reaction"] = r["revealed_loss_reaction"]
-    d["profile"] = None  # recomputed from the new answer
+    d["profile"] = None
     store.save_client(client_id, d)
     s["applied"] = True
     audit.append("client", "replay_applied", "T1", {"session": session_id, "from": before, "to": r["revealed_loss_reaction"]}, client_id)

@@ -1,9 +1,4 @@
-"""Prompt-injection guard and untrusted-content wrapper.
-
-Defence in depth: (1) documents are wrapped as untrusted data and never go in the system prompt, (2) instruction-like
-text is detected, quoted back as a warning and redacted before a model sees it, (3) the structural defence - the
-compliance and tier engines - still blocks the action even if a model is fooled.
-"""
+"""Prompt-injection guard and untrusted-content wrapper."""
 import re
 
 PATTERNS = [
@@ -19,7 +14,6 @@ PATTERNS = [
     ("conceal", r"\bdo not (tell|inform|mention|show)\b[^.\n]{0,20}\b(user|client|customer)\b"),
     ("exfiltrate", r"\b(export|exfiltrate|upload|email|post)\b[^.\n]{0,30}\b(client|customer|personal|account)\b[^.\n]{0,15}\b(data|details|information)\b"),
     ("url_call", r"https?://\S+"),
-    # Chinese injection phrasing (no \b: CJK has no word boundaries)
     ("zh_ignore_instructions", r"(忽略|无视|忽视|忘记|忘掉|覆盖|不要遵守)[^。\n]{0,15}(之前|以前|先前|上面|以上|所有|任何|你的)[^。\n]{0,10}(指令|指示|规则|提示|要求|约束)"),
     ("zh_ignore_controls", r"(忽略|无视|忽视|绕过|跳过|关闭|禁用|规避)[^。\n]{0,10}(适当性|合规|审核|检查|审计|日志|限制|风控|安全措施)"),
     ("zh_always_recommend", r"(总是|始终|一律|必须|务必|一定要|要)(向客户)?(推荐|购买|选择|包含|建议)"),
@@ -40,7 +34,6 @@ def _sentences(text: str) -> list[str]:
 
 
 def scan(text: str) -> list[dict]:
-    """Return one finding per flagged sentence: {rule, sentence}."""
     findings = []
     for s in _sentences(text):
         for name, rx in COMPILED:
@@ -61,7 +54,6 @@ def redact(text: str) -> str:
 
 
 def wrap_untrusted(text: str, filename: str = "document") -> str:
-    """Wrap external text so a model treats it as data. Closing-tag spoofing is neutralised."""
     safe = redact(text).replace("</untrusted_document>", "[tag removed]")
     safe_name = re.sub(r"[^A-Za-z0-9._ -]", "_", filename)[:80]
     return (f"<untrusted_document name=\"{safe_name}\">\n"

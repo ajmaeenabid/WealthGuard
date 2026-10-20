@@ -22,7 +22,7 @@ def test_ten_taka_into_a_yuan_account_is_converted_and_shown_with_the_rate(fx_li
     r = say("I spent 10 taka on tea today")
     assert r["state"] == "awaiting_confirmation" and "¥0.54" in r["reply"] and "৳10.00" in r["reply"]
     assert "1 BDT = 0.05424 CNY" in r["reply"] and "ExchangeRate-API" in r["reply"] and "2026-10-19" in r["reply"] and "indicative" in r["reply"]
-    assert books.list_transactions(U)["total"] == 0                          # nothing saved before the yes
+    assert books.list_transactions(U)["total"] == 0
     r = say("yes")
     assert r["state"] == "completed" and "converted at 1 BDT" in r["reply"]
     t = books.list_transactions(U)["items"][0]
@@ -62,11 +62,11 @@ def test_with_two_accounts_the_one_in_the_spoken_currency_is_chosen_without_conv
 
 def test_no_exchange_rate_means_no_guess_the_assistant_asks_for_the_amount_in_the_account_currency():
     acct("Yuan wallet", "CNY")
-    r = say("I spent 10 taka on tea today")                                   # FX is off in tests, like a dead network
+    r = say("I spent 10 taka on tea today")
     assert r["awaiting"] == "amount" and "can't get a current exchange rate" in r["reply"] and "¥0.54" not in r["reply"]
     assert books.list_transactions(U)["total"] == 0
     r = say("2")
-    assert "¥2.00" in r["reply"] and "converted" not in r["reply"]            # now it is simply 2 yuan, as the person said
+    assert "¥2.00" in r["reply"] and "converted" not in r["reply"]
 
 
 def test_a_message_naming_two_currencies_asks_which_one(fx_live):
@@ -106,23 +106,23 @@ def test_confirming_much_later_rechecks_the_rate_and_asks_again_if_it_moved(fx_l
     row = books._one("SELECT id, draft FROM fin_sessions WHERE username=? ORDER BY updated DESC LIMIT 1", (U,))
     import json
     draft = json.loads(row["draft"])
-    draft["fx_quote"]["fetched"] = "2020-01-01T00:00:00Z"                    # the quote is hours old
+    draft["fx_quote"]["fetched"] = "2020-01-01T00:00:00Z"
     store._write("UPDATE fin_sessions SET draft=? WHERE id=?", (json.dumps(draft), row["id"]))
-    fx_live["data"][0]["rates"]["CNY"] = 7.2                                  # and the market moved (both sources agree)
+    fx_live["data"][0]["rates"]["CNY"] = 7.2
     fx_live["data"][1]["rates"]["CNY"] = 7.19
-    monkeypatch.setenv("FX_CACHE_HOURS", "-1")                                # treat every cached rate as expired
+    monkeypatch.setenv("FX_CACHE_HOURS", "-1")
     r = say("yes")
     assert r["state"] == "awaiting_confirmation" and "exchange rate changed" in r["reply"]
     assert books.list_transactions(U)["total"] == 0
     r = say("yes")
-    assert r["state"] == "completed" and books.list_transactions(U)["items"][0]["final_amount"] == "58.35"      # 1000 BDT at the NEW rate, as shown
+    assert r["state"] == "completed" and books.list_transactions(U)["items"][0]["final_amount"] == "58.35"
 
 
 def test_the_model_cannot_invent_a_currency():
     from app.finance import rules
     assert rules.detect_currency("I spent 10 on tea") == (None, [])
-    assert rules.detect_currency("spent 10 块") == ("CNY", [])               # 块 right after a digit is yuan
-    assert rules.detect_currency("一块蛋糕")[0] is None                       # but not "a piece of cake"
+    assert rules.detect_currency("spent 10 块") == ("CNY", [])
+    assert rules.detect_currency("一块蛋糕")[0] is None
 
 
 def test_convert_questions_in_three_languages_use_the_real_rate(fx_live):
@@ -131,7 +131,7 @@ def test_convert_questions_in_three_languages_use_the_real_rate(fx_live):
     assert "ExchangeRate-API" in r["reply"] and "Indicative" in r["reply"]
     assert "৳1,843.79" in say("100元是多少塔卡", lang="zh")["reply"] and "参考汇率" in say("100元是多少塔卡", lang="zh")["reply"]
     assert "আনুমানিক" in say("১০০ টাকা কত ইউয়ান", lang="bn")["reply"]
-    assert books.list_transactions(U)["total"] == 0                           # a question never records anything
+    assert books.list_transactions(U)["total"] == 0
 
 
 def test_convert_question_without_a_rate_says_so():
@@ -140,7 +140,6 @@ def test_convert_question_without_a_rate_says_so():
 
 
 def test_ai_path_keeps_a_currency_only_when_the_message_wrote_it(fx_live, monkeypatch):
-    """The live model may return a currency; it is kept only if the person's own words contain it, and it must pass the schema."""
     from app.finance import ai
     from app.finance.ai import AIResult
     acct("Yuan wallet", "CNY")
@@ -158,7 +157,7 @@ def test_ai_path_keeps_a_currency_only_when_the_message_wrote_it(fx_live, monkey
     assert "converted" in r["reply"] or "换算" in r["reply"] or "1 BDT" in r["reply"]
     say("cancel")
     monkeypatch.setattr(ai, "call", fake("BDT"))
-    r = say("I spent 10 on a long lunch with colleagues downtown today")             # the model says BDT, the person never did
+    r = say("I spent 10 on a long lunch with colleagues downtown today")
     assert "¥10.00" in r["reply"] and "1 BDT" not in r["reply"]
 
 
@@ -172,7 +171,7 @@ def test_primary_account_receives_foreign_income_and_pays_unnamed_spending_conve
     t = books.list_transactions(U)["items"][0]
     assert t["type"] == "income" and t["account_id"] == cny["id"] and t["original"]["amount"] == "100.00" and t["original"]["currency"] == "USD"
     assert {a["name"]: a["balance"] for a in books.list_accounts(U)} == {"Alipay": "669.27", "bKash": "500.00"}
-    r = say("I spent 1000 taka on rice today")                                    # no account named: the primary pays, converted
+    r = say("I spent 1000 taka on rice today")
     assert "Alipay" in r["reply"] and "¥54.24" in r["reply"]
 
 
@@ -182,7 +181,7 @@ def test_the_primary_account_must_be_the_users_own_and_usable(fx_live):
         books.set_primary_account("someone_else", a["id"])
     books.set_primary_account(U, a["id"])
     books.update_account(U, a["id"], {"archived": True})
-    assert books.primary_account(U) is None                                       # an archived account stops being primary
+    assert books.primary_account(U) is None
     assert books.set_primary_account(U, None) is None
 
 

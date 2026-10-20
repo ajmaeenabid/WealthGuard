@@ -1,7 +1,4 @@
-/* WealthGuard interface. Direction: a private bank's reading room at night. Midnight ink, patina teal for action, brass for seals and
-   things that are approved. Newsreader italic is the one display voice (wordmark, hero, panel titles); Manrope carries the interface;
-   JetBrains Mono is for hashes and figures. Motion is kept to a few meaningful moments: panels slide, the chain fills, messages rise. */
-
+/* WealthGuard interface. */
 :root {
   --font-ui: "Manrope", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Newsreader", "Noto Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
@@ -76,17 +73,14 @@ body {
 .only-mobile { display: none !important; }
 .ic { width: 18px; height: 18px; flex: none; }
 
-/* ---------- banner and footer ---------- */
 .banner {
   flex: none; min-height: var(--banner-h); display: flex; align-items: center; justify-content: center; padding: 0 12px;
   background: var(--brass-soft); color: var(--brass); border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 600; letter-spacing: .02em; text-align: center;
 }
 footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px; padding: 6px 12px; border-top: 1px solid var(--line); background: var(--surface); }
 
-/* ---------- shell ---------- */
 .shell { flex: 1; min-height: 0; display: grid; grid-template-columns: 284px minmax(0, 1fr); }
 
-/* ---------- sidebar ---------- */
 .sidebar {
   display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow-y: auto; padding: 20px 14px 14px;
   background: var(--surface); border-right: 1px solid var(--line);
@@ -99,7 +93,6 @@ footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px;
 }
 .seal .ic { width: 19px; height: 19px; }
 .wordmark { font: italic 500 25px/1 var(--font-display); letter-spacing: -.012em; }
-/* the line under the wordmark: the promise of the product, set as a second voice rather than a caption */
 .tagline { position: relative; display: grid; gap: 5px; margin: 14px 8px 18px; padding-top: 14px; }
 .tagline::before { content: ""; position: absolute; left: 0; top: 0; width: 46px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--brass), var(--accent)); }
 .tg-main {
@@ -130,7 +123,6 @@ footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px;
 .nav .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--brass); opacity: 0; transform: scale(.4); transition: opacity .25s, transform .25s var(--ease); }
 .nav.has-update .dot { opacity: 1; transform: scale(1); animation: ping 1.8s var(--ease) infinite; }
 
-/* the advice flow is a real sequence, drawn as a thread that fills as each step completes */
 .flow { position: relative; display: flex; flex-direction: column; gap: 2px; }
 .flow .nav { padding-left: 38px; }
 .flow .node {
@@ -143,8 +135,6 @@ footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px;
 .flow .nav.done .node { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 .flow .nav.done:not(:last-child)::after { background: var(--accent); }
 
-
-/* ---------- stage and chat ---------- */
 .stage { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--bg-glow), var(--bg); transition: padding-right .45s var(--ease); }
 .topbar { flex: none; display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 16px 0 20px; }
 .topbar .badge { margin-right: 4px; }
@@ -187,12 +177,11 @@ footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px;
 .msg.agent::after { content: ""; position: absolute; left: 9px; top: 10px; width: 10px; height: 10px; border-radius: 50%; border: 1.6px solid var(--brass); }
 .msg.sys { align-self: center; padding: 5px 14px; border-radius: 99px; background: var(--warn-bg); color: var(--warn); font-size: 12.5px; text-align: center; }
 
-#typing { display: none !important; }   /* the pending reply bubble (thinking.js) is the only waiting indicator */
+#typing { display: none !important; }
 .typing { display: flex; gap: 5px; padding: 0 0 14px 46px; }
 .typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: .35; animation: bounce 1.1s infinite ease-in-out; }
 .typing span:nth-child(2) { animation-delay: .15s; } .typing span:nth-child(3) { animation-delay: .3s; }
 
-/* ---------- composer ---------- */
 .dock { flex: none; padding: 4px 0 14px; }
 .quick { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 2px 10px; }
 .quick:empty { display: none; }
@@ -214,7 +203,6 @@ footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px;
 .composer textarea:disabled { opacity: .55; cursor: not-allowed; }
 .composer-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 
-/* voice controls live on their own side of the composer, apart from sending */
 .voice-dock { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--line); }
 .vbtn { width: 34px; height: 34px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--ink-2); }
 .vbtn:hover:not(:disabled) { background: var(--surface-3); color: var(--ink); transform: none; }
@@ -244,7 +232,6 @@ footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px;
 .chips button { padding: 4px 11px; font-size: 12px; font-weight: 500; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 99px; }
 .chips button:hover { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 55%, transparent); transform: none; background: var(--accent-soft); }
 
-/* ---------- feature drawer ---------- */
 .drawer {
   position: fixed; top: var(--banner-h); right: 0; bottom: 0; z-index: 30; width: min(var(--drawer-w), 100vw); display: flex; flex-direction: column;
   background: var(--surface); border-left: 1px solid var(--line-strong); box-shadow: -40px 0 80px -40px rgba(0, 0, 0, .55);
@@ -260,7 +247,6 @@ footer { flex: none; text-align: center; color: var(--muted); font-size: 11.5px;
 .card > .small.muted:first-of-type { margin-bottom: 12px; }
 .scrim { position: fixed; inset: 0; z-index: 25; background: rgba(2, 6, 12, .5); backdrop-filter: blur(2px); animation: fade .3s both; }
 
-/* ---------- controls ---------- */
 input, select, textarea, button { font: inherit; }
 input, select, textarea {
   padding: 9px 12px; border-radius: 11px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--ink); transition: border-color .2s, box-shadow .2s;
@@ -288,7 +274,6 @@ a#exportAudit { display: inline-block; padding: 8px 14px; border-radius: 11px; b
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
 .row input[type="text"], .row input[type="number"] { min-width: 0; }
 
-/* ---------- content atoms used by the panels ---------- */
 .tag { font: 600 11.5px/1 var(--font-ui); padding: 5px 10px; border-radius: 99px; border: 1px solid var(--line-strong); color: var(--muted); background: var(--surface-2); letter-spacing: .01em; }
 .tag:empty { display: none; }
 .tag.good { background: var(--good-bg); color: var(--good); border-color: color-mix(in srgb, var(--good) 45%, transparent); }
@@ -336,14 +321,11 @@ a.prov:hover { color: var(--brass); }
 
 .msg .disc { display: block; margin-top: 10px; font-size: 12px; line-height: 1.5; color: var(--muted); }
 
-/* Chinese has no italic: use the upright serif for display text */
 html:lang(zh) :is(.hero-title, .card h2, .prov-box h3, .persona-card .pc-name) { font-style: normal; font-weight: 600; letter-spacing: 0; }
 
-/* scrollbars */
 * { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 ::-webkit-scrollbar { width: 9px; height: 9px; } ::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 9px; border: 2px solid transparent; background-clip: content-box; }
 
-/* ---------- motion ---------- */
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes fadeslide { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
@@ -357,7 +339,6 @@ html:lang(zh) :is(.hero-title, .card h2, .prov-box h3, .persona-card .pc-name) {
 @keyframes toastin { from { opacity: 0; transform: translateY(-14px) scale(.96); } to { opacity: 1; transform: none; } }
 @keyframes toastout { to { opacity: 0; transform: translateY(-8px) scale(.97); } }
 
-/* ---------- responsive ---------- */
 @media (min-width: 1320px) { .shell.drawer-open .stage { padding-right: var(--drawer-w); } .shell.drawer-open ~ .scrim { display: none; } }
 @media (max-width: 1319px) { .drawer { box-shadow: -40px 0 100px -20px rgba(0, 0, 0, .7); } }
 @media (max-width: 900px) {
@@ -377,7 +358,6 @@ html:lang(zh) :is(.hero-title, .card h2, .prov-box h3, .persona-card .pc-name) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }
 
-/* ---------- saved chats, account box ---------- */
 .session .persona-row { display: grid; gap: 8px; }
 .session button.primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .who-row { display: flex; align-items: center; gap: 9px; padding: 2px 2px 4px; font-weight: 600; font-size: 14px; }
@@ -408,7 +388,6 @@ html:lang(zh) :is(.hero-title, .card h2, .prov-box h3, .persona-card .pc-name) {
 .who i { font-style: normal; font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .userbox .icon { width: 32px; height: 32px; }
 
-/* ---------- sign-in page and settings dialog ---------- */
 .auth {
   position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; overflow-y: auto;
   background: radial-gradient(900px 520px at 20% 0%, var(--accent-soft), transparent 60%), radial-gradient(800px 520px at 100% 100%, var(--brass-soft), transparent 55%), var(--bg);
@@ -439,12 +418,10 @@ body.locked { overflow: hidden; }
 .set-head h2 { margin: 0; font: italic 500 28px/1.1 var(--font-display); }
 .auth-card h3 { margin: 12px 0 0; font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 
-/* voice settings rows carry their own icon (microphone engine, globe language) */
 .vrow { display: flex; align-items: center; gap: 8px; margin-top: 2px; color: var(--ink-2); }
 .vrow .ic { width: 16px; height: 16px; color: var(--accent); }
 .vrow label { margin: 0; }
 
-/* ---------- welcome page greeting, memory panel, administration ---------- */
 .nav[hidden], .is-admin [data-for="user"], .is-admin .flow, .is-admin .chat { display: none !important; }
 .hero-hello { margin: 0 0 6px; font: italic 500 clamp(30px, 4.4vw, 44px)/1.1 var(--font-display); letter-spacing: -.015em; animation: rise .7s var(--ease) both; }
 .hero-hello b { font-weight: 500; background: linear-gradient(100deg, var(--accent-2), var(--brass)); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -491,7 +468,6 @@ html:lang(zh) .hero-hello { font-style: normal; font-weight: 600; letter-spacing
 h3.mini { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
 #adminMsg.bad { color: var(--warn); }
 
-/* ---------- sign-in page: marble-and-gold artwork with a cream card (always light, whatever the app theme) ---------- */
 #auth {
   background: #f6ecd6 url("/static/login-bg-taka.jpg") right center / cover no-repeat;
   justify-items: start; align-items: center; padding: 0 clamp(16px, 6vw, 130px);
@@ -517,11 +493,9 @@ h3.mini { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacin
 #auth .auth-hint { color: #5d655f; }
 @media (max-width: 760px) { #auth { justify-items: center; background-position: 72% center; } #auth .auth-card { padding: 26px 22px; background: rgba(252, 248, 238, .95); } }
 
-/* the W emblem, used as an image everywhere the brand mark appears; pre-scaled files keep it sharp (no browser downscaling of a large bitmap) */
 .logo-w { width: 36px; height: 36px; border-radius: 50%; flex: none; display: block; image-rendering: auto; }
 .logo-w-lg { width: 56px; height: 56px; }
 
-/* demo accounts on the sign-in card: a quiet divider and four one-tap chips */
 #auth .demo { margin-top: 10px; }
 #auth .demo-rule { display: flex; align-items: center; gap: 12px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #8a8f87; }
 #auth .demo-rule::before, #auth .demo-rule::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(150, 120, 60, .4), transparent); }
@@ -543,7 +517,6 @@ h3.mini { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacin
 #auth .demo-tip { font-size: 12.5px; color: #6f6a58; }
 @media (max-width: 520px) { #auth .demo-sep { display: none; } #auth .demo-note { border-radius: 18px; } }
 
-/* gold coins instead of password dots: one 18px coin per character, same pitch as the (transparent) monospace text so the caret lines up */
 #auth .pw-wrap { position: relative; }
 #auth .pw-input { font: 600 20px/1 ui-monospace, Consolas, monospace; letter-spacing: calc(22px - 1ch); color: transparent; caret-color: #1f2a24; -webkit-text-fill-color: transparent; padding-inline: 16px; }
 #auth .pw-input::selection { background: rgba(43, 143, 125, .25); }
@@ -554,14 +527,12 @@ h3.mini { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacin
 @keyframes coin-in { from { transform: scale(.4) rotateY(90deg); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { #auth .pw-coins i { animation: none; } }
 
-/* chat list: rename */
 .chat-item .ci-ren { opacity: 0; width: 28px; height: 28px; transition: opacity .15s; }
 .chat-item:hover .ci-ren, .chat-item:focus-within .ci-ren, .chat-item.active .ci-ren { opacity: .75; }
 .chat-item .ci-ren:hover { opacity: 1; }
 .chat-item .ci-edit { width: 100%; font: inherit; padding: 2px 6px; border-radius: 8px; border: 1px solid var(--accent); background: var(--surface-2); color: var(--ink); }
 @media (hover: none) { .chat-item .ci-ren { opacity: .7; } }
 
-/* thinking indicator: three pulsing dots and a status line that shows elapsed time; calmer for reduced motion */
 .msg.thinking, .m.thinking { display: flex; align-items: center; gap: 10px; color: var(--ink-2); }
 .think-dots { display: inline-flex; gap: 5px; }
 .think-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: .35; animation: think 1.2s ease-in-out infinite; }
@@ -576,7 +547,6 @@ h3.mini { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacin
 @keyframes caret { 50% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .think-dots i, .think-label, .typing::after { animation: none; } .think-label { color: var(--ink-2); -webkit-text-fill-color: currentColor; } }
 
-/* formatted replies: real tables instead of pipes and dashes */
 .msg.md, .m.md { white-space: normal; }
 .md p { margin: 0 0 .7em; }
 .md p:last-child, .md ul:last-child, .md ol:last-child { margin-bottom: 0; }
@@ -595,7 +565,6 @@ h3.mini { margin: 14px 0 4px; font-size: 11.5px; font-weight: 700; letter-spacin
 .md-table .a-center { text-align: center; }
 .md-table td:first-child { font-weight: 600; }
 
-/* sign-in page: language and theme controls, top right */
 .auth-tools { position: absolute; top: 18px; right: clamp(16px, 3vw, 36px); z-index: 2; display: flex; gap: 8px; }
 .auth-tool { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px; font-weight: 600; font-size: 13.5px;
   color: #3b4a42; background: rgba(252, 248, 238, .85); border: 1px solid rgba(150, 120, 60, .35); backdrop-filter: blur(8px); box-shadow: 0 6px 18px -10px rgba(70, 55, 20, .5); }

@@ -1,5 +1,4 @@
-// App shell behaviour: sidebar navigation, the sliding feature drawer, composer, theme, toasts and the advice-flow thread.
-// It never touches business logic: app.js renders the cards and talks to the API; this file decides what is visible and how it moves.
+// App shell behaviour.
 (function () {
   const $ = (id) => document.getElementById(id);
   const q = (sel, root) => (root || document).querySelector(sel);
@@ -11,7 +10,6 @@
   const shell = $("shell"), drawer = $("drawer"), sidebar = $("sidebar"), scrim = $("scrim");
   let openId = null;
 
-  // ------------------------------------------------------------------ drawer
   function syncScrim() {
     const need = (openId && !WIDE()) || sidebar.classList.contains("open");
     scrim.hidden = !need;
@@ -33,7 +31,6 @@
     q(".drawer-body", drawer).scrollTop = 0;
     if (MOBILE()) sidebar.classList.remove("open");
     syncScrim();
-    // charts drawn while the card was hidden need to be told their size
     setTimeout(() => window.dispatchEvent(new Event("resize")), 480);
   }
 
@@ -58,21 +55,19 @@
     if (openId) closePanel(); else if (sidebar.classList.contains("open")) { sidebar.classList.remove("open"); syncScrim(); }
   });
 
-  // ------------------------------------------------------------------ theme
   const themeBtn = $("themeBtn");
   const SUN = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>';
   const MOON = themeBtn.innerHTML;
   function currentTheme() {
     const t = document.documentElement.dataset.theme;
     if (t) return t;
-    return "light";                                   // the brand canvas is warm ivory; dark is an explicit choice (saved in wg-theme)
+    return "light";
   }
   function paintTheme() { themeBtn.innerHTML = currentTheme() === "light" ? MOON : SUN; }
   themeBtn.onclick = () => window.WGTheme.toggle();
   window.addEventListener("wg:theme", paintTheme);
   paintTheme();
 
-  // ------------------------------------------------------------------ composer
   const input = $("chatInput"), form = $("chatForm"), chat = q(".chat");
   function autosize() {
     input.style.height = "auto";
@@ -88,7 +83,6 @@
   });
   new MutationObserver(autosize).observe(input, { attributes: true, attributeFilter: ["value"] });
   form.addEventListener("submit", () => setTimeout(autosize, 0));
-  // programmatic fills (voice, quick answers) do not fire "input": resize on focus and after sends
   input.addEventListener("focus", autosize);
   setInterval(() => { if (input.value !== input.dataset.last) { input.dataset.last = input.value; autosize(); syncSend(); } }, 250);
   syncSend();
@@ -98,7 +92,6 @@
   new MutationObserver(markStarted).observe(messages, { childList: true });
   markStarted();
 
-  // typing indicator follows the send button's busy state
   const typing = $("typing");
   new MutationObserver(() => { typing.hidden = !($("sendBtn").disabled && input.disabled && chat.classList.contains("started") && !!input.dataset.sent); })
     .observe(input, { attributes: true, attributeFilter: ["disabled"] });
@@ -106,12 +99,10 @@
   new MutationObserver(() => { if (!input.disabled) { typing.hidden = true; messages.scrollTop = messages.scrollHeight; } })
     .observe(input, { attributes: true, attributeFilter: ["disabled"] });
 
-  // voice settings popover
   const vbtn = $("vsetBtn"), vpop = $("vsetPop");
   vbtn.onclick = (ev) => { ev.stopPropagation(); vpop.hidden = !vpop.hidden; vbtn.setAttribute("aria-expanded", String(!vpop.hidden)); };
   document.addEventListener("click", (ev) => { if (!vpop.hidden && !vpop.contains(ev.target) && ev.target !== vbtn) { vpop.hidden = true; vbtn.setAttribute("aria-expanded", "false"); } });
 
-  // ------------------------------------------------------------------ model badge
   const badge = $("llmBadge");
   function paintBadge() {
     const t = (badge.textContent || "").toLowerCase();
@@ -121,7 +112,6 @@
   new MutationObserver(paintBadge).observe(badge, { childList: true, characterData: true, subtree: true });
   paintBadge();
 
-  // ------------------------------------------------------------------ advice-flow thread and update dots
   const FLOW = { profile: "profileCard", alloc: "allocCard", comp: "compCard", stress: "stressCard", approve: "approvalCard" };
   const done = { profile: false, alloc: false, comp: false, stress: false, approve: false };
   function progress(partial) {
@@ -145,7 +135,6 @@
       .observe(card, { childList: true, subtree: true, characterData: true });
   });
 
-  // ------------------------------------------------------------------ toasts
   function toast(text, actionLabel, onAction) {
     const el = document.createElement("div");
     el.className = "toast";
@@ -170,7 +159,6 @@
     lastAlloc = t;
   }).observe($("allocTag"), { childList: true, characterData: true, subtree: true });
 
-  // ------------------------------------------------------------------ chart look
   const cv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   function styleCharts() {
     if (!window.Chart) return;

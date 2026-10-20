@@ -1,5 +1,4 @@
-// English / Chinese UI. Static labels come from a fixed dictionary; engine- or model-generated text (rationales,
-// compliance details, ...) is translated by /api/translate, which re-checks the result (R7) and falls back to English.
+// English / Chinese UI.
 (function () {
   const ZH = {
     banner: "教育演示，产品均为合成数据，不构成真实的投资建议。",
@@ -87,7 +86,6 @@
 
   const t = (en) => (lang === "zh" && ZH[en]) || en;
   const ruleName = (id, en) => (lang === "zh" && ZH_RULES[id]) || en;
-  // Mark engine-generated text so it can be translated on demand; the English original is kept in data-en.
   const tr = (text, esc) => `<span data-en="${esc(text)}">${esc(text)}</span>`;
 
   function applyStatic() {

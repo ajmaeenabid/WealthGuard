@@ -1,8 +1,4 @@
-"""Budgets, goals, recurring obligations, alerts and the forecast.
-
-Planned is not actual: a goal's monthly target and a bill's expected amount are plans. Only recorded transactions move money.
-Paying a bill creates the one real expense and links it to the obligation, so the amount is never counted twice.
-"""
+"""Budgets, goals, recurring obligations, alerts and the forecast."""
 import statistics
 from datetime import date, datetime, timedelta
 from typing import Optional
@@ -43,7 +39,6 @@ def _amt(v, label: str) -> int:
     return n
 
 
-# ============================================================================================== budgets
 def _budget_out(r, as_of: Optional[date] = None) -> dict:
     as_of = as_of or money.today()
     s, e = _budget_window(r, as_of)
@@ -142,7 +137,6 @@ def delete_budget(user: str, bid: str) -> dict:
     return {"deleted": bid}
 
 
-# ============================================================================================== goals
 def _goal_out(r) -> dict:
     user = r["username"]
     c = _one("SELECT COALESCE(SUM(final_minor),0) AS n FROM fin_transactions WHERE username=? AND deleted_at IS NULL AND type='transfer' AND goal_id=? AND ts<=?",
@@ -244,7 +238,6 @@ def delete_goal(user: str, gid: str) -> dict:
     return {"deleted": gid}
 
 
-# ============================================================================================== obligations
 def _next(d: date, rec: str) -> Optional[date]:
     if rec == "weekly":
         return d + timedelta(days=7)
@@ -349,7 +342,6 @@ def _advance(user: str, r, paid_due: str) -> None:
 
 
 def pay_obligation(user: str, oid: str, *, account_id: Optional[str] = None, amount=None, ts: Optional[str] = None, source: str = "manual") -> dict:
-    """Record the real payment as one expense linked to the bill. Retrying the same due date returns the same payment."""
     r = _one("SELECT * FROM fin_obligations WHERE id=? AND username=?", (oid, user))
     if not r or not r["active"]:
         raise FinanceError("No such active bill.", 404)
@@ -383,7 +375,6 @@ def skip_obligation(user: str, oid: str) -> dict:
 
 
 def upcoming(user: str, days: int = 30) -> list[dict]:
-    """Bills due within `days` (or overdue), including later occurrences of recurring bills inside the window."""
     today = money.today()
     horizon = today + timedelta(days=days)
     out = []
@@ -402,7 +393,6 @@ def upcoming(user: str, days: int = 30) -> list[dict]:
     return sorted(out, key=lambda x: x["due"])
 
 
-# ============================================================================================== alerts and forecast
 def alerts(user: str) -> list[dict]:
     out = []
     for b in list_budgets(user):
@@ -434,7 +424,6 @@ def alerts(user: str) -> list[dict]:
 
 
 def forecast(user: str, reductions: Optional[dict] = None) -> dict:
-    """Projected end-of-month liquid balance. An estimate built from the last 30 days and known bills, with its assumptions."""
     today = money.today()
     m_start, m_end = money.month_bounds(today)
     days_left = (m_end - today).days
@@ -443,7 +432,6 @@ def forecast(user: str, reductions: Optional[dict] = None) -> dict:
     liquid = pos["liquid_minor"]
     window_start = today - timedelta(days=30)
     cur = analytics.summary(user, window_start, today)
-    # variable spending = expenses not tied to a bill, per day, over the last 30 days
     r = _one("SELECT COALESCE(SUM(final_minor),0) AS n FROM fin_transactions WHERE username=? AND type='expense' AND deleted_at IS NULL AND currency=? AND obligation_id IS NULL AND ts>=? AND ts<=?",
              (user, base, window_start.isoformat() + "T00:00:00", money.iso(money.now())))
     variable_30 = r["n"]

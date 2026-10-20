@@ -1,9 +1,4 @@
-"""Verify an advice receipt offline.   Usage:  python scripts/verify_receipt.py receipt.json [--server http://localhost:8000]
-
-Offline (needs no server, no key): recomputes the content hash, recomputes every audit entry hash and compares the dataset hashes
-with the files in this repository. With --server it also asks the issuing server to check membership, the chain anchor and the HMAC
-checkpoint. Exit code 0 only if everything that was checked passed.
-"""
+"""Verify an advice receipt offline.   Usage:  python scripts/verify_receipt.py receipt.json [--server http://localhost:8000]"""
 import argparse
 import json
 import os
@@ -12,7 +7,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.stdout.reconfigure(encoding="utf-8")
 
-from app import receipt  # noqa: E402
+from app import receipt
 
 
 def main() -> int:

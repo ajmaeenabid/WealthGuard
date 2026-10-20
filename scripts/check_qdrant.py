@@ -1,15 +1,11 @@
-"""Check your Qdrant Cloud setup end to end.  Usage:  python scripts/check_qdrant.py
-
-Reads QDRANT_URL / QDRANT_API_KEY from .env (never prints them), mirrors the knowledge base to your cluster, runs a
-search through Qdrant and compares it with the local index. Exit code 0 only if Qdrant really answered.
-"""
+"""Check your Qdrant Cloud setup end to end.  Usage:  python scripts/check_qdrant.py"""
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.stdout.reconfigure(encoding="utf-8")
 
-from app import config, knowledge, qdrant_backend, vectorstore  # noqa: E402
+from app import config, knowledge, qdrant_backend, vectorstore
 
 
 def main() -> int:

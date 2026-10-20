@@ -18,7 +18,6 @@ def spend(account, amount, **kw):
     return books.create_transaction(U, dict({"type": "expense", "account_id": account["id"], "amount": amount, "category": "food"}, **kw))
 
 
-# ------------------------------------------------------------------------------------------ money
 def test_money_is_exact_and_rejects_floats_and_junk():
     assert money.to_minor("0.1") + money.to_minor("0.2") == money.to_minor("0.3") == 30
     assert money.to_minor("1,250.505") == 125051 and money.s(125051) == "1250.51"
@@ -28,7 +27,6 @@ def test_money_is_exact_and_rejects_floats_and_junk():
     assert money.fmt(85000, "BDT") == "৳850.00" and money.fmt(-5, "USD") == "-$0.05"
 
 
-# ------------------------------------------------------------------------------------------ amounts
 def test_gross_discount_tax_and_final_stay_distinct_and_add_up():
     a = acct()
     t = spend(a, "800", gross_amount="850", discount="50")
@@ -36,7 +34,7 @@ def test_gross_discount_tax_and_final_stay_distinct_and_add_up():
     t2 = books.create_transaction(U, {"type": "expense", "account_id": a["id"], "gross_amount": "1000", "discount": "100", "tax": "75",
                                       "service_charge": "25", "category": "food"})
     assert t2["final_amount"] == "1000.00" and t2["tax"] == "75.00"
-    t3 = spend(a, "900", discount="100")                   # final given, gross derived
+    t3 = spend(a, "900", discount="100")
     assert t3["gross_amount"] == "1000.00"
     with pytest.raises(FinanceError, match="do not add up"):
         spend(a, "700", gross_amount="850", discount="50")
@@ -57,15 +55,14 @@ def test_the_database_itself_refuses_negative_amounts():
     c.close()
 
 
-# ------------------------------------------------------------------------------------------ balances and the accounting rules
 def test_balances_follow_the_accounting_rules_and_nothing_is_double_counted():
     cash, bank = acct("Cash", "cash", "1000"), acct("City Bank", "bank", "5000")
     sav, card = acct("Savings", "savings", "0"), acct("Visa", "credit_card", "0")
     books.create_transaction(U, {"type": "income", "account_id": bank["id"], "amount": "20000", "category": "salary"})
     spend(cash, "300")
     books.create_transaction(U, {"type": "transfer", "account_id": bank["id"], "to_account_id": sav["id"], "amount": "3000"})
-    spend(card, "2000", category="shopping")                                          # card purchase: liability grows
-    books.create_transaction(U, {"type": "transfer", "account_id": bank["id"], "to_account_id": card["id"], "amount": "2000"})   # paying the card
+    spend(card, "2000", category="shopping")
+    books.create_transaction(U, {"type": "transfer", "account_id": bank["id"], "to_account_id": card["id"], "amount": "2000"})
     b = {a["name"]: a["balance"] for a in books.list_accounts(U)}
     assert b == {"Cash": "700.00", "City Bank": "20000.00", "Savings": "3000.00", "Visa": "0.00"}
     pos = books.position(U)
@@ -102,11 +99,11 @@ def test_balances_can_be_read_as_of_a_past_date_and_future_entries_are_not_actua
     a = acct("Cash", "cash", "1000", opening_date="2026-01-01")
     spend(a, "100", ts="2026-02-10")
     spend(a, "50", ts="2026-03-10")
-    spend(a, "999", ts="2999-01-01")                                                # planned, not actual
+    spend(a, "999", ts="2999-01-01")
     assert books.balances(U, "2026-02-28T23:59:59")[a["id"]] == 90000
     assert books.balances(U, "2026-03-31T23:59:59")[a["id"]] == 85000
-    assert books.list_accounts(U)[0]["balance"] == "850.00"                          # now: future one excluded
-    assert books.balances(U, "2025-12-31T00:00:00")[a["id"]] == 0                    # before the account existed
+    assert books.list_accounts(U)[0]["balance"] == "850.00"
+    assert books.balances(U, "2025-12-31T00:00:00")[a["id"]] == 0
 
 
 def test_reconcile_reports_the_gap_and_posts_one_adjustment_that_changes_no_totals():
@@ -116,7 +113,7 @@ def test_reconcile_reports_the_gap_and_posts_one_adjustment_that_changes_no_tota
     assert r["ledger"] == "750.00" and r["difference"] == "-50.00" and not r["applied"]
     r = books.reconcile(U, a["id"], "700", apply=True)
     assert r["applied"] and books.list_accounts(U)[0]["balance"] == "700.00"
-    assert books.reconcile(U, a["id"], "700", apply=True)["applied"] is False       # nothing left to adjust
+    assert books.reconcile(U, a["id"], "700", apply=True)["applied"] is False
 
 
 def test_only_liabilities_can_start_negative_and_owing_is_stored_as_negative():
@@ -140,7 +137,6 @@ def test_accounts_are_unique_per_user_archived_not_deleted_and_isolated_between_
     assert books.list_accounts("bob") == []
 
 
-# ------------------------------------------------------------------------------------------ idempotency, edit, delete
 def test_the_same_idempotency_key_never_creates_a_second_record():
     a = acct()
     body = {"type": "expense", "account_id": a["id"], "amount": "100", "category": "food"}
@@ -157,7 +153,7 @@ def test_edit_recomputes_and_keeps_the_ledger_consistent_and_delete_is_soft():
     t = spend(a, "100")
     u = books.update_transaction(U, t["id"], {"amount": "250", "merchant": "Shwapno", "note": "weekly shop"})
     assert u["final_amount"] == "250.00" and u["merchant"] == "Shwapno" and books.list_accounts(U)[0]["balance"] == "750.00"
-    u = books.update_transaction(U, t["id"], {"discount": "20"})                          # final = gross - discount
+    u = books.update_transaction(U, t["id"], {"discount": "20"})
     assert u["gross_amount"] == "250.00" and u["final_amount"] == "230.00"
     with pytest.raises(FinanceError, match="type of a recorded"):
         books.update_transaction(U, t["id"], {"type": "income"})
@@ -165,7 +161,7 @@ def test_edit_recomputes_and_keeps_the_ledger_consistent_and_delete_is_soft():
     assert books.list_accounts(U)[0]["balance"] == "1000.00" and books.list_transactions(U)["total"] == 0
     with pytest.raises(FinanceError):
         books.update_transaction(U, t["id"], {"amount": "5"})
-    assert books.get_transaction(U, t["id"], include_void=True)["id"] == t["id"]       # kept for the audit trail
+    assert books.get_transaction(U, t["id"], include_void=True)["id"] == t["id"]
 
 
 def test_search_filter_sort_and_pagination():
@@ -190,4 +186,4 @@ def test_unknown_categories_are_rejected_and_essential_defaults_apply():
         spend(a, "5", category="spaceships")
     assert spend(a, "5", category="housing")["essential"] is True and spend(a, "5", category="entertainment")["essential"] is False
     assert spend(a, "5", category="food", subcategory="groceries")["essential"] is True
-    assert spend(a, "5", category="food", subcategory="dining out", essential=True)["essential"] is True   # the user's word wins
+    assert spend(a, "5", category="food", subcategory="dining out", essential=True)["essential"] is True

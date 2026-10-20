@@ -1,14 +1,9 @@
-"""Token budgeting so a long conversation or a large ledger can never overflow the model's input or output limit.
-
-There is no tokenizer for gpt-oss in the standard library, so counts are a conservative ESTIMATE (never an under-count for the scripts used here):
-Latin text ~ 1 token per 3.5 characters, Chinese ~ 1 token per character, Bangla ~ 1 token per 1.5 characters. The real usage reported by the
-provider is still stored in fin_ai_usage; this module only keeps requests safely inside the budget before they are sent.
-"""
+"""Token budgeting so a long conversation or a large ledger can never overflow the model's input or output limit."""
 import os
 import re
 from typing import Optional
 
-DEFAULT_MAX_INPUT = 3500      # leaves room under the documented 8K tokens/min Developer-plan limit for the reply and a second call
+DEFAULT_MAX_INPUT = 3500
 DEFAULT_MAX_OUTPUT = 1200
 _CJK = re.compile(r"[぀-ヿ㐀-鿿豈-﫿]")
 _BN = re.compile(r"[ঀ-৿]")
@@ -39,11 +34,10 @@ def estimate(text: str) -> int:
 
 
 def truncate(text: str, budget: int, *, keep: str = "head") -> str:
-    """Cut text to roughly `budget` tokens. keep='tail' keeps the end (recent turns); a marker shows that something was cut."""
     if estimate(text) <= budget:
         return text
     lo, hi = 0, len(text)
-    while lo < hi:                                         # largest prefix/suffix that fits
+    while lo < hi:
         mid = (lo + hi + 1) // 2
         piece = text[:mid] if keep == "head" else text[len(text) - mid:]
         if estimate(piece) <= budget:
@@ -54,14 +48,12 @@ def truncate(text: str, budget: int, *, keep: str = "head") -> str:
 
 
 def fit_messages(messages: list, budget: Optional[int] = None) -> tuple[list, dict]:
-    """Keeps the system message and the newest turns inside the budget. Older turns are dropped first, then the longest remaining message is
-    truncated. Returns (messages, report) where report says what was cut, so the cut is never silent."""
     budget = budget or max_input()
     msgs = [dict(m) for m in messages]
     before = sum(estimate(m.get("content", "")) + 4 for m in msgs)
     dropped = truncated = 0
     total = before
-    while total > budget and len(msgs) > 2:               # drop the oldest non-system turn
+    while total > budget and len(msgs) > 2:
         i = next((k for k, m in enumerate(msgs) if m["role"] != "system"), None)
         if i is None or i >= len(msgs) - 1:
             break
@@ -69,7 +61,7 @@ def fit_messages(messages: list, budget: Optional[int] = None) -> tuple[list, di
         del msgs[i]
         dropped += 1
     guard = 0
-    while total > budget and guard < 6:                   # still too big: shrink the largest message (never below a floor)
+    while total > budget and guard < 6:
         guard += 1
         i = max(range(len(msgs)), key=lambda k: estimate(msgs[k].get("content", "")))
         cur = estimate(msgs[i].get("content", ""))

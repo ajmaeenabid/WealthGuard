@@ -14,7 +14,7 @@ def test_why_not_is_specific_for_novayield():
 def test_why_not_worse_profile():
     pr = persona_profile("persona_chen")
     a = al.build(pr, PRODUCTS)
-    txt = comparison.why_not(PRODUCTS["P12"], pr, PRODUCTS, a)  # allowed (risk 5? Growth max 4) -> blocked
+    txt = comparison.why_not(PRODUCTS["P12"], pr, PRODUCTS, a)
     assert "R1" in txt
     txt2 = comparison.why_not(PRODUCTS["P10"], pr, PRODUCTS, al.build(pr, PRODUCTS, exclude_ids=["P10"]))
     assert "better risk/fee" in txt2 or "diversification" in txt2

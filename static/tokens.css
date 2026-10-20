@@ -1,40 +1,34 @@
-/* WealthGuard design tokens: the single source of colour, type, space, shape and elevation.
-   Layers:  1) primitives (raw brand values, HEX with RGB)   2) semantic tokens (what components use, light and dark)
-            3) legacy aliases (the names the older stylesheets already use, pointed at the semantic tokens)
-   Components must use semantic tokens only; never a raw colour. Loaded AFTER styles.css/finance.css so it wins at equal specificity. */
-
+/* WealthGuard design tokens. */
 :root {
-  /* ---------------------------------------------------------------- 1. primitives (light theme after the "Patient Portal" reference; HEX / RGB) */
-  --p-canvas: #F1F2EE;           /* 241 242 238  app background behind the cards */
-  --p-paper: #FFFFFF;            /* 255 255 255  cards, dialogs, inputs, sidebar */
-  --p-ink: #0E1012;              /*  14  16  18  headings and body: black */
-  --p-ink-soft: #43484E;         /*  67  72  78  secondary text: 8.2:1 on canvas */
-  --p-border: #E3E5E0;           /* 227 229 224  card and control borders */
-  --p-lime: #B3F948;             /* 179 249  72  the light theme's green: buttons, borders and highlights; text on it is black (15:1) */
-  --p-charcoal: #1D2024;         /*  29  32  36  selected navigation / segmented pills, white text (16:1) */
-  --p-link: #2F6B21;             /*  47 107  33  links and green accents on white (6.5:1) */
-  --p-olive: #7A8F1B;            /* 122 143  27  gradient partner for the green accents */
-  --p-success: #2E7D32;          /*  46 125  50 */
-  --p-warning: #8A5A00;          /* 138  90   0 */
-  --p-danger: #C0392B;           /* 192  57  43 */
-  --p-info: #2B6C8F;             /*  43 108 143 */
 
-  /* ---------------------------------------------------------------- type */
+  --p-canvas: #F1F2EE;
+  --p-paper: #FFFFFF;
+  --p-ink: #0E1012;
+  --p-ink-soft: #43484E;
+  --p-border: #E3E5E0;
+  --p-lime: #B3F948;
+  --p-charcoal: #1D2024;
+  --p-link: #2F6B21;
+  --p-olive: #7A8F1B;
+  --p-success: #2E7D32;
+  --p-warning: #8A5A00;
+  --p-danger: #C0392B;
+  --p-info: #2B6C8F;
+
   --font-ui: "Inter", "Noto Sans Bengali", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Playfair Display", "Noto Serif Bengali", "Noto Serif SC", "Songti SC", Georgia, "Times New Roman", serif;
-  --font-accent: "Cormorant Garamond", "Playfair Display", Georgia, serif;     /* short decorative lines only */
+  --font-accent: "Cormorant Garamond", "Playfair Display", Georgia, serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
-  --fs-hero: clamp(2.5rem, 4vw + 1rem, 3.75rem);   /* 40-60px, weight 500 */
-  --fs-page: clamp(1.75rem, 2vw + 1rem, 2.5rem);   /* 28-40px, weight 600 */
-  --fs-section: clamp(1.375rem, 1vw + 1rem, 1.75rem);  /* 22-28px */
-  --fs-card: 1.125rem;                              /* 18px */
-  --fs-body: 0.9375rem;                             /* 15px */
-  --fs-control: 0.9375rem;                          /* 15px */
-  --fs-caption: 0.8125rem;                          /* 13px */
+  --fs-hero: clamp(2.5rem, 4vw + 1rem, 3.75rem);
+  --fs-page: clamp(1.75rem, 2vw + 1rem, 2.5rem);
+  --fs-section: clamp(1.375rem, 1vw + 1rem, 1.75rem);
+  --fs-card: 1.125rem;
+  --fs-body: 0.9375rem;
+  --fs-control: 0.9375rem;
+  --fs-caption: 0.8125rem;
   --lh-tight: 1.2; --lh-body: 1.6; --lh-table: 1.45;
   --tracking-display: -0.012em; --tracking-label: 0.08em;
 
-  /* ---------------------------------------------------------------- space, shape, motion */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
   --r-sm: 8px; --r-control: 12px; --r-card: 16px; --r-dialog: 20px; --r-pill: 999px;
   --h-sm: 34px; --h-md: 42px; --h-lg: 50px; --h-input: 46px;
@@ -42,7 +36,6 @@
   --ease: cubic-bezier(.2, .8, .2, 1);
 }
 
-/* ================================================================== 2. semantic tokens: LIGHT (default) */
 :root, :root[data-theme="light"], :root:not([data-theme]) {
   color-scheme: light;
   --color-bg-primary: var(--p-canvas);
@@ -53,27 +46,27 @@
   --color-brand-sage: #9CBF3A;
   --color-brand-sage-dark: var(--p-link);
   --color-brand-bronze: var(--p-olive);
-  --color-action: var(--p-lime);                    /* the button colour (the Patient Portal lime): a fill, never used as text */
+  --color-action: var(--p-lime);
   --color-action-hover: #A4EB38;
   --color-action-active: #94DA2B;
-  --color-green-edge: rgba(110, 185, 20, .6);       /* a deeper shade of the same green for hairline borders, so they show on white */
+  --color-green-edge: rgba(110, 185, 20, .6);
   --color-green-soft: rgba(179, 249, 72, .24);
   --color-on-action: var(--p-ink);
-  --color-link: var(--p-link);                      /* readable green for links, small accents and focus */
+  --color-link: var(--p-link);
   --color-link-hover: #245416;
   --color-on-link: #FFFFFF;
   --color-nav-selected-bg: var(--p-charcoal);
   --color-nav-selected-text: #FFFFFF;
   --color-text-primary: var(--p-ink);
   --color-text-secondary: var(--p-ink-soft);
-  --color-text-muted: #666C73;                      /* captions: 5.3:1 on white */
+  --color-text-muted: #666C73;
   --color-border: var(--p-border);
   --color-border-soft: #ECEEE9;
   --color-success: var(--p-success);  --color-success-bg: rgba(46, 125, 50, .11);
   --color-warning: var(--p-warning);  --color-warning-bg: rgba(179, 249, 72, .42);
   --color-danger: var(--p-danger);    --color-danger-bg: rgba(192, 57, 43, .09);
   --color-info: var(--p-info);        --color-info-bg: rgba(43, 108, 143, .10);
-  --color-selected-bg: rgba(179, 249, 72, .4);     /* lime tint: highlights, focus halos, selected chips (text stays black) */
+  --color-selected-bg: rgba(179, 249, 72, .4);
   --color-hover-bg: rgba(14, 16, 18, .05);
   --color-disabled-bg: #ECEEE9;  --color-disabled-text: #8D939A;
   --color-focus-ring: var(--p-link);
@@ -86,9 +79,8 @@
   --glow: none;
 }
 
-/* ================================================================== 2b. semantic tokens: DARK (warm charcoal, deep bronze, muted sage) */
 :root[data-theme="dark"] {
-  /* dark: near-black with a deep forest-green glow, floating graphite panels, one bright lime accent (after the "AI Dashboard" reference) */
+
   color-scheme: dark;
   --color-bg-primary: #050807;
   --color-bg-secondary: #111513;
@@ -127,7 +119,6 @@
   --glow: radial-gradient(900px 520px at 50% -10%, rgba(52, 120, 66, .35), transparent 64%);
 }
 
-/* ================================================================== 3. legacy aliases: the older stylesheets keep working, now fed by the tokens */
 :root, :root[data-theme="light"], :root:not([data-theme]), :root[data-theme="dark"] {
   --bg: var(--color-bg-primary);
   --bg-glow: var(--glow);

@@ -1,9 +1,4 @@
-"""Purchase ledger: planned / bought / cancelled items, edited by typing or voice.
-
-Typed edits through the form buttons are the client's own explicit clicks. A spoken or typed *command* ("cancel the
-laptop") never changes anything by itself: it is parsed deterministically (English and Chinese) into a proposal that
-only applies after the client confirms it, so a voice prompt-injection cannot rewrite the history.
-"""
+"""Purchase ledger: planned / bought / cancelled items, edited by typing or voice."""
 import json
 import re
 from datetime import date, datetime, timezone
@@ -53,7 +48,6 @@ def _row(r) -> LedgerEntry:
     return LedgerEntry(**d)
 
 
-# ---------------------------------------------------------------------------------------------- storage
 def list_entries(client_id: str) -> list[LedgerEntry]:
     c = db.connect()
     rows = c.execute("SELECT * FROM ledger WHERE client_id=? ORDER BY ts DESC, rowid DESC", (client_id,)).fetchall()
@@ -99,7 +93,7 @@ def update_entry(entry_id: str, client_id: str, actor: str = "client", **fields)
     data = e.model_dump()
     data.update({k: v for k, v in fields.items() if v is not None})
     data["updated"] = _now()
-    new = LedgerEntry(**data)  # re-validates every field
+    new = LedgerEntry(**data)
     _save(new)
     audit.append(actor, "ledger_update", "T1", {"entry_id": entry_id, "changes": {k: v for k, v in fields.items()
                                                                                     if v is not None}}, client_id)
@@ -118,7 +112,6 @@ def delete_entry(entry_id: str, client_id: str, actor: str = "client") -> None:
     audit.append(actor, "ledger_delete", "T1", {"entry_id": entry_id, "item": e.item, "status": e.status}, client_id)
 
 
-# ---------------------------------------------------------------------------------------------- command parsing
 def _amount(text: str, last: bool = False) -> Optional[float]:
     nums = re.findall(_NUM, text, re.I)
     if not nums:
@@ -145,7 +138,7 @@ def find_entry(client_id: str, phrase: str, statuses: tuple = ("planned", "bough
     p = phrase.lower().strip()
     if not p:
         return None
-    for e in list_entries(client_id):  # newest first
+    for e in list_entries(client_id):
         name = e.item.lower()
         if e.status in statuses and (p in name or name in p):
             return e
@@ -153,7 +146,6 @@ def find_entry(client_id: str, phrase: str, statuses: tuple = ("planned", "bough
 
 
 def parse_command(client_id: str, text: str) -> dict:
-    """Deterministic English/Chinese command -> proposal dict, or {"ok": False, "message": ...}. Never applies."""
     raw = text.strip()
     t = raw.lower()
     impulse = any(w in t for w in IMPULSE_WORDS)
@@ -161,7 +153,6 @@ def parse_command(client_id: str, text: str) -> dict:
     def fail(msg):
         return {"ok": False, "message": msg}
 
-    # --- delete
     m = re.search(r"\b(?:delete|remove|erase)\s+" + _ART + r"(.+)", t) or re.search(r"(?:删除|删掉|移除)(.+)", raw)
     if m:
         phrase = _clean_item(m.group(m.lastindex))
@@ -170,7 +161,6 @@ def parse_command(client_id: str, text: str) -> dict:
             return fail(f"I could not find an entry matching '{phrase}'.")
         return _proposal(client_id, "delete", e, {}, f"Delete '{e.item}' ({e.status}, CNY {e.amount_cny:,.0f}) from your history.")
 
-    # --- cancel / did not buy
     m = (re.search(r"\b(?:cancel|didn'?t buy|did not buy|never bought|not buying|won'?t buy|skip)\s+" + _ART + r"(.+)", t)
          or re.search(r"(?:取消|没买|没有买|不买了|没有购买)(.+)", raw))
     if m:
@@ -181,7 +171,6 @@ def parse_command(client_id: str, text: str) -> dict:
         return _proposal(client_id, "update", e, {"status": "cancelled"},
                          f"Mark '{e.item}' as not bought (cancelled), so it no longer counts as spending.")
 
-    # --- change amount
     m = (re.search(r"\b(?:change|set|update|make)\s+" + _ART + r"(.+?)\s+(?:to|as)\s+" + _NUM, t)
          or re.search(r"把(.+?)(?:改成|改为|调整为|修改为)\s*" + _NUM, raw))
     if m:
@@ -193,19 +182,16 @@ def parse_command(client_id: str, text: str) -> dict:
         return _proposal(client_id, "update", e, {"amount_cny": amount},
                          f"Change '{e.item}' from CNY {e.amount_cny:,.0f} to CNY {amount:,.0f}.")
 
-    # --- planned purchase
     m = (re.search(r"\b(?:plan(?:ning)? to buy|want to buy|going to buy|will buy|thinking of buying|planned)\s+" + _ART + r"(.+)", t)
          or re.search(r"(?:计划买|计划购买|打算买|想买|准备买)(.+)", raw))
     if m:
         return _add(client_id, m.group(m.lastindex), raw, "planned", impulse)
 
-    # --- bought
     m = (re.search(r"\b(?:bought|purchased|paid for|got)\s+" + _ART + r"(.+)", t)
          or re.search(r"\bspent\s+" + _NUM + r"\s+(?:on|for)\s+" + _ART + r"(.+)", t)
          or re.search(r"(?:买了|购买了|购买|买)(.+)", raw) or re.search(r"花了.+?(?:买了|买|用于)(.+)", raw))
     if m:
         item_part = m.group(m.lastindex)
-        # "spent 500 on dinner": the item is the last group; the number is read from the whole sentence
         return _add(client_id, item_part, raw, "bought", impulse)
 
     return fail("I did not understand. Try: 'I bought headphones for 300', 'plan to buy a laptop 6000', "
@@ -229,7 +215,6 @@ def _add(client_id: str, item_part: str, raw: str, status: str, impulse: bool) -
                      f"Add '{item}' ({cat}) for CNY {amount:,.0f} as {status}" + (", marked impulse" if impulse else "") + ".")
 
 
-# ---------------------------------------------------------------------------------------------- proposals
 def _proposal(client_id: str, action: str, entry: Optional[LedgerEntry], fields: dict, summary: str) -> dict:
     p = {"id": store.new_id("chg"), "client_id": client_id, "action": action,
          "entry_id": entry.id if entry else None, "fields": fields, "summary": summary}
@@ -267,7 +252,6 @@ def _load_change(change_id: str, client_id: str) -> dict:
 
 
 def confirm(change_id: str, client_id: str, source: str = "typed") -> dict:
-    """Apply a proposal. Only called from the confirm endpoint (an explicit click)."""
     p = _load_change(change_id, client_id)
     f = p["fields"]
     if p["action"] == "add":
@@ -289,9 +273,7 @@ def reject(change_id: str, client_id: str) -> None:
     audit.append("client", "ledger_reject", "T2", {"change_id": change_id}, client_id)
 
 
-# ---------------------------------------------------------------------------------------------- synthetic samples
 def load_sample(client_id: str, kind: str = "balanced") -> int:
-    """Synthetic purchase history over the last 3 months. 'heavy' shows how behaviour can lower capacity."""
     today = date.today()
 
     def month_day(back: int, day: int) -> str:

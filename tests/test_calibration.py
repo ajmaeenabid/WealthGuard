@@ -41,7 +41,7 @@ def test_multi_year_episodes_compound_the_real_years():
 def test_scenarios_tell_the_real_story():
     sc = simulator.SCENARIOS
     assert sc["crash_2008"]["shocks"]["bond"] > 0 and sc["crash_2008"]["shocks"]["equity_fund"] < -30
-    assert sc["rate_+2"]["shocks"]["bond"] < 0 and sc["rate_+2"]["shocks"]["equity_fund"] < 0   # 2022: stocks and bonds fell
+    assert sc["rate_+2"]["shocks"]["bond"] < 0 and sc["rate_+2"]["shocks"]["equity_fund"] < 0
     assert sc["inflation_spike"]["shocks"]["gold"] > 50
     assert sc["dotcom_bust"]["shocks"]["equity_fund"] < -30
 
@@ -56,7 +56,7 @@ def test_every_scenario_declares_its_basis_and_hypothetical_is_labelled():
             assert b["type"] == "historical" and b["source"] and "Real" in b["note"]
     assert "10-year rate rose" in simulator.SCENARIOS["rate_+2"]["basis"]["note"]
     assert "12.3%" in simulator.SCENARIOS["inflation_spike"]["basis"]["note"]
-    assert "lost purchasing power" in simulator.SCENARIOS["inflation_spike"]["basis"]["note"]   # cash 7.8% < CPI 12.3%
+    assert "lost purchasing power" in simulator.SCENARIOS["inflation_spike"]["basis"]["note"]
 
 
 def test_stress_uses_the_real_shocks():
@@ -75,7 +75,7 @@ def _single_line(profile, product_id, horizon):
 
 
 def test_backtest_matches_a_hand_computation_for_cash():
-    a, p = _single_line(persona_profile("persona_li"), "P01", 3)   # P01 is cash, fee 0.2%
+    a, p = _single_line(persona_profile("persona_li"), "P01", 3)
     h = simulator.historical_backtest(a, PRODUCTS, p)
     ys = realdata.years()
     assert h["windows"] == len(ys) - 3 + 1 and h["first_year"] == 1928 and h["last_year"] == 2025
@@ -109,7 +109,6 @@ def test_equity_heavy_has_a_worse_worst_case_than_cash():
     assert simulator.historical_backtest(eq, PRODUCTS, p)["worst_cny"] < simulator.historical_backtest(cash, PRODUCTS, p)["worst_cny"]
 
 
-# ------------------------------------------------------------------------------------------ API and chat
 def _allocation():
     cid = c.post("/api/session", json={"persona_id": "persona_li"}).json()["client_id"]
     c.post("/api/profile", json={"client_id": cid, "answers": {"loss_reaction": "sell_some", "income_stability": "stable",

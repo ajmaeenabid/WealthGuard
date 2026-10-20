@@ -1,7 +1,6 @@
 """Categories, essential/discretionary defaults and a keyword guesser (English, Bangla and Banglish)."""
 from typing import Optional
 
-# category -> (essential default, subcategories, keywords)
 EXPENSE = {
     "food": (None, ["groceries", "dining out", "snacks", "drinks"],
              ["grocery", "groceries", "rice", "oil", "vegetable", "fish", "meat", "egg", "milk", "bazar", "bazaar", "market",
@@ -49,7 +48,7 @@ PAYMENT_WORDS = {"cash": ["cash", "নগদ টাকা", "现金"], "bkash": 
                  "bank": ["bank", "transfer", "ব্যাংক", "ব্যাঙ্ক", "银行卡", "银行"]}
 
 
-for _cat, (_e, _subs, _words) in EXPENSE.items():          # the category's own name is a keyword too ("how much on food?")
+for _cat, (_e, _subs, _words) in EXPENSE.items():
     if _cat != "other" and _cat not in _words:
         _words.append(_cat)
 
@@ -66,7 +65,6 @@ _BN_SUFFIX = {"", "র", "য়", "ে", "কে", "ের", "গুলো", "�
 
 
 def _bn_hit(word: str, text: str) -> bool:
-    """A Bangla word matches a whole token, optionally with an inflection suffix (so বাস does not match বাসা)."""
     import re
     for tok in re.findall(r"[ঀ-৿]+", text):
         if tok == word or (tok.startswith(word) and tok[len(word):] in _BN_SUFFIX):
@@ -75,7 +73,6 @@ def _bn_hit(word: str, text: str) -> bool:
 
 
 def guess(text: str) -> tuple[str, Optional[str], float]:
-    """(category, subcategory, confidence). Whole-word match for Latin keywords, whole-token match for Bangla."""
     import re
     t = (text or "").lower()
     best, hits = "other", 0
@@ -85,7 +82,7 @@ def guess(text: str) -> tuple[str, Optional[str], float]:
             if w.isascii():
                 if re.search(r"\b" + re.escape(w.lower()) + r"s?\b", t):
                     n += 1
-            elif "一" <= w[0] <= "鿿":                       # Chinese has no word boundaries: a substring is the match
+            elif "一" <= w[0] <= "鿿":
                 if w in t:
                     n += 1
             elif _bn_hit(w, t):

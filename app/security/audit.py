@@ -1,9 +1,4 @@
-"""Append-only, hash-chained audit log.
-
-entry_hash = SHA256(id, ts, client_id, actor, action, tier, payload_hash, prev_hash). Any edit of a stored row,
-payload, or a deleted row in the middle of the chain makes `verify()` fail at that row. There is deliberately no
-update or delete function in this module, and no tool can disable the log (T3).
-"""
+"""Append-only, hash-chained audit log."""
 import hashlib
 import json
 from typing import Optional
@@ -65,7 +60,6 @@ def list_entries(client_id: Optional[str] = None) -> list[dict]:
 
 
 def raw_rows() -> list[dict]:
-    """Every audit row as stored (payload kept as its JSON string), for verification and the red-team arena."""
     conn = db.connect()
     rows = [dict(r) for r in conn.execute("SELECT * FROM audit ORDER BY id").fetchall()]
     conn.close()
@@ -73,7 +67,6 @@ def raw_rows() -> list[dict]:
 
 
 def verify_rows(rows: list[dict]) -> dict:
-    """Pure chain check over a list of stored rows (a copy can be tampered with in memory without touching the DB)."""
     prev = GENESIS
     expected_id = 1
     for r in rows:

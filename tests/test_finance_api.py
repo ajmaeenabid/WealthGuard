@@ -47,7 +47,6 @@ def mk_txn(h, acc, amount="100", **kw):
     return r.json()
 
 
-# ============================================================================================== access
 def test_every_finance_route_needs_a_signed_in_member():
     for method, path in [("get", "/api/fin/accounts"), ("get", "/api/fin/dashboard"), ("post", "/api/fin/transactions"), ("post", "/api/fin/assistant/chat"), ("get", "/api/fin/meta")]:
         assert getattr(c, method)(path).status_code == 401, path
@@ -84,7 +83,6 @@ def test_one_member_can_never_see_or_touch_anothers_money(li):
     assert c.get("/api/fin/transactions", headers=li).json()["total"] == 1
 
 
-# ============================================================================================== accounts and transactions
 def test_accounts_and_position_over_http(li):
     cash = mk_account(li, "Cash", "cash", "1000")
     bank = mk_account(li, "Bank", "bank", "9000")
@@ -138,7 +136,6 @@ def test_edit_delete_search_filter_sort_and_paginate_over_http(li):
     assert c.get(f"/api/fin/transactions/{t['id']}", headers=li).status_code == 404 and g()["total"] == 3
 
 
-# ============================================================================================== planning over http
 def test_budgets_goals_and_bills_over_http(li):
     cash = mk_account(li, "Cash", "cash", "20000")
     sav = mk_account(li, "Savings", "savings", "0")
@@ -162,9 +159,8 @@ def test_budgets_goals_and_bills_over_http(li):
     assert c.get("/api/fin/forecast", headers=li, params={"reduce": "food:abc"}).status_code == 400
 
 
-# ============================================================================================== dashboard, reports, files
 def test_dashboard_returns_real_numbers_only(li):
-    assert c.get("/api/fin/dashboard", headers=li).json()["summary"]["spending"] == "0.00"                     # empty means empty, not demo data
+    assert c.get("/api/fin/dashboard", headers=li).json()["summary"]["spending"] == "0.00"
     cash = mk_account(li, "Cash", "cash", "1000")
     c.post("/api/fin/transactions", headers=li, json={"type": "income", "account_id": cash["id"], "amount": "30000", "category": "salary", "ts": day(2)})
     mk_txn(li, cash, "700", category="food", merchant="Shwapno", ts=day(1))
@@ -201,7 +197,6 @@ def test_csv_export_and_import_over_http(li):
     assert res["created"] == 1 and c.post("/api/fin/import/transactions", headers=chen, json={"csv": csv_text.text}).json()["skipped_duplicates"] == 1
 
 
-# ============================================================================================== the assistant endpoint
 def chat(h, text, rid=None, source="text"):
     return c.post("/api/fin/assistant/chat", headers=h, json={"text": text, "request_id": rid or uuid.uuid4().hex, "source": source})
 
@@ -210,13 +205,13 @@ def test_assistant_endpoint_full_conversation_with_resume_and_replay(li):
     mk_account(li, "Cash", "cash", "5000")
     r = chat(li, "I spent 850 taka at the grocery store today on rice, oil and vegetables, with a 50 taka discount").json()
     assert r["awaiting"] == "amount_basis"
-    cur = c.get("/api/fin/assistant/session", headers=li).json()                                                  # a page refresh
+    cur = c.get("/api/fin/assistant/session", headers=li).json()
     assert cur["state"] == "awaiting_clarification" and cur["awaiting"] == "amount_basis" and len(cur["messages"]) == 2
     assert chat(li, "Before the discount", "r-a").json()["awaiting"] == "tax"
     assert chat(li, "No.").json()["awaiting"] == "confirm"
-    assert c.get("/api/fin/transactions", headers=li).json()["total"] == 0                                         # nothing saved yet
+    assert c.get("/api/fin/transactions", headers=li).json()["total"] == 0
     saved = chat(li, "Save it.", "r-save").json()
-    retry = chat(li, "Save it.", "r-save").json()                                                                  # the network response was lost; the client retries
+    retry = chat(li, "Save it.", "r-save").json()
     assert saved["transaction"]["final_amount"] == "800.00" and retry["replayed"] is True and retry["transaction"]["id"] == saved["transaction"]["id"]
     assert c.get("/api/fin/transactions", headers=li).json()["total"] == 1
     assert c.get("/api/fin/assistant/session", headers=li).json()["state"] == "idle"

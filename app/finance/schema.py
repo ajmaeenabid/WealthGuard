@@ -1,8 +1,4 @@
-"""SQLite schema for the personal-finance module (plain SQL, no imports, so db.py can include it).
-
-Money is stored as integer minor units (1 taka = 100 poisha) so no floating point ever touches an amount.
-Every row belongs to a username; every query in the services filters on it.
-"""
+"""SQLite schema for the personal-finance module (plain SQL, no imports, so db.py can include it)."""
 SQL = """
 CREATE TABLE IF NOT EXISTS fin_settings (
   username TEXT PRIMARY KEY, base_currency TEXT NOT NULL DEFAULT 'BDT', created TEXT NOT NULL,

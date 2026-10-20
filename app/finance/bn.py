@@ -1,5 +1,4 @@
-"""Bangla wording for answers, insights, report text and data-quality notes. Numbers stay in ASCII digits with the taka sign so
-they are identical to what the ledger shows and can be checked against it. Anything without a Bangla template falls back to English."""
+"""Bangla wording for answers, insights, report text and data-quality notes. Numbers stay in ASCII digits with the taka sign so they are identical to what the ledger shows and can be checked against it. Anything without a."""
 from typing import Optional
 
 from app.finance import money
@@ -33,7 +32,6 @@ def pct(x) -> str:
 
 
 def insight(i: dict, cur: str) -> dict:
-    """The same insight with Bangla title, pattern, reason, action and assumptions (figures are copied from its evidence)."""
     e, k = i["evidence"], i["kind"]
     t = dict(i)
     try:
@@ -84,7 +82,6 @@ def insight(i: dict, cur: str) -> dict:
 
 
 def quality(q: str) -> str:
-    """Known data-quality notes in Bangla; unknown ones stay in English."""
     if q.startswith("No accounts have been added"):
         return "কোনো অ্যাকাউন্ট যোগ করা হয়নি, তাই ব্যালান্স দেখানো যাচ্ছে না।"
     if q.startswith("The opening balance of "):

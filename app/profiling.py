@@ -5,7 +5,6 @@ from typing import Optional
 from app.config import BUCKET_ORDER, lower_bucket
 from app.schemas import ClientProfile
 
-# Each question: id, text, dimension, weight within its dimension, options {value: (label, score)}.
 QUESTIONS = [
     {"id": "age", "text": "How old are you?", "type": "number", "dim": "capacity", "w": 0.20},
     {"id": "horizon_years", "text": "In how many years do you need this money?", "type": "number",
@@ -34,14 +33,13 @@ QBY = {q["id"]: q for q in QUESTIONS}
 
 
 def infer(answers: dict) -> dict:
-    """Adaptive skipping: answers implied by earlier ones are filled in (and listed in _inferred)."""
     out = {k: v for k, v in answers.items() if k != "_inferred"}
     inferred = {}
     h = out.get("horizon_years")
     if h is not None and float(h) < 2 and "liquidity_need_pct" not in out:
-        inferred["liquidity_need_pct"] = 40  # short horizon: assume high short-notice need
+        inferred["liquidity_need_pct"] = 40
     if out.get("goal") == "preservation" and "loss_reaction" not in out:
-        inferred["loss_reaction"] = "sell_some"  # capital-preservation goal implies low loss appetite
+        inferred["loss_reaction"] = "sell_some"
     out.update(inferred)
     out["_inferred"] = sorted(inferred)
     return out
@@ -67,7 +65,6 @@ def missing(answers: dict) -> list[str]:
     return [q["id"] for q in QUESTIONS if q["id"] not in known]
 
 
-# Chinese keywords per choice question, checked in order (negated or longer phrases first, e.g. 不稳定 before 稳定).
 ZH_ALIASES = {
     "income_stability": [("unstable", ["不稳定", "不太稳定", "不固定", "无保障", "没保障"]),
                          ("variable", ["变动", "浮动", "自由职业", "项目", "不一定"]),
@@ -102,7 +99,6 @@ def _parse_zh(q: dict, text: str):
 
 
 def parse_answer(qid: str, text: str):
-    """Deterministic mapping of free text / clicked option to a canonical answer; None if unclear."""
     q = QBY.get(qid)
     if not q:
         return None
@@ -113,7 +109,7 @@ def parse_answer(qid: str, text: str):
     for v, (lab, _) in q["options"].items():
         if t == str(v).lower() or t == lab.lower():
             return v
-    if q["id"] == "liquidity_need_pct":  # numeric first: "0" must not match inside "10%" or "30"
+    if q["id"] == "liquidity_need_pct":
         m = re.search(r"\d+(\.\d+)?", t)
         if m:
             return min(q["options"], key=lambda v: abs(v - float(m.group())))
@@ -157,7 +153,6 @@ def build_profile(client_id: str, answers: dict, name: str = "Client", extra: Op
     a = infer(answers)
     tol, cap = compute_scores(answers)
     extra = extra or {}
-    # Behaviour data can only make the profile more cautious: a non-negative penalty on capacity, never a bonus.
     cap = round(max(0.0, cap - max(0.0, float(extra.get("behaviour_penalty", 0) or 0))), 1)
     bucket = lower_bucket(score_to_bucket(tol), score_to_bucket(cap))
     return ClientProfile(

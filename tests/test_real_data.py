@@ -44,11 +44,11 @@ def test_annual_returns_cover_1928_to_2025_with_known_values():
     years = [int(x["year"]) for x in r]
     assert years == list(range(1928, 2026))
     by = {int(x["year"]): x for x in r}
-    assert float(by[2008]["sp500"]) == pytest.approx(-0.3655, abs=1e-3)   # 2008 crash
-    assert float(by[1931]["sp500"]) == pytest.approx(-0.4384, abs=1e-3)   # Great Depression
-    assert float(by[2022]["tbond_10y"]) < -0.15                           # the bond rout
-    assert float(by[1979]["gold"]) > 1.2                                  # real outlier: gold +126% in 1979
-    for x in r:  # wide sanity bounds only: real history has big outliers
+    assert float(by[2008]["sp500"]) == pytest.approx(-0.3655, abs=1e-3)
+    assert float(by[1931]["sp500"]) == pytest.approx(-0.4384, abs=1e-3)
+    assert float(by[2022]["tbond_10y"]) < -0.15
+    assert float(by[1979]["gold"]) > 1.2
+    for x in r:
         assert all(-0.8 < float(x[c]) < 1.5 for c in ("sp500", "tbill_3m", "tbond_10y", "baa_corp", "gold"))
 
 
@@ -58,7 +58,7 @@ def test_shiller_monthly_is_ordered_and_complete():
     assert months[0] == "1871-01" and months == sorted(months) and len(set(months)) == len(months)
     assert all(float(x["cpi"]) > 0 and float(x["long_rate"]) > 0 for x in r)
     peak = max(r, key=lambda x: float(x["long_rate"]))
-    assert peak["month"].startswith("198") and float(peak["long_rate"]) > 13   # the early-1980s rate peak
+    assert peak["month"].startswith("198") and float(peak["long_rate"]) > 13
 
 
 def test_china_macro_has_the_expected_columns_and_recent_years():
@@ -73,8 +73,8 @@ def test_suitability_measures_are_the_full_43_articles_without_page_boilerplate(
     d = json.load(open(os.path.join(ROOT, "suitability_zh.json"), encoding="utf-8"))
     a = d["articles"]
     assert len(a) == 43 and a[0]["article"] == "第一条" and a[-1]["article"] == "第四十三条"
-    assert "独立承担投资风险" in a[3]["text"]            # article 4: the investor bears the risk
-    assert "不表明其对产品或者服务的风险和收益做出实质性判断或者保证" in a[3]["text"]  # advice is not a guarantee
+    assert "独立承担投资风险" in a[3]["text"]
+    assert "不表明其对产品或者服务的风险和收益做出实质性判断或者保证" in a[3]["text"]
     blob = json.dumps(d, ensure_ascii=False)
     assert "京ICP备" not in blob and "中国政府网" not in blob
 

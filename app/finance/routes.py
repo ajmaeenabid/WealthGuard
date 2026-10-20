@@ -1,8 +1,4 @@
-"""HTTP API for the personal-finance module (/api/fin/*). Every route is scoped to the signed-in account.
-
-Amounts travel as strings ("850.00"), never floats. The model never touches the database: the assistant route calls the
-same validated services the manual forms use.
-"""
+"""HTTP API for the personal-finance module (/api/fin/*). Every route is scoped to the signed-in account."""
 import time
 from collections import defaultdict, deque
 from typing import Optional
@@ -22,7 +18,6 @@ from app.finance.books import FinanceError
 router = APIRouter(prefix="/api/fin")
 log = logging.getLogger("wealthguard.finance")
 ASSISTANT_PER_MINUTE = 30
-# (max requests, window in seconds) per user. Writes and imports are generous but bounded; AI reports cost money, so they are scarcer.
 LIMITS = {"assistant": (ASSISTANT_PER_MINUTE, 60), "write": (120, 60), "import": (6, 60), "report": (12, 3600), "erase": (3, 3600)}
 _HITS: dict = defaultdict(deque)
 
@@ -46,7 +41,7 @@ def _call(fn, *a, **kw):
     except money.MoneyError as e:
         raise HTTPException(400, str(e))
     except sqlite3.Error:
-        log.exception("finance database error")           # the details stay in the server log, never in the response
+        log.exception("finance database error")
         raise HTTPException(500, "Something went wrong while saving. Nothing was changed; please try again.")
 
 
@@ -61,7 +56,6 @@ def _limit(user: str, bucket: str) -> None:
     q.append(now)
 
 
-# ---------------------------------------------------------------------------------------------- request models
 Amount = Optional[str]
 
 
@@ -127,7 +121,7 @@ class TxnIn(BaseModel):
     items: Optional[list[ItemIn]] = None
     idempotency_key: Optional[str] = Field(None, max_length=80)
     currency: Optional[str] = Field(None, max_length=3)
-    convert: Optional[bool] = None            # the amounts are in `currency`: convert them to the account's currency at today's exchange rate
+    convert: Optional[bool] = None
 
 
 class TxnPatch(TxnIn):
@@ -224,8 +218,8 @@ class ReportIn(BaseModel):
     ref: Optional[str] = Field(None, max_length=10)
     start: Optional[str] = Field(None, max_length=10)
     end: Optional[str] = Field(None, max_length=10)
-    ai: Optional[bool] = None            # None: use the account's AI preference
-    lang: Optional[str] = Field(None, pattern="^(en|bn)$")       # None: the account's assistant language (English when "auto")
+    ai: Optional[bool] = None
+    lang: Optional[str] = Field(None, pattern="^(en|bn)$")
 
 
 class ChatIn(BaseModel):
@@ -244,7 +238,6 @@ def _dump(model: BaseModel) -> dict:
     return model.model_dump(exclude_none=True)
 
 
-# ---------------------------------------------------------------------------------------------- meta
 @router.get("/meta")
 def meta(request: Request):
     u = _user(request)
@@ -261,7 +254,6 @@ def ai_usage(request: Request, days: int = Query(30, ge=1, le=365)):
     return ai.usage_summary(_user(request), days)
 
 
-# ---------------------------------------------------------------------------------------------- accounts
 @router.get("/accounts")
 def get_accounts(request: Request, include_archived: bool = False):
     return _call(books.list_accounts, _user(request), include_archived)
@@ -287,7 +279,6 @@ def position(request: Request):
     return _call(books.position, _user(request))
 
 
-# ---------------------------------------------------------------------------------------------- transactions
 @router.get("/transactions")
 def list_txns(request: Request, start: Optional[str] = None, end: Optional[str] = None, type: Optional[str] = None, category: Optional[str] = None,
               merchant: Optional[str] = None, account_id: Optional[str] = None, payment_method: Optional[str] = None, q: Optional[str] = Query(None, max_length=100),
@@ -323,10 +314,8 @@ def delete_txn(txn_id: str, request: Request):
     return _call(books.void_transaction, _user(request), txn_id)
 
 
-# ---------------------------------------------------------------------------------------------- receipt photos
 @router.post("/transactions/{txn_id}/receipt")
 async def upload_receipt(txn_id: str, request: Request):
-    """Raw image bytes in the body (JPEG, PNG or WebP). The type is decided by the bytes, not by the header or file name."""
     u = _user(request)
     _limit(u, "write")
     declared = request.headers.get("content-length")
@@ -348,7 +337,6 @@ def delete_receipt(txn_id: str, request: Request):
     return _call(receipts.remove, _user(request), txn_id)
 
 
-# ---------------------------------------------------------------------------------------------- planning
 @router.get("/budgets")
 def get_budgets(request: Request):
     return _call(planning.list_budgets, _user(request))
@@ -431,7 +419,6 @@ def get_alerts(request: Request):
 
 @router.get("/activity")
 def activity(request: Request, limit: int = Query(50, ge=1, le=200)):
-    """This account's own finance actions from the tamper-evident audit log (ids and amounts, never names or notes)."""
     from app.security import audit
     u = _user(request)
     rows = [e for e in audit.list_entries(None) if isinstance(e.get("payload"), dict) and e["payload"].get("user") == u]
@@ -452,7 +439,6 @@ def get_forecast(request: Request, reduce: Optional[str] = Query(None, max_lengt
     return _call(planning.forecast, _user(request), reductions)
 
 
-# ---------------------------------------------------------------------------------------------- dashboard
 @router.get("/dashboard")
 def dashboard(request: Request, kind: str = Query("month", pattern="^(day|week|month|year|custom)$"), ref: Optional[str] = None,
               start: Optional[str] = None, end: Optional[str] = None):
@@ -472,7 +458,6 @@ def dashboard(request: Request, kind: str = Query("month", pattern="^(day|week|m
     return _call(build)
 
 
-# ---------------------------------------------------------------------------------------------- reports and files
 @router.post("/reports")
 def make_report(body: ReportIn, request: Request):
     u = _user(request)
@@ -517,7 +502,6 @@ def import_csv(body: ImportIn, request: Request):
     return _call(exchange.import_csv, u, body.csv, body.account_id)
 
 
-# ---------------------------------------------------------------------------------------------- preferences and privacy
 @router.post("/currency/apply-to-all")
 def relabel_all(body: RelabelIn, request: Request):
     u = _user(request)
@@ -589,7 +573,6 @@ def erase(body: EraseIn, request: Request):
     return _call(privacy.erase_all, u, body.confirm)
 
 
-# ---------------------------------------------------------------------------------------------- the assistant
 @router.post("/assistant/chat")
 def assistant_chat(body: ChatIn, request: Request):
     u = _user(request)

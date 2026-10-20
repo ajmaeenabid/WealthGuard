@@ -21,12 +21,11 @@ def refs(hits):
     return [h["ref"] for h in hits]
 
 
-# ------------------------------------------------------------------------------------------ embedder and store
 def test_tokens_are_deterministic_and_handle_both_scripts():
     assert vectorstore.tokens("Complex products") == vectorstore.tokens("complex PRODUCTS")
     t = vectorstore.tokens("适当性管理")
     assert "适当" in t and "适当性" in t and "管理" in t
-    assert "product" in vectorstore.tokens("products") and vectorstore.tokens("a b") == []   # plural stripped, 1-char skipped
+    assert "product" in vectorstore.tokens("products") and vectorstore.tokens("a b") == []
 
 
 def test_build_search_persist_and_filters():
@@ -37,10 +36,10 @@ def test_build_search_persist_and_filters():
     hits = vectorstore.search("interest rate on bonds", k=2)
     assert hits[0]["ref"] == "r1" and len(hits) == 2 and hits[0]["score"] >= hits[1]["score"]
     assert all(h["source"] == "a" for h in vectorstore.search("interest rate", k=4, source="a"))
-    vectorstore._CACHE.clear()                       # force a reload from SQLite: the vectors really persisted
+    vectorstore._CACHE.clear()
     assert vectorstore.search("2008 crash", k=1)[0]["ref"] == "r2"
     assert vectorstore.search("", k=3) == [] and vectorstore.search("zzzzqqq", k=3, min_score=0.5) == []
-    assert vectorstore.build(items[:2], "fp2") == 2 and vectorstore.count() == 2      # rebuild replaces, never duplicates
+    assert vectorstore.build(items[:2], "fp2") == 2 and vectorstore.count() == 2
 
 
 def test_stored_vectors_are_unit_length_float32():
@@ -50,7 +49,6 @@ def test_stored_vectors_are_unit_length_float32():
     assert np.allclose(np.linalg.norm(mat, axis=1), 1.0, atol=1e-4)
 
 
-# ------------------------------------------------------------------------------------------ knowledge base contents
 def test_index_contains_every_source_and_is_idempotent():
     assert knowledge.ensure_index() == N_CHUNKS
     assert knowledge.ensure_index() == N_CHUNKS and vectorstore.count() == N_CHUNKS
@@ -96,7 +94,6 @@ def test_article_numbers_convert():
            [1, 9, 10, 16, 20, 37, 43]
 
 
-# ------------------------------------------------------------------------------------------ regulatory basis for rules
 @pytest.mark.parametrize("rule,article_no", [("R1", 18), ("R3", 16), ("R4", 16), ("R5", 20), ("R6", 23), ("R7", 22)])
 def test_rules_link_to_the_supporting_article(rule, article_no):
     b = knowledge.basis_for_rule(rule)
@@ -108,7 +105,6 @@ def test_rules_without_a_matching_article_show_no_basis():
     assert knowledge.basis_for_rule("nope") is None
 
 
-# ------------------------------------------------------------------------------------------ data hygiene
 def test_regulation_text_is_clean_and_complete():
     d = json.load(open(os.path.join(REAL, "suitability_zh.json"), encoding="utf-8"))
     a = d["articles"]
@@ -118,11 +114,10 @@ def test_regulation_text_is_clean_and_complete():
 
 def test_quoting_the_regulation_never_trips_the_language_rule():
     d = json.load(open(os.path.join(REAL, "suitability_zh.json"), encoding="utf-8"))
-    assert [art["article"] for art in d["articles"] if banned_phrases(art["text"])] == []   # Art. 4 denies a guarantee
+    assert [art["article"] for art in d["articles"] if banned_phrases(art["text"])] == []
     assert banned_phrases("这款产品保证收益") and banned_phrases("我们保证收益，产品本身不代表任何保证。")
 
 
-# ------------------------------------------------------------------------------------------ API, tool, chat, state
 def test_search_api_returns_results_and_is_audited():
     cid = c.post("/api/session", json={"persona_id": "persona_li"}).json()["client_id"]
     r = c.get("/api/knowledge/search", params={"q": "risk warning disclosure", "k": 2, "client_id": cid})
@@ -161,7 +156,7 @@ def test_chat_quoting_the_article_that_denies_guarantees_is_not_blocked():
     cid = c.post("/api/session", json={"persona_id": "persona_li"}).json()["client_id"]
     out = c.post("/api/chat", json={"client_id": cid, "message":
                  "Under the regulation, does the firm's advice guarantee returns, and who bears the investment risk?"}).json()
-    assert "can't share that wording" not in out["reply"] and "第四条" in out["reply"]   # Art. 4 quoted, not blocked
+    assert "can't share that wording" not in out["reply"] and "第四条" in out["reply"]
 
 
 def test_state_includes_regulatory_basis_after_compliance():
@@ -187,8 +182,7 @@ def test_chat_regulation_questions_are_answered_from_the_regulation_not_our_rule
     assert "CSRC Suitability Management Measures" in out["reply"]
 
 
-# ------------------------------------------------------------------------------------------ history cards (real yearly data)
-import csv  # noqa: E402
+import csv
 
 
 def _card(ref):
@@ -213,20 +207,20 @@ def test_us_card_numbers_match_the_raw_csv():
     t = _card("US-1979")["text"]
     assert f"gold {r['gold'] * 100:+.1f}%" in t and f"S&P 500 (with dividends) {r['sp500'] * 100:+.1f}%" in t
     assert "Best: gold" in t and "CPI inflation (Dec to Dec) was 13.3%" in t
-    assert "CPI inflation" not in _card("US-2025")["text"]          # no Shiller months for 2025: no invented figure
+    assert "CPI inflation" not in _card("US-2025")["text"]
 
 
 def test_china_card_includes_the_derived_real_deposit_return():
     t = _card("CN-2024")["text"]
     assert "CPI inflation 0.2%" in t and "deposit rate 1.50%" in t and "+1.3 points" in t
-    assert "CPI inflation" not in _card("CN-1985")["text"] and "Real deposit" not in _card("CN-1985")["text"]   # no data, no invented figure
+    assert "CPI inflation" not in _card("CN-1985")["text"] and "Real deposit" not in _card("CN-1985")["text"]
 
 
 def test_decade_card_averages_are_computed_from_the_data():
     t = _card("DECADE-1970s")["text"]
     avg_gold = sum(_raw(y)["gold"] for y in range(1970, 1980)) / 10
     assert f"gold {avg_gold * 100:+.1f}%" in t and "worst S&P 500 year was 1974" in t
-    assert "1928-1929" in _card("DECADE-1920s")["text"]               # partial first decade is labelled honestly
+    assert "1928-1929" in _card("DECADE-1920s")["text"]
 
 
 @pytest.mark.parametrize("query,expected", [

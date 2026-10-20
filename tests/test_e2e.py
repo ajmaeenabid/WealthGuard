@@ -34,11 +34,10 @@ def test_health_and_disclaimer():
 def test_persona1_full_flow_chat_to_approved_ticket():
     cid = start()
     out = chat(cid, "Hi, please advise me")
-    assert out["question"]["id"] == "income_stability" and out["allocation"] is None  # asks only the unknown
+    assert out["question"]["id"] == "income_stability" and out["allocation"] is None
     chat(cid, "Stable")
     chat(cid, "About 10%")
     out = chat(cid, "Sell some")
-    # first draft (with the tempting note) was blocked, the revision passed
     assert out["allocation"] is not None
     assert [a["passed"] for a in out["attempts"]] == [False, True]
     assert "R1" in out["attempts"][0]["failed_rules"] and "R3" in out["attempts"][0]["failed_rules"]
@@ -130,7 +129,7 @@ def test_compare_and_products():
 
 def test_blank_client_flow_asks_everything():
     cid = c.post("/api/session", json={}).json()["client_id"]
-    out = chat(cid, "hello")                       # a greeting gets a greeting, not the questionnaire
+    out = chat(cid, "hello")
     assert out["question"] is None and out["trace"] == [] and out["reply"].startswith("Hello")
     out = chat(cid, "I'd like some investment advice")
     assert out["question"]["id"] == "age"

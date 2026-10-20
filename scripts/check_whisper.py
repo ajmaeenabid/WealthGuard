@@ -1,9 +1,4 @@
-"""Check Whisper voice transcription end to end.   Usage:  python scripts/check_whisper.py [--file audio.wav] [--language en|zh] [--no-call]
-
-Reads GROQ_API_KEY / WHISPER_* from .env (the key is never printed). Without --file it synthesises a spoken sentence with the Windows
-speech engine, sends it through the same code the microphone uses (app/transcribe.py) and prints the transcript. Exit code 0 only if the
-expected words came back.  --no-call just creates and inspects the audio (no network).
-"""
+"""Check Whisper voice transcription end to end.   Usage:  python scripts/check_whisper.py [--file audio.wav] [--language en|zh] [--no-call]"""
 import argparse
 import os
 import subprocess
@@ -13,7 +8,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.stdout.reconfigure(encoding="utf-8")
 
-from app import transcribe  # noqa: E402
+from app import transcribe
 
 SENTENCE = "I bought headphones for three hundred yuan"
 

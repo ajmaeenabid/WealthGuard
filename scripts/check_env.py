@@ -1,13 +1,10 @@
-"""Print the configuration inventory: variable names, whether each is set and valid, what depends on it. Never prints a value.
-   python scripts/check_env.py            table of every variable
-   python scripts/check_env.py --missing  only what is unset/invalid and the feature it affects
-"""
+"""Print the configuration inventory: variable names, whether each is set and valid, what depends on it. Never prints a value. python scripts/check_env.py            table of every variable python scripts/check_env.py."""
 import os
 import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from app import config, envcheck  # noqa: E402
+from app import config, envcheck
 
 config.load_dotenv()
 rows = envcheck.audit()

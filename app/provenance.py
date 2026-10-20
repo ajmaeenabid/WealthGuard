@@ -1,9 +1,4 @@
-"""Number provenance: "where does this number come from, and does it recompute?"
-
-For a number shown in the UI this returns its formula in words, the inputs with their sources (real datasets with hash and license,
-synthetic product assumptions, the client's own answers), and a fresh recomputation from those inputs with a `matches` flag. The
-recomputation goes through the same engine functions the number came from, so a mismatch means the displayed value is stale or wrong.
-"""
+"""Number provenance: "where does this number come from, and does it recompute?" """
 import csv
 import hashlib
 import json
@@ -60,7 +55,6 @@ def _profile_parts(client_id: str, dim: str):
 
 
 def _independent_stress(alloc, products, scenario: str) -> float | None:
-    """Recompute a historical scenario straight from the raw CSV with its own arithmetic (not the simulator's cache)."""
     spec = simulator.EPISODES.get(scenario)
     if not spec:
         return None
@@ -171,7 +165,6 @@ def explain(client_id: str, kind: str, allocation_id: str = "", scenario: str = 
                     "for every real rolling window, compound the allocation's mapped asset-class returns minus fees; count windows ending at or above the goal",
                     inputs, h2["share_reaching_target"], _datasets("returns_annual.csv"))
 
-    # ledger_total
     insights = behaviour.insights(client_id)
     bought = [e for e in ledger.list_entries(client_id) if e.status == "bought"]
     rows = [{"name": e.item, "value": f"CNY {e.amount_cny:,.0f}", "source": f"{e.ts}, {e.category}, entered by {e.source}"} for e in bought]

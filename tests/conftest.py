@@ -2,22 +2,21 @@ import os
 
 import pytest
 
-os.environ["WEALTHGUARD_NO_DOTENV"] = "1"  # never read a real key from .env during tests
+os.environ["WEALTHGUARD_NO_DOTENV"] = "1"
 os.environ["USE_MOCK_LLM"] = "1"
-os.environ["FX_PROVIDER"] = "off"          # tests never touch the network; the fx_live fixture supplies fixed rates when a test needs them
+os.environ["FX_PROVIDER"] = "off"
 
 
 @pytest.fixture(autouse=True)
 def fresh_db(tmp_path, monkeypatch):
     monkeypatch.setenv("WEALTHGUARD_DB", str(tmp_path / "test.db"))
     monkeypatch.setenv("USE_MOCK_LLM", "1")
-    monkeypatch.setenv("WEALTHGUARD_AUTH", "0")   # API tests call routes directly; tests/test_accounts.py turns sign-in on
+    monkeypatch.setenv("WEALTHGUARD_AUTH", "0")
     from app import state
     state.HISTORY.clear()
     yield
 
 
-# the two real providers' numbers as seen on 2026-10-19 (1 USD = ...); used by tests that need conversion
 FAKE_RATES = [{"source": "er-api", "date": "2026-10-19", "rates": {"CNY": 6.69274, "BDT": 123.400189}},
               {"source": "fawaz", "date": "2026-10-19", "rates": {"CNY": 6.68315324, "BDT": 123.38683111}}]
 

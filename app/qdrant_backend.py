@@ -1,17 +1,11 @@
-"""Optional Qdrant Cloud backend for the knowledge base (REST API over HTTPS, no extra library).
-
-Configured by QDRANT_URL and QDRANT_API_KEY (.env). When set, the vectors built locally are mirrored to a Qdrant
-collection and searches go to Qdrant; if the service is missing, slow or erroring, vectorstore.py falls back to the
-local SQLite index, so the app never depends on it. Every call is checked against the URL allowlist (the Qdrant origin is
-allowed only because the operator configured it), and the API key is sent only as the `api-key` header, never logged.
-"""
+"""Optional Qdrant Cloud backend for the knowledge base (REST API over HTTPS, no extra library)."""
 import uuid
 
 from app import config
 
 BATCH = 64
 TIMEOUT = 10.0
-_TRANSPORT = None  # tests inject httpx.MockTransport here
+_TRANSPORT = None
 
 
 class QdrantError(Exception):
@@ -33,7 +27,6 @@ def point_id(chunk_id: str) -> str:
 
 
 def _detail(r) -> str:
-    """A short server-side reason (Qdrant error text), never the request headers or key."""
     try:
         j = r.json()
         d = (j.get("status") or {}).get("error") if isinstance(j.get("status"), dict) else j.get("detail")
@@ -44,7 +37,7 @@ def _detail(r) -> str:
 
 def _call(method: str, path: str, json=None, params=None) -> dict:
     import httpx
-    from app.security import tiers  # lazy: tiers imports modules that import this one
+    from app.security import tiers
     url = config.qdrant_url() + path
     if not tiers.is_url_allowed(url):
         raise QdrantError("blocked: URL is not on the allowlist (https and QDRANT_URL origin only)")
@@ -62,7 +55,6 @@ def _call(method: str, path: str, json=None, params=None) -> dict:
 
 
 def _exists(name: str) -> int | None:
-    """points_count if the collection exists, else None."""
     try:
         out = _call("GET", f"/collections/{name}")
     except QdrantError as e:
@@ -74,7 +66,6 @@ def _exists(name: str) -> int | None:
 
 
 def sync(rows, mat, fp: str) -> dict:
-    """Make sure the collection for this index fingerprint exists and holds every chunk. Idempotent."""
     name = collection_name(fp)
     have = _exists(name)
     if have == len(rows):
@@ -90,12 +81,12 @@ def sync(rows, mat, fp: str) -> dict:
                    for j, r in enumerate(rows[i:i + BATCH], start=i)]
             _call("PUT", f"/collections/{name}/points", json={"points": pts}, params={"wait": "true"})
         state = "uploaded"
-    try:  # Qdrant Cloud's strict mode refuses filters on unindexed fields: index the one we filter on (idempotent)
+    try:
         _call("PUT", f"/collections/{name}/index", json={"field_name": "source", "field_schema": "keyword"},
               params={"wait": "true"})
     except QdrantError:
-        pass  # search() then filters client-side
-    try:  # tidy: drop collections of older index versions (free clusters are small)
+        pass
+    try:
         for c in (_call("GET", "/collections").get("result") or {}).get("collections", []):
             n = c.get("name", "")
             if n.startswith(config.qdrant_prefix() + "_") and n != name:
@@ -130,6 +121,6 @@ def search(vector, fp: str, k: int, source: str | None, min_score: float) -> lis
     try:
         return _query(vector, fp, k, {"must": [{"key": "source", "match": {"value": source}}]}, min_score)
     except QdrantError as e:
-        if e.status != 400:  # 400 = the server refused the filter (e.g. no payload index): filter here instead
+        if e.status != 400:
             raise
     return [h for h in _query(vector, fp, 200, None, min_score) if h["source"] == source][:k]

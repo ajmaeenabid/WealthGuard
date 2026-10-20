@@ -4,9 +4,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import config, db  # noqa: E402
-from app.products import load_personas  # noqa: E402
-from app.security import audit  # noqa: E402
+from app import config, db
+from app.products import load_personas
+from app.security import audit
 
 if __name__ == "__main__":
     db.reset()

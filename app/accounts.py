@@ -1,5 +1,4 @@
-"""Accounts: username + password sign-up and sign-in, bearer tokens, password change, and what an administrator can do
-(suspend accounts, change roles, switch individual features on or off per account). Passwords are salted PBKDF2."""
+"""Accounts: username + password sign-up and sign-in, bearer tokens, password change, and what an administrator can do (suspend accounts, change roles, switch individual features on or off per account). Passwords are."""
 import hashlib
 import hmac
 import json
@@ -12,12 +11,11 @@ from typing import Optional
 from app import db, store
 
 TOKEN_TTL_S = 12 * 3600
-MIN_PASSWORD = 6          # for new passwords; the seeded demo accounts start with "123" and should be changed
+MIN_PASSWORD = 6
 PBKDF2_ROUNDS = 120_000
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{2,31}$")
 MAX_FAILS, FAIL_WINDOW_S = 5, 300
 
-# username -> (display name, role, demo profile the account may load from the Memory panel)
 SEED = {
     "admin": ("Administrator", "admin", None),
     "li": ("Ms. Li", "client", "persona_li"),
@@ -27,7 +25,6 @@ SEED = {
 SEED_PASSWORD = "123"
 _FAILS: dict[str, list[float]] = {}
 
-# Features an administrator can switch on or off per account. Everything is on by default.
 FEATURES = {
     "chat": "Advice chat",
     "orders": "Order tickets and reports",
@@ -40,7 +37,6 @@ FEATURES = {
     "insights": "Red-team arena and self-inspection",
     "money": "Personal finance",
 }
-# (route prefix, feature) checked by the API gate; tools are checked in the tier engine (see denied_tools)
 ROUTE_FEATURES = [("/api/chat", "chat"), ("/api/ledger", "ledger"), ("/api/replay", "replay"), ("/api/documents", "documents"),
                   ("/api/approve", "orders"), ("/api/reject", "orders"), ("/api/transcribe", "voice"),
                   ("/api/knowledge", "knowledge"), ("/api/receipt", "receipt"), ("/api/redteam", "insights"),
@@ -70,8 +66,6 @@ def _insert(username: str, display: str, role: str, persona: Optional[str], pass
 
 
 def ensure_seed() -> None:
-    """Create the demo accounts on a brand-new database only. Once any account exists the list belongs to the administrator:
-    a demo account that was deleted stays deleted, and changed passwords are never touched."""
     c = db.connect()
     have = {r["username"] for r in c.execute("SELECT username FROM users").fetchall()}
     c.close()
@@ -83,7 +77,6 @@ def ensure_seed() -> None:
 
 
 def permissions_of(row) -> dict:
-    """Every feature -> bool. Administrators always have everything; others default to on unless switched off."""
     try:
         stored = json.loads(row["permissions"] or "{}")
     except ValueError:
@@ -167,12 +160,10 @@ def _set_password(username: str, new: str, keep_token: str = "", must_differ_fro
         raise AuthError("Choose a password that is different from the current one.")
     salt = secrets.token_hex(16)
     store._write("UPDATE users SET salt=?, pw_hash=? WHERE username=?", (salt, _hash(new, salt), username))
-    # every other signed-in device is signed out; the one that made the change stays
     keep = hashlib.sha256(keep_token.encode()).hexdigest()
     store._write("DELETE FROM auth_tokens WHERE username=? AND token_hash<>?", (username, keep))
 
 
-# ------------------------------------------------------------------------------------------ what features an account may use
 def feature_for(path: str, method: str = "GET") -> Optional[str]:
     if path == "/api/conversations" and method == "POST":
         return "chat"
@@ -190,9 +181,7 @@ def denied_tools(username: Optional[str]) -> frozenset:
     return frozenset(t for t, f in TOOL_FEATURES.items() if not perms.get(f, True))
 
 
-# ------------------------------------------------------------------------------------------ administration
 def list_users() -> list[dict]:
-    """Every account with live figures from the database. Counts only: an administrator never sees chat or finance contents."""
     c = db.connect()
     try:
         rows = c.execute("SELECT * FROM users ORDER BY role='admin' DESC, username").fetchall()
@@ -240,7 +229,6 @@ def revoke_sessions(username: str) -> int:
 
 
 def delete_user(actor: str, username: str, confirm: str) -> dict:
-    """Permanently remove an account and everything it owns (chats, memory, finance data). The audit log keeps ids only."""
     row = _target(username)
     if row["username"] == actor:
         raise AuthError("You cannot delete your own account.", 400)
@@ -287,7 +275,7 @@ def set_banned(actor: str, username: str, banned: bool) -> dict:
         raise AuthError("At least one active administrator must remain.", 400)
     store._write("UPDATE users SET banned=? WHERE username=?", (1 if banned else 0, row["username"]))
     if banned:
-        store._write("DELETE FROM auth_tokens WHERE username=?", (row["username"],))   # signed out everywhere, immediately
+        store._write("DELETE FROM auth_tokens WHERE username=?", (row["username"],))
     return public(_user_row(row["username"]))
 
 

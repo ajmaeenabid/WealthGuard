@@ -1,15 +1,11 @@
 // Three interface languages (English, Simplified Chinese, Bangla), kept apart from the financial jurisdiction (Bangladesh / China).
-// One place owns the language: the saved preference comes from the server (/api/fin/settings), localStorage is only a first-paint cache,
-// and any text without a translation falls back to English. Stored amounts, dates and currency codes are never translated: only the
-// way they are shown (digits, grouping) changes.
 (function () {
   const LANGS = ["en", "zh", "bn"];
   const NAMES = { en: "English", zh: "简体中文", bn: "বাংলা" };
   const HTML_LANG = { en: "en", zh: "zh-CN", bn: "bn-BD" };
-  const BTN = { en: "中文", zh: "বাংলা", bn: "English" };           // the language button shows the NEXT language
+  const BTN = { en: "中文", zh: "বাংলা", bn: "English" };
   const SPEECH = { en: "en-US", zh: "zh-CN", bn: "bn-BD" };
 
-  // English text -> translation. Matched on the whole trimmed text of an element, so sentences are never half-translated.
   const P = {
     zh: {
       "My money": "我的资金", "Overview": "概览", "Transactions": "交易", "Accounts": "账户", "Plan": "计划", "Reports": "报告", "Assistant": "助手", "Settings": "设置",
@@ -56,13 +52,12 @@
       "Salary": "বেতন", "Other": "অন্যান্য", "Cash": "নগদ", "Bank": "ব্যাংক", "Card": "কার্ড"
     }
   };
-  // The advisor screens already have a key-based Chinese dictionary (i18n.js); Bangla for those comes from the English-text map above.
 
   const BN_DIGITS = "০১২৩৪৫৬৭৮৯";
   const toBn = (s) => String(s).replace(/[0-9]/g, (d) => BN_DIGITS[+d]);
   const SKIP = new Set(["SCRIPT", "STYLE", "TEXTAREA", "INPUT", "SELECT", "CODE", "PRE"]);
-  const orig = new WeakMap();           // text node -> original English
-  const origAttr = new WeakMap();       // element -> {attr: english}
+  const orig = new WeakMap();
+  const origAttr = new WeakMap();
   let lang = "en", observer = null, queued = false, server = null;
 
   const dict = () => P[lang] || null;
@@ -83,7 +78,7 @@
     let v = o;
     if (lang !== "en") {
       v = tr(o);
-      if (v === o && lang === "bn" && looksNumeric(o)) v = toBn(o);        // display-only: the stored value is untouched
+      if (v === o && lang === "bn" && looksNumeric(o)) v = toBn(o);
     }
     if (n.nodeValue !== v) n.nodeValue = v;
   }
@@ -132,17 +127,16 @@
   }
 
   function cacheGet() { try { const v = localStorage.getItem("wg_lang"); return LANGS.includes(v) ? v : null; } catch (e) { return null; } }
-  function cacheSet(l) { try { localStorage.setItem("wg_lang", l); } catch (e) { /* private mode */ } }
+  function cacheSet(l) { try { localStorage.setItem("wg_lang", l); } catch (e) { } }
 
-  // Applies a language everywhere: chrome (advisor keys), the phrase map for the rest, button label, <html lang> and the voice language.
   async function apply(l, opts) {
     opts = opts || {};
     lang = LANGS.includes(l) ? l : "en";
     document.documentElement.lang = HTML_LANG[lang];
     cacheSet(lang);
     const I = window.WGI18n;
-    if (I && I.setLang) { try { await I.setLang(lang === "zh" ? "zh" : "en", opts.api, opts.clientId, opts.rerender); } catch (e) { /* advisor panel not mounted */ } }
-    if (I && I.applyStatic) { /* applyStatic only knows zh/en; Bangla uses the phrase map below */ }
+    if (I && I.setLang) { try { await I.setLang(lang === "zh" ? "zh" : "en", opts.api, opts.clientId, opts.rerender); } catch (e) { } }
+    if (I && I.applyStatic) { }
     walk(document.body);
     observe();
     const b = document.getElementById("langBtn");
@@ -152,18 +146,17 @@
     const v = document.getElementById("voiceLang");
     if (v) { const want = SPEECH[lang]; if ([...v.options].some((o) => o.value === want)) v.value = want; }
     window.dispatchEvent(new CustomEvent("wg:lang", { detail: { lang } }));
-    if (opts.persist !== false && server) { try { await server(lang); } catch (e) { /* kept in cache; retried on next change */ } }
+    if (opts.persist !== false && server) { try { await server(lang); } catch (e) { } }
   }
   function next() { return LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length]; }
 
   window.WGLang = { LANGS, NAMES, SPEECH, P, get lang() { return lang; }, t, tr, toBn, apply, next, fmtNumber, fmtDate, cacheGet, walk, refresh: schedule,
                     bindServer(fn) { server = fn; }, speechCode(pref) { return pref && pref !== "auto" ? SPEECH[pref] : SPEECH[lang]; } };
-  // theme: one place for the sign-in page and the app (the choice is remembered in this browser)
   const MOON_SVG = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>';
   const SUN_SVG = '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>';
   window.WGTheme = {
     current() { return document.documentElement.dataset.theme === "dark" ? "dark" : "light"; },
-    set(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem("wg-theme", t); } catch (e) { /* private mode */ } window.dispatchEvent(new CustomEvent("wg:theme", { detail: { theme: t } })); },
+    set(t) { document.documentElement.dataset.theme = t; try { localStorage.setItem("wg-theme", t); } catch (e) { } window.dispatchEvent(new CustomEvent("wg:theme", { detail: { theme: t } })); },
     toggle() { this.set(this.current() === "dark" ? "light" : "dark"); },
   };
   const paintAuthTools = () => {
@@ -173,7 +166,7 @@
   };
   window.addEventListener("wg:theme", paintAuthTools);
   window.addEventListener("wg:lang", paintAuthTools);
-  let chosenOnSignIn = false;                      // a language picked on the sign-in page is saved to the account after signing in
+  let chosenOnSignIn = false;
   document.addEventListener("DOMContentLoaded", () => {
     const tb = document.getElementById("authTheme"), lb = document.getElementById("authLang");
     if (tb) tb.onclick = () => window.WGTheme.toggle();
@@ -189,7 +182,6 @@
   window.WGLang.saveSettings = post;
   window.WGLang.bindServer((l) => post({ ui_lang: l }));
   document.addEventListener("DOMContentLoaded", () => { const c = cacheGet(); if (c) apply(c, { persist: false }); });
-  // After sign-in the SAVED preference wins over the browser cache, so the language follows the account across devices and logins.
   if (window.WGAuth && window.WGAuth.onReady) {
     window.WGAuth.onReady(async (u) => {
       if (!u || u.role === "admin") return;
@@ -198,10 +190,10 @@
         if (!r.ok) return;
         const st = await r.json();
         window.WGLang.prefs = st;
-        if (chosenOnSignIn && st.ui_lang !== lang) await apply(lang);                       // the person just picked it: it becomes their saved language
+        if (chosenOnSignIn && st.ui_lang !== lang) await apply(lang);
         else if (st.ui_lang && st.ui_lang !== lang) await apply(st.ui_lang, { persist: false });
         window.dispatchEvent(new CustomEvent("wg:prefs", { detail: st }));
-      } catch (e) { /* the cached language stays */ }
+      } catch (e) { }
     });
   }
 })();

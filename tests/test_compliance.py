@@ -39,7 +39,7 @@ def test_r1_fail_and_pass():
 def test_r1_equity_limit():
     pr = make_profile(bucket="Moderate")
     a = al.build(pr, PRODUCTS)
-    bad = with_lines(a, [("P08", 0.35), ("P03", 0.35), ("P01", 0.3)])  # 35% equity-like > 30
+    bad = with_lines(a, [("P08", 0.35), ("P03", 0.35), ("P01", 0.3)])
     assert not run(bad, pr, "R1").passed
 
 
@@ -48,7 +48,7 @@ def test_r2_fail_and_pass():
     assert run(a, pr, "R2").passed
     bad = with_lines(a, [("P03", 0.6), ("P01", 0.4)])
     assert not run(bad, pr, "R2").passed
-    assert not run(with_lines(a, [("P03", 0.3), ("P01", 0.3)]), pr, "R2").passed  # does not sum to 1
+    assert not run(with_lines(a, [("P03", 0.3), ("P01", 0.3)]), pr, "R2").passed
 
 
 def test_r3_fail_and_pass():
@@ -65,19 +65,19 @@ def test_r4_fail_and_pass():
     pr, a = good()
     assert run(a, pr, "R4").passed
     short = make_profile(bucket="Aggressive", horizon_years=2, experience="advanced")
-    bad = with_lines(a, [("P13", 0.15), ("P03", 0.45), ("P01", 0.4)])  # 1095d lock-up > 2y
+    bad = with_lines(a, [("P13", 0.15), ("P03", 0.45), ("P01", 0.4)])
     assert not run(bad, short, "R4").passed
     locked = with_lines(a, [("P05", 0.35), ("P06", 0.35), ("P01", 0.3)])
     assert not run(locked, make_profile(bucket="Moderate", liquidity_need_pct=70), "R4").passed
 
 
 def test_r5_fail_and_pass():
-    pr = persona_profile("persona_wang")  # raw bucket Balanced, age 68
+    pr = persona_profile("persona_wang")
     a = al.build(pr, PRODUCTS)
     assert run(a, pr, "R5").passed
-    bad = with_lines(a, [("P09", 0.3), ("P08", 0.3), ("P03", 0.2), ("P01", 0.2)])  # equity-like 60% > 30
+    bad = with_lines(a, [("P09", 0.3), ("P08", 0.3), ("P03", 0.2), ("P01", 0.2)])
     assert not run(bad, pr, "R5").passed
-    assert run(bad, make_profile(bucket="Balanced", age=40), "R5").passed  # not vulnerable
+    assert run(bad, make_profile(bucket="Balanced", age=40), "R5").passed
 
 
 def test_r5_short_horizon():
@@ -117,7 +117,7 @@ def test_r8_fail_and_pass():
     pr, a = good()
     assert run(a, pr, "R8").passed
     poor = make_profile(bucket="Aggressive", experience="advanced", investable_amount_cny=60000)
-    bad = with_lines(a, [("P13", 0.15), ("P03", 0.85)])  # 9,000 < 50,000 minimum
+    bad = with_lines(a, [("P13", 0.15), ("P03", 0.85)])
     assert not run(bad, poor, "R8").passed
 
 
@@ -135,7 +135,7 @@ def test_llm_reviewer_can_only_tighten():
     res = cp.check(b, pr, PRODUCTS)
     assert not res.passed and not [c for c in res.checks if c.rule_id == "LLM"][0].passed
     bad = with_lines(a, [("P12", 0.2), ("P03", 0.4), ("P01", 0.4)])
-    assert not cp.check(bad, pr, PRODUCTS).passed  # reviewer approval never rescues a failed rule
+    assert not cp.check(bad, pr, PRODUCTS).passed
 
 
 def test_violating_products():

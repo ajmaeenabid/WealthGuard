@@ -1,18 +1,4 @@
-"""Verifiable advice receipt.
-
-A receipt is a JSON document that bundles one client's compliance-approved advice with everything needed to check it later:
-the compliance result, the CSRC article behind each rule, the hashes of the real datasets used, the client's audit entries with their
-chain hashes, and an anchor to the head of the global audit chain at issue time, sealed by a content hash and an HMAC checkpoint.
-
-What each check proves (see verify()):
-  content hash   the receipt was not edited after issue (anyone can recompute it)
-  entry hashes   each audit entry in it is internally consistent (anyone can recompute them)
-  membership     each entry exists, unchanged, in the live audit log
-  anchor         the chain head recorded at issue is still where it was, and the chain up to it is intact (detects later
-                 truncation or rewriting of history, which the chain alone cannot)
-  checkpoint     the HMAC was made by this server (only the server holds the key), so the receipt was really issued here
-  data hashes    the datasets behind the numbers still match the manifest
-"""
+"""Verifiable advice receipt."""
 import hashlib
 import hmac
 import json
@@ -27,7 +13,6 @@ VERSION = 1
 
 
 def _key() -> bytes:
-    """RECEIPT_KEY from the environment, else a random key stored with the database (created once)."""
     env = (os.environ.get("RECEIPT_KEY") or "").strip()
     if env:
         return env.encode()
@@ -44,7 +29,6 @@ def _key() -> bytes:
 
 
 def _norm(o):
-    """Integral floats become ints: JSON in a browser cannot tell 100000.0 from 100000, so the hash must not either."""
     if isinstance(o, float):
         return int(o) if o.is_integer() and abs(o) < 1e15 else o
     if isinstance(o, dict):
@@ -121,7 +105,6 @@ def _content_of(receipt: dict) -> dict:
 
 
 def check_entry_hashes(entries: list[dict]) -> list[int]:
-    """Ids of entries whose stored entry_hash does not match their own fields (pure, key-free)."""
     bad = []
     for e in entries:
         if audit._entry_hash(e["id"], e["ts"], e["client_id"], e["actor"], e["action"], e["tier"], e["payload_hash"],
@@ -131,7 +114,6 @@ def check_entry_hashes(entries: list[dict]) -> list[int]:
 
 
 def check_data_hashes(receipt: dict) -> list[str]:
-    """Dataset files whose current hash differs from what the receipt recorded (needs the repository files)."""
     bad = []
     for d in receipt.get("data_provenance", []):
         p = os.path.join(knowledge.REAL, d["file"])

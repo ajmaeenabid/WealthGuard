@@ -10,12 +10,10 @@ def full(**over):
 
 
 def test_final_bucket_is_lower_of_tolerance_and_capacity():
-    # high tolerance, low capacity (old, short horizon, unstable, big liquidity need)
     pr = p.build_profile("x", full(age=70, horizon_years=3, income_stability="unstable", liquidity_need_pct=40,
                                    monthly_income_cny=3000))
     assert pr.risk_tolerance_score > pr.risk_capacity_score
     assert pr.bucket == p.score_to_bucket(pr.risk_capacity_score)
-    # low tolerance, high capacity
     pr2 = p.build_profile("y", full(goal="preservation", loss_reaction="sell_all", experience="none"))
     assert pr2.risk_capacity_score > pr2.risk_tolerance_score
     assert pr2.bucket == p.score_to_bucket(pr2.risk_tolerance_score)
@@ -51,4 +49,4 @@ def test_parse_answer():
 def test_personas_buckets():
     assert persona_profile("persona_li").bucket == "Moderate"
     assert persona_profile("persona_chen").bucket == "Growth"
-    assert persona_profile("persona_wang").bucket == "Balanced"  # capped to Moderate by R5 later
+    assert persona_profile("persona_wang").bucket == "Balanced"

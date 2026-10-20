@@ -23,7 +23,6 @@ def confirm(cid, p):
     return r.json()
 
 
-# ------------------------------------------------------------------------------------------ commands -> proposals
 @pytest.mark.parametrize("text,item,amount,status", [
     ("I bought headphones for 300", "headphones", 300, "bought"),
     ("I spent 120 yuan on dinner", "dinner", 120, "bought"),
@@ -131,7 +130,6 @@ def test_injection_text_in_a_command_is_flagged_and_still_needs_confirmation():
     assert c.get("/api/ledger", params={"client_id": cid}).json()["entries"] == []
 
 
-# ------------------------------------------------------------------------------------------ typed CRUD + validation
 def test_typed_add_update_delete_and_validation():
     cid = session()
     r = c.post("/api/ledger", json={"client_id": cid, "item": "Coffee", "amount_cny": 30, "category": "food"})
@@ -155,7 +153,6 @@ def test_every_ledger_change_is_audited_and_the_chain_stays_valid():
     assert c.get("/api/audit/verify").json()["valid"]
 
 
-# ------------------------------------------------------------------------------------------ behaviour insights
 def test_totals_by_category_and_month_are_exact():
     cid = session()
     for item, amt, cat, status, ts in [("A", 1000, "food", "bought", "2026-08-03"), ("B", 500, "food", "bought", "2026-09-04"),
@@ -199,7 +196,7 @@ def test_behaviour_only_ever_lowers_capacity():
                "loss_reaction": "hold", "income_stability": "stable", "liquidity_need_pct": 10}
     base = profiling.build_profile("x", answers)
     lowered = profiling.build_profile("x", answers, extra={"behaviour_penalty": 10})
-    ignored = profiling.build_profile("x", answers, extra={"behaviour_penalty": -50})  # a "bonus" is ignored
+    ignored = profiling.build_profile("x", answers, extra={"behaviour_penalty": -50})
     assert lowered.risk_capacity_score == base.risk_capacity_score - 10
     assert ignored.risk_capacity_score == base.risk_capacity_score
     assert lowered.risk_tolerance_score == base.risk_tolerance_score
@@ -228,7 +225,6 @@ def test_changing_the_ledger_invalidates_a_stale_profile():
     assert c.get("/api/state", params={"client_id": cid}).json()["profile"] is None
 
 
-# ------------------------------------------------------------------------------------------ agent tool in chat
 def test_chat_summarises_spending_with_the_tool_and_mentions_the_limits():
     cid = session()
     c.post("/api/ledger/sample", json={"client_id": cid, "kind": "balanced"})
@@ -251,4 +247,4 @@ def test_impulse_words_are_not_part_of_the_item_name():
 def test_ledger_card_heading_keeps_its_tag_element_when_translated():
     html = c.get("/").text
     assert '<span data-i18n="hL">' in html and 'id="ledgerTag"' in html
-    assert '<h2 data-i18n="hL">' not in html  # a data-i18n on the h2 itself would wipe the tag span
+    assert '<h2 data-i18n="hL">' not in html

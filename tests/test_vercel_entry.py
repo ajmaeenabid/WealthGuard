@@ -24,7 +24,7 @@ def test_vercel_entry_serves_ui_and_api():
 
 def test_vercel_config_routes_everything_to_the_function():
     cfg = json.load(open(os.path.join(ROOT, "vercel.json")))
-    assert cfg["rewrites"][0]["destination"] == "/api/index"
+    assert cfg["rewrites"][0]["destination"] == "/api/index?__p=$1"
     assert "static" in cfg["functions"]["api/index.py"]["includeFiles"]
     ignore = open(os.path.join(ROOT, ".vercelignore")).read()
     assert "*.db" in ignore

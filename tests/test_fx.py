@@ -25,16 +25,16 @@ def test_ten_taka_is_about_fifty_four_fen_not_ten_yuan(fx_live):
 
 
 def test_rounding_is_half_up_in_whole_minor_units(fx_live):
-    minor, _ = fx.convert_minor(1, "USD", "CNY")                 # 0.01 USD = 0.0669 CNY -> 7 fen
+    minor, _ = fx.convert_minor(1, "USD", "CNY")
     assert minor == 7 and isinstance(minor, int)
-    assert fx.convert_minor(500, "BDT", "BDT") == (500, None)    # same currency: untouched, no quote
+    assert fx.convert_minor(500, "BDT", "BDT") == (500, None)
 
 
 def test_rates_are_cached_in_the_database_and_reused(fx_live):
     fx.rate("BDT", "CNY")
     fx.rate("CNY", "BDT")
     fx.convert_amount("5", "USD", "CNY")
-    assert fx_live["n"] == 1                                      # one network round trip for all of them
+    assert fx_live["n"] == 1
     from app.finance import books
     row = books._one("SELECT * FROM fin_fx_rates")
     assert row["source"] == "er-api" and row["agree"] == 1 and "fawaz" in row["cross_check"]
@@ -50,7 +50,7 @@ def test_a_new_fetch_happens_when_the_cache_is_old(fx_live, monkeypatch):
 def test_if_the_network_fails_a_recent_rate_is_used_and_flagged_stale(fx_live, monkeypatch):
     fx.rate("BDT", "CNY")
     monkeypatch.setenv("FX_CACHE_HOURS", "0")
-    fx_live["data"] = None                                        # every provider is down
+    fx_live["data"] = None
     r = fx.rate("BDT", "CNY")
     assert r["stale"] is True and r["age_hours"] >= 0
 
@@ -71,7 +71,7 @@ def test_with_no_rate_ever_fetched_there_is_no_conversion_and_no_invented_number
 
 
 def test_sources_that_disagree_by_more_than_three_percent_refuse_conversion(fx_live):
-    fx_live["data"][1]["rates"]["BDT"] = 140.0                    # the second source is 13% off
+    fx_live["data"][1]["rates"]["BDT"] = 140.0
     with pytest.raises(fx.FxError) as e:
         fx.rate("BDT", "CNY")
     assert e.value.kind == "disagree"

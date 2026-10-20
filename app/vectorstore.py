@@ -1,11 +1,4 @@
-"""A small vector database on SQLite + numpy.
-
-Chunks are embedded with a deterministic hashing TF-IDF embedder (Chinese character 2/3-grams, Latin words), stored as
-float32 BLOBs, and searched by cosine similarity. It needs no network, no model download and no extra service, so mock
-mode, the tests and the Vercel build all work the same way. The embedder is a thin class: a neural model could replace
-it later without touching the store. Lexical overlap is what it measures, not deep semantics; knowledge.py adds a small
-English->Chinese glossary so English questions can reach the Chinese regulation text.
-"""
+"""A small vector database on SQLite + numpy."""
 import hashlib
 import math
 import re
@@ -88,7 +81,6 @@ def count(source: str | None = None) -> int:
 
 
 def build(items: list[dict], fp: str) -> int:
-    """Replace the whole index with `items` (id, source, ref, lang, title, text, url) and record its fingerprint."""
     raws = [_tf(f"{it['title']} {it['text']}") for it in items]
     df = np.zeros(DIM, dtype=np.float32)
     for r in raws:
@@ -133,7 +125,6 @@ def _remote_failed(e: Exception) -> None:
 
 
 def ensure_remote(fp: str) -> None:
-    """Mirror the local index to Qdrant when configured (once per index version). Never raises."""
     if not qdrant_backend.configured():
         REMOTE.update(state="off", collection=None, error=None)
         return
@@ -145,12 +136,11 @@ def ensure_remote(fp: str) -> None:
         rows, mat, _ = _load()
         info = qdrant_backend.sync(rows, mat, fp)
         REMOTE.update(state="ok", collection=info["collection"], error=None, synced_fp=fp, until=0.0)
-    except Exception as e:  # network, auth, allowlist, bad response: stay local
+    except Exception as e:
         _remote_failed(e)
 
 
 def backend_status() -> dict:
-    """What answers searches now. Never includes the URL or key."""
     on = qdrant_backend.configured()
     return {"backend": "qdrant" if on and REMOTE["state"] == "ok" else "local", "qdrant_configured": on,
             "qdrant_state": REMOTE["state"] if on else "off", "qdrant_error": REMOTE["error"] if on else None}
@@ -162,8 +152,6 @@ def search(query: str, k: int = 3, source: str | None = None, min_score: float =
 
 def search_ex(query: str, k: int = 3, source: str | None = None, min_score: float = 0.0,
               local: bool = False) -> tuple[list[dict], str]:
-    """(hits, backend). Qdrant answers when configured and healthy; any failure falls back to the local index.
-    local=True skips the network: same vectors, same ranking, used for internal lookups on the hot path."""
     rows, mat, idf = _load()
     if not len(rows):
         return [], "local"
@@ -179,7 +167,7 @@ def search_ex(query: str, k: int = 3, source: str | None = None, min_score: floa
         except Exception as e:
             _remote_failed(e)
     elif qdrant_backend.configured():
-        ensure_remote(fp)  # retry after the cooldown
+        ensure_remote(fp)
         if REMOTE["state"] == "ok":
             try:
                 return qdrant_backend.search(q, fp, k, source, min_score), "qdrant"

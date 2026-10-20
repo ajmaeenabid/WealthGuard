@@ -23,7 +23,7 @@ def _write(sql: str, params: tuple) -> None:
             c.execute(sql, params)
             c.commit()
         except Exception:
-            c.rollback()          # a failed statement must not leave the write lock held
+            c.rollback()
             raise
         finally:
             c.close()
@@ -36,7 +36,6 @@ def _one(sql: str, params: tuple):
     return r
 
 
-# clients: data = {"name": str, "facts": {answers}, "profile": ClientProfile|None, "extra": {...}}
 def save_client(client_id: str, data: dict) -> None:
     _write("INSERT OR REPLACE INTO clients VALUES (?,?)", (client_id, json.dumps(data, default=str)))
 
@@ -87,7 +86,6 @@ def latest_allocation(client_id: str, passed_only: bool = True) -> Optional[Allo
 
 
 def consecutive_blocked(client_id: str) -> int:
-    """Number of blocked drafts since the last compliant allocation."""
     c = db.connect()
     rows = c.execute("SELECT status FROM allocations WHERE client_id=? ORDER BY seq DESC", (client_id,)).fetchall()
     c.close()
@@ -129,5 +127,4 @@ def list_documents(client_id: str) -> list[dict]:
 
 
 def archive_blocked(client_id: str) -> None:
-    """Start a fresh revision budget (called at the start of each chat turn / new profile)."""
     _write("UPDATE allocations SET status='blocked_archived' WHERE client_id=? AND status='blocked'", (client_id,))

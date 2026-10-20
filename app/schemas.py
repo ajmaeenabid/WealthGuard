@@ -15,9 +15,9 @@ class Product(BaseModel):
     name: str
     asset_class: AssetClass
     risk_level: int = Field(ge=1, le=5)
-    expected_return: float  # annual, decimal (0.04 = 4%)
-    volatility: float  # annual, decimal
-    annual_fee_pct: float  # percent, e.g. 0.5 = 0.5%
+    expected_return: float
+    volatility: float
+    annual_fee_pct: float
     min_invest_cny: float
     lockup_days: int
     complex: bool
@@ -26,7 +26,7 @@ class Product(BaseModel):
 
 class ClientProfile(BaseModel):
     id: str
-    name: str = "Client"  # (ext)
+    name: str = "Client"
     age: int
     horizon_years: float
     goal: str
@@ -36,8 +36,8 @@ class ClientProfile(BaseModel):
     risk_tolerance_score: float = Field(ge=0, le=100)
     risk_capacity_score: float = Field(ge=0, le=100)
     bucket: Bucket
-    investable_amount_cny: float = 100000  # (ext)
-    goal_target_cny: Optional[float] = None  # (ext)
+    investable_amount_cny: float = 100000
+    goal_target_cny: Optional[float] = None
 
 
 class AllocationLine(BaseModel):
@@ -47,14 +47,14 @@ class AllocationLine(BaseModel):
 
 
 class Allocation(BaseModel):
-    id: str = ""  # (ext) needed by /api/stress and tickets
+    id: str = ""
     client_id: str
     lines: list[AllocationLine]
     expected_return: float
     volatility: float
     created_at: str
-    summary: str = ""  # (ext) client-facing text, checked by R6/R7
-    client_text: str = ""  # (ext) summary + disclosures actually shown to the client
+    summary: str = ""
+    client_text: str = ""
 
 
 class ComplianceCheck(BaseModel):
@@ -87,11 +87,10 @@ class OrderTicket(BaseModel):
     allocation_id: str
     status: Literal["draft", "awaiting_approval", "approved", "rejected"]
     sandbox: bool = True
-    kind: Literal["order", "report"] = "order"  # (ext)
-    detail: str = ""  # (ext)
+    kind: Literal["order", "report"] = "order"
+    detail: str = ""
 
 
-# ---- API request/response models ------------------------------------------------------------
 class SessionReq(BaseModel):
     persona_id: Optional[str] = None
 
@@ -101,7 +100,7 @@ class ChatReq(BaseModel):
     message: str = Field(max_length=4000)
 
 
-class TranslateReq(BaseModel):  # (ext) EN <-> ZH translation
+class TranslateReq(BaseModel):
     client_id: Optional[str] = None
     target: Literal["en", "zh"]
     texts: list[Annotated[str, Field(max_length=2000)]] = Field(max_length=40)
@@ -138,12 +137,10 @@ class ApproveReq(BaseModel):
 
 
 class StrictArgs(BaseModel):
-    """Base for tool argument models: unknown fields are rejected."""
 
     model_config = ConfigDict(extra="forbid")
 
 
-# ---- purchase ledger and behaviour (ext) ------------------------------------------------------------------
 LedgerStatus = Literal["planned", "bought", "cancelled"]
 LedgerCategory = Literal["food", "transport", "shopping", "entertainment", "health", "housing", "education", "other"]
 
@@ -151,7 +148,7 @@ LedgerCategory = Literal["food", "transport", "shopping", "entertainment", "heal
 class LedgerEntry(BaseModel):
     id: str
     client_id: str
-    ts: str  # ISO date the purchase happened or is planned for
+    ts: str
     item: str = Field(min_length=1, max_length=80)
     category: LedgerCategory = "other"
     amount_cny: float = Field(gt=0, le=10_000_000)
@@ -191,7 +188,7 @@ class LedgerSampleReq(BaseModel):
     kind: Literal["balanced", "heavy"] = "balanced"
 
 
-class ReplayStartReq(BaseModel):  # (ext) revealed-risk replay
+class ReplayStartReq(BaseModel):
     client_id: str
     episode: str = Field(max_length=40)
     portfolio: Literal["mine", "equity"] = "mine"

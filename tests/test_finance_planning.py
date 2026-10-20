@@ -38,7 +38,6 @@ def window(n=30):
     return T - timedelta(days=n), T
 
 
-# ============================================================================================== analytics
 def test_summary_applies_the_definitions_income_spending_refunds_transfers_savings(world):
     inc(world["bank"], 30000, 5)
     e = exp(world["cash"], 1000, "shopping", 4)
@@ -48,17 +47,17 @@ def test_summary_applies_the_definitions_income_spending_refunds_transfers_savin
     books.create_transaction(U, {"type": "transfer", "account_id": world["bank"]["id"], "to_account_id": world["cash"]["id"], "amount": "700", "ts": day(2)})
     s = analytics.summary(U, *window())
     assert (s["income"], s["expense_gross"], s["refunds"], s["spending"]) == ("30000.00", "1500.00", "300.00", "1200.00")
-    assert s["net_cash_flow"] == "28800.00" and s["savings_net"] == "4000.00"                      # the cash transfer is neither
+    assert s["net_cash_flow"] == "28800.00" and s["savings_net"] == "4000.00"
     assert s["savings_rate_actual"] == round(4000 / 30000, 4) and s["savings_rate_implied"] == round(28800 / 30000, 4)
     cats = {c["category"]: c["amount"] for c in s["by_category"]}
-    assert cats == {"shopping": "700.00", "food": "500.00"}                                         # the refund reduced shopping
+    assert cats == {"shopping": "700.00", "food": "500.00"}
     assert s["essential_split"]["essential"]["amount"] == "500.00" and s["essential_split"]["discretionary"]["amount"] == "1000.00"
     assert s["definitions"]["income"].startswith("income transactions only")
 
 
 def test_future_dated_and_other_currency_entries_are_not_actual(world):
     exp(world["cash"], 100, ago=1)
-    exp(world["cash"], 999, ago=-5)                                                                  # scheduled
+    exp(world["cash"], 999, ago=-5)
     usd = books.create_account(U, "Dollars", "bank", "0", currency="USD", opening_date=day(400))
     books.create_transaction(U, {"type": "income", "account_id": usd["id"], "amount": "50", "ts": day(1), "category": "freelance"})
     s = analytics.summary(U, *window())
@@ -82,7 +81,7 @@ def test_periods_and_comparison(world):
 def test_insights_are_evidence_backed_and_carry_an_action_and_assumptions(world):
     inc(world["bank"], 20000, 20)
     for i in range(25):
-        exp(world["cash"], 40, "food", (i % 25) + 1, merchant="Tea Stall")                            # many small purchases at one place
+        exp(world["cash"], 40, "food", (i % 25) + 1, merchant="Tea Stall")
     exp(world["cash"], 5000, "shopping", 6, merchant="Daraz")
     exp(world["cash"], 3000, "entertainment", 8, merchant="Resort")
     s = analytics.summary(U, *window())
@@ -116,19 +115,18 @@ def test_a_user_with_no_spending_gets_no_invented_insights(world):
     assert s["spending"] == "0.00" and s["by_category"] == [] and s["savings_rate_actual"] is None
 
 
-# ============================================================================================== budgets
 def test_budget_tracks_actual_spending_warns_and_goes_over(world):
     b = planning.create_budget(U, {"category": "food", "limit": "1000", "alert_pct": 80})
     assert b["status"] == "ok" and b["spent"] == "0.00" and b["remaining"] == "1000.00"
     exp(world["cash"], 850, "food", 0)
-    exp(world["cash"], 5000, "shopping", 0)                                                         # another category does not count
+    exp(world["cash"], 5000, "shopping", 0)
     b = planning.get_budget(U, b["id"])
     assert (b["spent"], b["status"], b["remaining"]) == ("850.00", "warning", "150.00")
     t = exp(world["cash"], 300, "food", 0)
     b = planning.get_budget(U, b["id"])
     assert b["status"] == "over" and b["over_by"] == "150.00" and b["utilization"] == 1.15
     books.create_transaction(U, {"type": "refund", "account_id": world["cash"]["id"], "amount": "300", "refund_of": t["id"], "ts": day(0)})
-    assert planning.get_budget(U, b["id"])["status"] == "warning"                                    # a refund gives the money back to the budget
+    assert planning.get_budget(U, b["id"])["status"] == "warning"
 
 
 def test_overall_weekly_and_custom_budgets_and_validation(world):
@@ -159,7 +157,6 @@ def test_projection_flags_a_budget_that_will_be_exceeded_at_the_current_pace(wor
     assert b["projected_total"] != "0.00" and "estimate" in b["basis"]
 
 
-# ============================================================================================== goals
 def test_goal_progress_comes_from_linked_transfers_not_from_the_plan(world):
     g = planning.create_goal(U, {"name": "New laptop", "target": "60000", "saved": "5000", "monthly_target": "10000", "target_date": day(-180)})
     assert g["saved"] == "5000.00" and g["contributed"] == "0.00" and g["progress_pct"] == round(5000 / 60000, 4)
@@ -169,7 +166,7 @@ def test_goal_progress_comes_from_linked_transfers_not_from_the_plan(world):
     g = planning.get_goal(U, g["id"])
     assert g["contributed"] == "27000.00" and g["saved"] == "32000.00" and g["remaining"] == "28000.00"
     assert g["estimate_basis"].startswith("actual") and g["actual_monthly_contribution"] == "9000.00" and g["estimated_completion"]
-    assert bal("Savings") == "27000.00"                                         # the savings account really holds it
+    assert bal("Savings") == "27000.00"
 
 
 def test_goals_can_be_paused_completed_edited_and_reach_their_target(world):
@@ -192,7 +189,6 @@ def test_a_goal_behind_schedule_says_how_much_a_month_it_needs(world):
     assert any(a["kind"] == "goal_off_track" for a in planning.alerts(U))
 
 
-# ============================================================================================== obligations
 def test_bill_status_progression_and_paying_creates_one_linked_expense(world):
     rent = planning.create_obligation(U, {"name": "Rent", "amount": "12000", "recurrence": "monthly", "next_due": day(-20), "category": "housing", "account_id": world["bank"]["id"]})
     assert rent["status"] == "planned"
@@ -203,7 +199,7 @@ def test_bill_status_progression_and_paying_creates_one_linked_expense(world):
     assert r["transaction"]["obligation_id"] == rent["id"] and r["transaction"]["category"] == "housing" and r["transaction"]["recurring"] is True
     assert r["obligation"]["next_due"] > rent["next_due"] and r["obligation"]["last_payment"]["status"] == "paid"
     assert before == "50000.00" and bal("Bank") == "38000.00"
-    assert analytics.summary(U, *window())["spending"] == "12000.00"                                  # counted once, as a normal expense
+    assert analytics.summary(U, *window())["spending"] == "12000.00"
 
 
 def test_paying_the_same_due_date_twice_never_double_charges(world):
@@ -211,7 +207,7 @@ def test_paying_the_same_due_date_twice_never_double_charges(world):
     first = planning.pay_obligation(U, b["id"])
     nd = planning.get_obligation(U, b["id"])["next_due"]
     from app import store
-    store._write("UPDATE fin_obligations SET next_due=? WHERE id=?", (b["next_due"], b["id"]))      # simulate a delayed retry of the same payment
+    store._write("UPDATE fin_obligations SET next_due=? WHERE id=?", (b["next_due"], b["id"]))
     again = planning.pay_obligation(U, b["id"])
     assert again["duplicate"] is True and again["transaction"]["id"] == first["transaction"]["id"]
     assert books.list_transactions(U, type="expense")["total"] == 1 and nd > b["next_due"]
@@ -255,7 +251,6 @@ def test_obligation_validation(world):
             planning.create_obligation(U, bad)
 
 
-# ============================================================================================== alerts and forecast
 def test_budget_alerts(world):
     planning.create_budget(U, {"category": "food", "limit": "1000", "alert_pct": 50})
     exp(world["cash"], 600, "food", 0)
@@ -267,7 +262,7 @@ def test_budget_alerts(world):
 
 def test_forecast_is_labelled_an_estimate_and_follows_the_stated_assumptions(world):
     for ago in range(1, 31):
-        exp(world["cash"], 100, "food", ago)                                                           # steady 100 a day
+        exp(world["cash"], 100, "food", ago)
     planning.create_obligation(U, {"name": "Rent", "amount": "12000", "next_due": money.month_bounds(T)[1].isoformat(), "category": "housing"})
     f = planning.forecast(U)
     liquid = money.to_minor(f["current_liquid"])

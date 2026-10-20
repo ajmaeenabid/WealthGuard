@@ -1,6 +1,4 @@
-// My money: dashboard, transactions, accounts, budgets/goals/bills, AI reports and the voice-enabled money assistant.
-// Everything shown comes from /api/fin/* (the signed-in account's own ledger). Amounts arrive as strings and are only turned into
-// numbers for drawing charts; money arithmetic happens on the server (and in integer minor units for the live preview below).
+// My money.
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -10,13 +8,12 @@
   const state = { tab: "overview", period: "month", mounted: false, charts: {}, meta: null, accounts: [], currency: "", txn: { page: 1, q: "", type: "", category: "", account: "", start: "", end: "", sort: "ts", dir: "desc" }, report: null };
   let me = null;
 
-  // ------------------------------------------------------------------------------------------ helpers
   async function api(path, body, method, signal) {
     const opt = body === undefined && !method ? {} : { method: method || "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
     if (signal) opt.signal = signal;
     const r = await fetch("/api/fin" + path, opt);
     let data = null;
-    try { data = await r.json(); } catch (e) { /* not JSON */ }
+    try { data = await r.json(); } catch (e) { }
     if (!r.ok) {
       const d = data && data.detail;
       const msg = typeof d === "string" ? d : Array.isArray(d) ? d.map((x) => (x.loc ? x.loc.slice(1).join(".") + ": " : "") + x.msg).join("; ") : r.statusText;
@@ -31,7 +28,6 @@
     const body = sym(cur) + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     return (n < 0 ? "-" : signed && n > 0 ? "+" : "") + body;
   };
-  // other-currency accounts, shown as a clearly labelled estimate next to (never inside) the exact totals
   const estLine = (pos, field) => {
     const e = pos.converted_estimate;
     if (!e) return "";
@@ -45,7 +41,7 @@
   const uuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
   const toast = (m) => { if (window.WGUI && window.WGUI.toast) window.WGUI.toast(m); };
   function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
-  function toMinor(str) {                        // "1,234.5" -> 123450 without floating point; NaN when it is not an amount
+  function toMinor(str) {
     const t = String(str ?? "").replace(/,/g, "").trim();
     if (!/^-?\d+(\.\d{1,2})?$/.test(t)) return NaN;
     const neg = t.startsWith("-");
@@ -57,7 +53,7 @@
   const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const palette = () => [css("--accent"), css("--brass"), "#7a8cff", "#e58fa6", "#59c3e6", "#b7a2f0", "#9ad06b", "#f0a56a", "#8a96a6"];
 
-  function destroyCharts() { Object.values(state.charts).forEach((c) => { try { c.destroy(); } catch (e) { /* already gone */ } }); state.charts = {}; }
+  function destroyCharts() { Object.values(state.charts).forEach((c) => { try { c.destroy(); } catch (e) { } }); state.charts = {}; }
   function chart(id, cfg) {
     const cv = $(id);
     if (!cv || !window.Chart) return;
@@ -71,7 +67,6 @@
 
   function banner(msg) { const b = $("finBanner"); b.hidden = !msg; b.textContent = msg || ""; }
 
-  // ------------------------------------------------------------------------------------------ period and tabs
   function periodQuery() {
     const t = new Date();
     const iso = (d) => d.toISOString().slice(0, 10);
@@ -106,7 +101,6 @@
     return state.accounts;
   }
 
-  // ------------------------------------------------------------------------------------------ OVERVIEW
   const cmpHtml = (c, goodWhenDown) => {
     if (!c || c.change_pct === null || c.change_pct === undefined) return `<div class="d">no earlier period to compare</div>`;
     const up = Number(c.change) > 0, flat = Number(c.change) === 0;
@@ -114,7 +108,6 @@
     return `<div class="d ${cls}">${flat ? "no change" : (up ? "▲ " : "▼ ") + pct(Math.abs(c.change_pct))} vs previous period</div>`;
   };
 
-  // First run: no currency is assumed. The person picks one (or simply creates their first account in a currency) before any amount is shown.
   async function currencyGate(root) {
     if (!state.meta) state.meta = await api("/meta", undefined, "GET");
     if (state.meta.currency_chosen) return false;
@@ -233,7 +226,6 @@
     }
   }
 
-  // ------------------------------------------------------------------------------------------ TRANSACTIONS
   async function loadTxns() {
     const root = $("finTab-transactions");
     if (!state.meta) state.meta = await api("/meta", undefined, "GET");
@@ -307,7 +299,6 @@
     ev.target.value = "";
   }
 
-  // ---- the add / edit form
   function modal(title, build) {
     $("finModalTitle").textContent = title;
     const body = $("finModalBody");
@@ -327,7 +318,7 @@
   }
 
   function txnForm(t) {
-    const edit = !!(t && t.id);                       // a draft handed over by the assistant has no id: it is a new record
+    const edit = !!(t && t.id);
     if (!state.accounts.length) { modal("Add an account first", (b) => { b.innerHTML = `<p>Transactions live in an account (cash, bank, bKash…). Add at least one, with its opening balance, so your balances are correct.</p>`; const go = el("button", "primary wide", "Add an account"); go.onclick = () => { closeModal(); openAccountForm(); }; b.appendChild(go); }); return; }
     const key = uuid();
     modal(edit ? "Edit transaction" : t ? "Review before saving" : "Add transaction", (body) => {
@@ -387,14 +378,13 @@
       ["tfGross", "tfDisc", "tfTax", "tfSvc"].forEach((id) => $(id).addEventListener("input", preview));
       preview();
       const err = (m) => { $("tfErr").textContent = m; $("tfErr").hidden = !m; };
-      // paying in a different currency than the account's: show the conversion (real rate, source, date) before saving; nothing is converted silently
       const accCur = () => (state.accounts.find((a) => a.id === $("tfAcc").value) || {}).currency || state.currency;
       let fxTimer = null;
       const fxPreview = () => {
         const box = $("tfFx"); if (!box) return;
         clearTimeout(fxTimer);
         fxTimer = setTimeout(async () => {
-          if (!$("tfCur") || !$("tfFinal") || !$("tfAcc")) return;               // the form was closed before the timer fired
+          if (!$("tfCur") || !$("tfFinal") || !$("tfAcc")) return;
           const from = $("tfCur").value, to = accCur(), amt = $("tfFinal").value.trim();
           const dest = type === "transfer" ? (state.accounts.find((a) => a.id === $("tfTo").value) || {}).currency : null;
           const pair = from !== to ? [from, to] : (dest && dest !== to ? [to, dest] : null);
@@ -450,7 +440,7 @@
           const destAcc = type === "transfer" ? state.accounts.find((a) => a.id === $("tfTo").value) : null;
           if (destAcc && destAcc.currency !== accCur()) body2.convert = true;
         }
-        if (!edit) body2.idempotency_key = key;                           // double-clicking Save can never create two records
+        if (!edit) body2.idempotency_key = key;
         $("tfSave").disabled = true;
         try { await api(edit ? "/transactions/" + t.id : "/transactions", body2); if (t && t._draft) await api("/assistant/cancel", {}); closeModal(); toast(edit ? "Transaction updated" : "Transaction saved"); afterChange(); }
         catch (e2) { err(e2.message); $("tfSave").disabled = false; }
@@ -460,7 +450,6 @@
 
   function afterChange() { showTab(state.tab); }
 
-  // ---- receipt photo: the file is sent as raw bytes; the server decides the type from the content and strips metadata
   async function showReceipt(id) {
     const view = $("tfRcpView");
     try {
@@ -488,7 +477,6 @@
     $("tfRcpDel").onclick = async () => { try { await api(`/transactions/${t.id}/receipt/delete`, {}); $("tfRcpView").innerHTML = ""; $("tfRcpDel").hidden = true; toast("Receipt removed"); } catch (e) { $("tfErr").textContent = e.message; $("tfErr").hidden = false; } };
   }
 
-  // ------------------------------------------------------------------------------------------ ACCOUNTS
   async function loadAccounts() {
     const root = $("finTab-accounts");
     if (await currencyGate(root)) return;
@@ -557,7 +545,6 @@
     });
   }
 
-  // ------------------------------------------------------------------------------------------ PLAN: budgets, goals, bills
   async function loadPlan() {
     const root = $("finTab-plan");
     if (!state.meta) state.meta = await api("/meta", undefined, "GET");
@@ -661,7 +648,6 @@
     async () => { await api(`/obligations/${o.id}/pay`, { account_id: $("pfAcc").value, amount: $("pfAmt").value, ts: $("pfDate").value }); toast("Payment recorded"); }, "Record payment");
   }
 
-  // ------------------------------------------------------------------------------------------ REPORTS
   async function loadReports() {
     const root = $("finTab-reports");
     $("finSub").textContent = "Numbers are calculated from your records. The AI only explains them, and it cannot add figures of its own.";
@@ -717,7 +703,6 @@
     $("rpOut").querySelectorAll("[data-mkb]").forEach((b) => (b.onclick = async () => { const [cat, lim] = b.dataset.mkb.split("|"); try { await api("/budgets", { category: cat, limit: lim, period: "monthly" }); b.disabled = true; b.textContent = "Created"; } catch (e) { b.textContent = e.message; } }));
   }
 
-  // Bangla labels for the fixed parts of a report; the narrative, findings and recommendations already arrive in Bangla from the server
   const BN_LABELS = { "A · Financial overview": "ক · আর্থিক পরিস্থিতি", "B · Spending analysis": "খ · খরচের বিশ্লেষণ", "C · Savings and goals": "গ · সঞ্চয় ও লক্ষ্য",
     "D · Bills and budgets": "ঘ · বিল ও বাজেট", "E–F · Behaviour and recommendations": "ঙ–চ · অভ্যাস ও পরামর্শ", "G · Forecast": "ছ · পূর্বাভাস", "Data quality": "তথ্যের মান",
     "actual": "বাস্তব", "estimate, not a balance": "অনুমান, ব্যালান্স নয়", "estimate": "অনুমান", "Liquid funds at start": "শুরুতে তরল তহবিল", "Liquid funds at end": "শেষে তরল তহবিল",
@@ -740,7 +725,6 @@
     });
   }
 
-  // ------------------------------------------------------------------------------------------ ASSISTANT
   const A = { busy: false, pending: null, loaded: false };
   const EXAMPLES = ["I spent 850 at the grocery store today on rice, oil and vegetables", "আজ ৮৫০ টাকা বাজার করলাম", "ajk 300 rickshaw bhara dilam", "今天在超市花了 85 元买菜", "Received 25000 salary today", "How much did I spend on food this month?", "What is my balance?"];
 
@@ -797,7 +781,6 @@
     const text = (textArg !== undefined ? textArg : input.value).trim();
     if (!text || A.busy) return null;
     const source = (opts && opts.source) || (textArg === undefined && input.dataset.voice === "1" ? "voice" : "text");
-    // the same text keeps the same request id until it succeeds, so a retry after a lost response is never applied twice
     const id = A.pending && A.pending.text === text ? A.pending.id : uuid();
     A.pending = { id, text, source };
     if (!retry) addMsg("user", text);
@@ -824,14 +807,13 @@
     } finally { th.stop(); setBusy(false); }
   }
 
-  // ---------------------------------------------------------------- live sync: the server's data fingerprint is polled while the page is visible
   const SYNC = { v: null, timer: null };
   async function syncNow() {
     try {
       const { version } = await api("/version", undefined, "GET");
       if (SYNC.v !== null && version !== SYNC.v && !document.hidden && !busyEditing()) { state.dirty = true; showTab(state.tab); }
       SYNC.v = version;
-    } catch (e) { /* offline or signed out: try again on the next tick */ }
+    } catch (e) { }
   }
   const busyEditing = () => { const a = document.activeElement; return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.closest("#finModal, .fin-tab")) || !$("finModal").hidden || A.busy; };
   function startSync() {
@@ -844,7 +826,7 @@
   async function loadAssistant() {
     $("finSub").textContent = "Speak or type. Nothing is saved until you confirm the summary.";
     banner("");
-    if (!state.accounts.length) { try { await refreshAccounts(); } catch (e) { /* the assistant can still create accounts */ } }
+    if (!state.accounts.length) { try { await refreshAccounts(); } catch (e) { } }
     if (A.loaded) return;
     A.loaded = true;
     const cur = await api("/assistant/session", undefined, "GET");
@@ -857,7 +839,6 @@
     } else emptyChat();
   }
 
-  // Which jurisdiction the open conversation belongs to, and the history of conversations (each keeps the jurisdiction it started in).
   function chatBar(jur) {
     let bar = $("finChatBar");
     if (!bar) {
@@ -865,7 +846,7 @@
       bar.innerHTML = `<span class="tag" id="finChatJur" data-notr></span><button type="button" id="finConvos" class="linkish">Conversations</button><button type="button" id="finNewConvo" class="linkish">New conversation</button>`;
       const chat = document.querySelector("#finTab-assistant .fin-chat"); chat.insertBefore(bar, chat.firstChild);
       $("finConvos").onclick = showConversations;
-      $("finNewConvo").onclick = async () => { try { await api("/assistant/cancel", {}); } catch (e) { /* nothing open */ } A.loaded = false; A.last = null; $("finConfirm").hidden = true; loadAssistant(); };
+      $("finNewConvo").onclick = async () => { try { await api("/assistant/cancel", {}); } catch (e) { } A.loaded = false; A.last = null; $("finConfirm").hidden = true; loadAssistant(); };
     }
     const j = jur && state.meta && state.meta.jurisdictions && state.meta.jurisdictions[jur];
     $("finChatJur").textContent = j ? `${window.WGLang ? window.WGLang.t("Region") : "Region"}: ${j.name[(window.WGLang && window.WGLang.lang) || "en"] || j.name.en}` : (jur || "");
@@ -906,10 +887,9 @@
     $("finYes").onclick = () => sendMsg("yes");
     $("finNo").onclick = () => sendMsg("cancel");
     $("finEdit").onclick = editDraft;
-    setInterval(() => { if (state.tab === "assistant") syncSend(); }, 400);            // spoken text arrives without an input event in some browsers
+    setInterval(() => { if (state.tab === "assistant") syncSend(); }, 400);
   }
 
-  // ------------------------------------------------------------------------------------------ SETTINGS AND PRIVACY
   async function loadSettings() {
     const root = $("finTab-settings");
     $("finSub").textContent = "How the assistant behaves, what is sent to AI services, and what you can delete.";
@@ -977,7 +957,7 @@
     $("stVoiceOn").onchange = () => save({ voice_enabled: $("stVoiceOn").checked });
     $("stSpeech").onchange = () => save({ speech_lang: $("stSpeech").value });
     $("stLarge").onchange = () => { document.documentElement.classList.toggle("large-text", $("stLarge").checked); save({ large_text: $("stLarge").checked }); };
-    $("stFxRefresh").onclick = async () => { $("stFxRefresh").disabled = true; try { await api("/fx/refresh", {}); } catch (e) { /* the card below says what happened */ } loadSettings(); };
+    $("stFxRefresh").onclick = async () => { $("stFxRefresh").disabled = true; try { await api("/fx/refresh", {}); } catch (e) { } loadSettings(); };
     $("stAi").onchange = () => save({ ai_reports: $("stAi").checked });
     $("stLang").onchange = () => save({ assistant_lang: $("stLang").value });
     $("stAdj").onchange = () => save({ ask_adjustments: $("stAdj").value });
@@ -999,7 +979,7 @@ Only the currency label changes. The numbers stay exactly as they are and nothin
         const perm = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
         if (perm !== "granted") { $("stNotifyHint").textContent = "Permission was not given, so notifications stay off. You can allow them in the browser's site settings."; $("stNotify").checked = false; return; }
       }
-      try { localStorage.setItem("wg-notify", $("stNotify").checked ? "1" : "0"); } catch (e) { /* ignore */ }
+      try { localStorage.setItem("wg-notify", $("stNotify").checked ? "1" : "0"); } catch (e) { }
       if ($("stNotify").checked) checkReminders(true);
     };
     $("stClear").onclick = async () => { if (!window.confirm("Delete all assistant conversations? Your transactions stay.")) return; const r = await api("/privacy/clear-history", {}); A.loaded = false; $("stMsg").textContent = `Removed ${r.conversations_removed} conversations.`; };
@@ -1009,7 +989,6 @@ Only the currency label changes. The numbers stay exactly as they are and nothin
     async () => { await api("/privacy/erase", { confirm: $("erPhrase").value }); state.accounts = []; state.meta = null; A.loaded = false; toast("All finance data erased"); }, "Erase everything");
   }
 
-  // ------------------------------------------------------------------------------------------ reminders
   const notifyOn = () => { try { return localStorage.getItem("wg-notify") === "1" && "Notification" in window && Notification.permission === "granted"; } catch (e) { return false; } };
   function seenKeys() { try { return new Set(JSON.parse(localStorage.getItem("wg-seen") || "[]")); } catch (e) { return new Set(); } }
   async function checkReminders(force) {
@@ -1025,29 +1004,27 @@ Only the currency label changes. The numbers stay exactly as they are and nothin
     if (!notifyOn()) return;
     const seen = seenKeys();
     const fresh = urgent.filter((a) => !seen.has(a.key));
-    fresh.slice(0, 3).forEach((a) => { try { new Notification(a.title, { body: a.body, tag: a.key }); } catch (e) { /* the browser refused */ } });
-    if (fresh.length) { try { localStorage.setItem("wg-seen", JSON.stringify([...seen, ...fresh.map((a) => a.key)].slice(-200))); } catch (e) { /* ignore */ } }
+    fresh.slice(0, 3).forEach((a) => { try { new Notification(a.title, { body: a.body, tag: a.key }); } catch (e) { } });
+    if (fresh.length) { try { localStorage.setItem("wg-seen", JSON.stringify([...seen, ...fresh.map((a) => a.key)].slice(-200))); } catch (e) { } }
   }
 
-  // ------------------------------------------------------------------------------------------ mode, wiring
   function setMode(mode) {
     const money_ = mode === "money";
     document.body.classList.toggle("mode-money", money_);
     $("moneyView").hidden = !money_;
     $("modeAdvisor").setAttribute("aria-selected", String(!money_));
     $("modeMoney").setAttribute("aria-selected", String(money_));
-    try { localStorage.setItem("wg-mode", mode); } catch (e) { /* ignore */ }
+    try { localStorage.setItem("wg-mode", mode); } catch (e) { }
     if (window.WGUI && window.WGUI.closePanel) window.WGUI.closePanel();
     if (money_) { if (!state.mounted) { state.mounted = true; mount(); } showTab(state.tab); }
   }
 
   async function mount() {
     try { state.meta = await api("/meta", undefined, "GET"); state.currency = state.meta.currency; } catch (e) { fail(e); return; }
-    try { const st = await api("/settings", undefined, "GET"); if (window.WGVoice && window.WGVoice.setSpeak) window.WGVoice.setSpeak(st.voice_replies); window.WGLang && (window.WGLang.prefs = st); document.documentElement.classList.toggle("large-text", !!st.large_text); paintRegion(st.jurisdiction_config); } catch (e) { /* preferences are optional */ }
+    try { const st = await api("/settings", undefined, "GET"); if (window.WGVoice && window.WGVoice.setSpeak) window.WGVoice.setSpeak(st.voice_replies); window.WGLang && (window.WGLang.prefs = st); document.documentElement.classList.toggle("large-text", !!st.large_text); paintRegion(st.jurisdiction_config); } catch (e) { }
     startSync();
   }
 
-  // The account Settings dialog (user menu) also carries the currency choice, so it is reachable from anywhere.
   async function fillCurrencyDialog() {
     const box = $("setCurrency");
     if (!box || !me || me.role === "admin" || (me.permissions && me.permissions.money === false)) return;
@@ -1069,7 +1046,7 @@ Only the label changes; the numbers stay as they are and nothing is converted.`)
       };
       const msg = (t) => { const m = $("setCurMsg"); m.textContent = t; m.hidden = !t; };
       $("setCurSel").onchange = async () => { try { await api("/settings", { base_currency: $("setCurSel").value }); await afterCurrencyChange(); fillCurrencyDialog(); msg(""); } catch (e) { msg(e.message); } };
-    } catch (e) { /* money not available for this account */ }
+    } catch (e) { }
   }
   async function afterCurrencyChange() {
     state.meta = await api("/meta", undefined, "GET");
@@ -1080,7 +1057,6 @@ Only the label changes; the numbers stay as they are and nothing is converted.`)
   }
   window.addEventListener("wg:settings-open", fillCurrencyDialog);
 
-  // the active jurisdiction is always visible next to the chat and in the header
   function paintRegion(jc) {
     if (!jc) return;
     const L = window.WGLang, lg = (L && L.lang) || "en";
@@ -1113,7 +1089,7 @@ Only the label changes; the numbers stay as they are and nothing is converted.`)
     checkReminders(false);
     setInterval(() => { if (!document.hidden) checkReminders(false); }, 5 * 60 * 1000);
     let saved = "advisor";
-    try { saved = localStorage.getItem("wg-mode") || "advisor"; } catch (e) { /* ignore */ }
+    try { saved = localStorage.getItem("wg-mode") || "advisor"; } catch (e) { }
     if (saved === "money") setMode("money");
   }
 

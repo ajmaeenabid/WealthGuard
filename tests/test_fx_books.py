@@ -23,14 +23,14 @@ def test_ten_taka_into_a_yuan_account_is_about_54_fen_with_the_original_kept(fx_
     assert t["final_amount"] == "0.54" and t["currency"] == "CNY"
     o = t["original"]
     assert (o["currency"], o["amount"], o["converted_to"]) == ("BDT", "10.00", "CNY") and o["source"].startswith("er-api@2026-10-19") and float(o["rate"]) == pytest.approx(0.0542, abs=1e-4)
-    assert books.list_accounts(U)[0]["balance"] == "999.46"                    # the account moved by 0.54 yuan, not 10
+    assert books.list_accounts(U)[0]["balance"] == "999.46"
 
 
 def test_discount_tax_and_gross_are_converted_with_one_rate_and_still_add_up(fx_live):
     cny = acct("Yuan", "CNY")
     t = books.create_transaction(U, {"type": "expense", "account_id": cny["id"], "gross_amount": "1000", "discount": "100", "tax": "50", "currency": "BDT", "convert": True, "category": "shopping"})
     g, d, x, f = (money.to_minor(t[k]) for k in ("gross_amount", "discount", "tax", "final_amount"))
-    assert g - d + x == f and t["original"]["amount"] == "950.00"             # 1000 - 100 + 50 spent in taka
+    assert g - d + x == f and t["original"]["amount"] == "950.00"
 
 
 def test_income_and_refund_conversions_use_the_same_path(fx_live):
@@ -42,7 +42,7 @@ def test_income_and_refund_conversions_use_the_same_path(fx_live):
 def test_a_confirmed_quote_is_applied_exactly_even_if_the_market_moved(fx_live):
     cny = acct("Yuan", "CNY")
     pinned = fx.rate("BDT", "CNY")
-    fx_live["data"][0]["rates"]["CNY"] = 9.0                                    # the market moves after the person saw the summary
+    fx_live["data"][0]["rates"]["CNY"] = 9.0
     import app.finance.fx as fxm
     from app import store
     store._write("DELETE FROM fin_fx_rates", ())
@@ -83,4 +83,4 @@ def test_converted_figures_do_not_get_mixed_into_other_currency_totals(fx_live):
     cny, bdt = acct("Yuan", "CNY", "500"), acct("Taka", "BDT", "1000")
     books.create_transaction(U, {"type": "expense", "account_id": cny["id"], "amount": "50", "currency": "BDT", "convert": True, "category": "food"})
     pos = books.position(U)
-    assert pos["liquid"] == "497.29" and pos["excluded_other_currency"] == ["Taka"]       # 500 - 2.71 yuan; the taka account is not silently added
+    assert pos["liquid"] == "497.29" and pos["excluded_other_currency"] == ["Taka"]

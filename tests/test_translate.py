@@ -71,7 +71,7 @@ def test_live_disclaimer_is_restored_not_reworded(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "anthropic")
     monkeypatch.setattr(llm, "complete", fake)
     out, mode = translate.translate_one("Return note. " + config.DISCLAIMER, "zh")
-    assert config.DISCLAIMER not in seen["prompt"]  # the model never sees the disclaimer
+    assert config.DISCLAIMER not in seen["prompt"]
     assert out.endswith(config.DISCLAIMER_ZH) and mode == "llm"
 
 

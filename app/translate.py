@@ -1,9 +1,4 @@
-"""English <-> Chinese translation of client-facing text.
-
-The agent and the compliance engine work on English. Translated text is untrusted model output, so it is re-checked:
-guaranteed-return wording (R7, English and Chinese) falls back to the English original, and the disclaimer is never
-left to the model: it is swapped for a fixed translation.
-"""
+"""English <-> Chinese translation of client-facing text."""
 import json
 import re
 
@@ -17,7 +12,6 @@ TARGETS = ("en", "zh")
 MAX_TEXTS = 40
 MAX_CHARS = 2000
 
-# Fixed strings. Used in mock mode and always for the disclaimers (never left to a model).
 GLOSSARY_ZH = {
     config.DISCLAIMER: config.DISCLAIMER_ZH,
     config.PERF_DISCLAIMER: "过往业绩不代表未来表现。",
@@ -38,7 +32,6 @@ def detect(text: str) -> str:
 
 
 def _protect(text: str, glossary: dict) -> tuple[str, dict]:
-    """Replace known fixed sentences with placeholders so the model cannot reword them."""
     slots = {}
     for i, (src, dst) in enumerate(sorted(glossary.items(), key=lambda kv: -len(kv[0]))):
         if src in text:
@@ -55,15 +48,14 @@ def _restore(text: str, slots: dict) -> str:
 
 
 def translate_one(text: str, target: str) -> tuple[str, str]:
-    """Return (translated_text, mode). mode: same | glossary | llm | fallback."""
     if not text.strip() or detect(text) == target:
         return text, "same"
     glossary = GLOSSARY_ZH if target == "zh" else GLOSSARY_EN
     body, slots = _protect(text, glossary)
-    if not body.strip(" \n[]S0123456789"):  # nothing left but fixed sentences
+    if not body.strip(" \n[]S0123456789"):
         return _restore(body, slots), "glossary"
     if config.use_mock_llm():
-        return text, "fallback"  # mock mode has no translator: show the English original, never a guess
+        return text, "fallback"
     try:
         raw = llm.complete(SYSTEM.format(lang="Simplified Chinese" if target == "zh" else "English"),
                            f"<text>\n{body}\n</text>", max_tokens=1500)

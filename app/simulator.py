@@ -5,8 +5,6 @@ from app import realdata
 from app.config import MC_PATHS, MC_SEED
 from app.schemas import Allocation, ClientProfile, Product
 
-# Percent price shock per asset class. "equity_-20" is a hypothetical round-number scenario; every other scenario is
-# computed from what markets really did in the named years (app/data/real, mapped via realdata.ASSET_MIX).
 EPISODES = {
     "crash_2008": {"label": "2008 financial crisis", "years": (2008, 2008)},
     "rate_+2": {"label": "Rate shock (2022)", "years": (2022, 2022), "rate": ("2021-12", "2022-12")},
@@ -67,13 +65,11 @@ def stress(allocation: Allocation, products: dict[str, Product], scenario: str) 
 
 
 def goal_projection(allocation: Allocation, profile: ClientProfile, shock_pct: float = 0.0) -> dict:
-    """P(final value >= target) after horizon; optional immediate shock applied to the starting value."""
     amount = profile.investable_amount_cny * (1 + shock_pct / 100)
     target = profile.goal_target_cny or profile.investable_amount_cny * 1.3
     years = max(1, int(round(profile.horizon_years)))
     mu, sigma = allocation.expected_return, allocation.volatility
     rng = np.random.default_rng(MC_SEED)
-    # lognormal annual growth factors with mean (1+mu) and std sigma*(1+mu)
     s2 = np.log(1 + (sigma / (1 + mu)) ** 2)
     m = np.log(1 + mu) - s2 / 2
     growth = rng.lognormal(m, np.sqrt(s2), size=(MC_PATHS, years))
@@ -99,8 +95,6 @@ def _class_weights(allocation: Allocation, products: dict[str, Product]) -> tupl
 
 
 def historical_backtest(allocation: Allocation, products: dict[str, Product], profile: ClientProfile) -> dict:
-    """What this allocation would have done over every real rolling window of the client's horizon (1928-2025),
-    annually rebalanced, after the products' fees, plus a bootstrap that resamples real years. US data is a proxy."""
     weights, fee = _class_weights(allocation, products)
     amount = profile.investable_amount_cny
     target = profile.goal_target_cny or amount * 1.3

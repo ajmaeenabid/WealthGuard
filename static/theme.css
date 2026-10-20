@@ -1,6 +1,4 @@
-/* WealthGuard theme layer: component-level styling that uses ONLY the semantic tokens from tokens.css.
-   Loaded last. Direction: warm ivory canvas, champagne sidebar, sage actions, bronze detail, soft charcoal text. */
-
+/* WealthGuard theme layer. */
 html { background: var(--color-bg-primary); }
 body { font: 400 var(--fs-body)/var(--lh-body) var(--font-ui); color: var(--color-text-primary); background: var(--color-bg-primary) var(--glow) no-repeat; font-feature-settings: "cv11", "ss01", "tnum" 0; }
 h1, h2 { font-family: var(--font-display); letter-spacing: var(--tracking-display); color: var(--color-text-primary); }
@@ -9,7 +7,6 @@ h1, h2 { font-family: var(--font-display); letter-spacing: var(--tracking-displa
 .num, td.num, .amt, .mono { font-family: var(--font-ui); font-variant-numeric: tabular-nums; }
 code, pre, .hash { font-family: var(--font-mono); }
 
-/* ---------------------------------------------------------------- sidebar: champagne, sage selection, bronze detail */
 .sidebar { background: var(--color-bg-secondary); border-right: 1px solid var(--color-border); }
 .wordmark { font: italic 600 25px/1 var(--font-display); color: var(--color-text-primary); }
 .tagline::before { background: linear-gradient(90deg, var(--color-brand-bronze), var(--color-brand-sage)); }
@@ -28,11 +25,9 @@ code, pre, .hash { font-family: var(--font-mono); }
 .userbox, .session { background: color-mix(in srgb, var(--color-bg-surface) 70%, var(--color-bg-secondary)); border: 1px solid var(--color-border-soft); border-radius: var(--r-card); }
 .avatar, .userbox .av { background: var(--color-action); color: var(--color-on-action); border: 1px solid color-mix(in srgb, var(--color-text-primary) 12%, transparent); }
 
-/* ---------------------------------------------------------------- top bar chips */
 .topbar .ghost, .chip, #llmBadge { color: var(--color-text-secondary); }
 #llmBadge, .pill, .chip { border: 1px solid var(--color-border); background: var(--color-bg-surface); border-radius: var(--r-pill); }
 
-/* ---------------------------------------------------------------- buttons: primary (sage action), secondary, tertiary, destructive */
 button { min-height: var(--h-sm); border-radius: var(--r-control); border: 1px solid var(--color-border); background: var(--color-bg-surface); color: var(--color-text-primary); font-weight: 600; font-size: 14px; box-shadow: none; }
 button:hover:not(:disabled) { border-color: var(--color-brand-bronze); background: var(--color-bg-surface-2); transform: none; }
 button:active:not(:disabled) { transform: scale(.985); }
@@ -54,7 +49,6 @@ button[aria-busy="true"] { position: relative; color: transparent; pointer-event
 button[aria-busy="true"]::after { content: ""; position: absolute; inset: 0; margin: auto; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--color-on-action); border-top-color: transparent; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---------------------------------------------------------------- inputs and forms */
 input, select, textarea { min-height: var(--h-input); padding: 10px 14px; border-radius: var(--r-control); border: 1px solid var(--color-border); background: var(--color-bg-surface); color: var(--color-text-primary); font-size: var(--fs-control); }
 textarea { min-height: 96px; line-height: 1.5; }
 input::placeholder, textarea::placeholder { color: var(--color-text-muted); opacity: 1; }
@@ -68,7 +62,6 @@ label { color: var(--color-text-secondary); }
 .fin-err, .auth-err, .field-error { color: var(--color-danger); background: var(--color-danger-bg); border-radius: var(--r-control); }
 .auth-err.ok, .field-ok { color: var(--color-success); background: var(--color-success-bg); }
 
-/* ---------------------------------------------------------------- cards and panels */
 .card, .fcard, .acc-card { background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--r-card); box-shadow: var(--shadow-md); }
 .card h2 { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-card); }
 .fcard h3, .card h3, .auth-card h3 { font-family: var(--font-ui); }
@@ -78,7 +71,6 @@ label { color: var(--color-text-secondary); }
 .small, .caption { color: var(--color-text-secondary); }
 .warnbox { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent); border-radius: var(--r-control); }
 
-/* ---------------------------------------------------------------- status: information, success, warning (compliance), danger */
 .tag { border-radius: var(--r-pill); border: 1px solid var(--color-border); background: var(--color-bg-surface-2); color: var(--color-text-secondary); }
 .tag.good { background: var(--color-success-bg); color: var(--color-success); border-color: color-mix(in srgb, var(--color-success) 45%, transparent); }
 .tag.bad { background: var(--color-warning-bg); color: var(--color-warning); border-color: color-mix(in srgb, var(--color-warning) 45%, transparent); }
@@ -86,7 +78,6 @@ label { color: var(--color-text-secondary); }
 .tag.danger { background: var(--color-danger-bg); color: var(--color-danger); border-color: color-mix(in srgb, var(--color-danger) 45%, transparent); }
 .msg.sys, .fin-banner { background: var(--color-warning-bg); color: var(--color-warning); border: 1px solid color-mix(in srgb, var(--color-warning) 28%, transparent); }
 
-/* ---------------------------------------------------------------- tables */
 table { border-collapse: collapse; width: 100%; line-height: var(--lh-table); }
 th { font: 600 12px/1.2 var(--font-ui); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--color-text-secondary); background: var(--color-bg-surface-2); text-align: left; }
 td, th { padding: 11px 14px; border-bottom: 1px solid var(--color-border-soft); }
@@ -97,7 +88,6 @@ td.num, th.num, .a-right { text-align: right; font-variant-numeric: tabular-nums
 .md-table tbody tr:nth-child(even) td { background: var(--color-bg-surface-2); }
 .md-table tbody tr:hover td { background: var(--color-selected-bg); }
 
-/* ---------------------------------------------------------------- chat */
 .msg.user { background: var(--color-bg-surface); border: 1px solid var(--color-border); color: var(--color-text-primary); box-shadow: var(--shadow-sm); }
 .msg.agent { color: var(--color-text-primary); }
 .msg.agent::before { border-color: color-mix(in srgb, var(--color-brand-bronze) 55%, transparent); background: linear-gradient(145deg, var(--color-bg-surface), var(--color-bg-secondary)); }
@@ -108,7 +98,6 @@ td.num, th.num, .a-right { text-align: right; font-variant-numeric: tabular-nums
 .quick button:hover, .fin-quick button:hover, .chips button:hover { background: var(--color-selected-bg); border-color: var(--color-action); }
 .hero-title, .hero h1 { font-family: var(--font-display); font-size: var(--fs-hero); font-weight: 500; }
 
-/* ---------------------------------------------------------------- drawer, scrim, dialogs, popovers */
 .drawer { background: var(--color-bg-surface); border-left: 1px solid var(--color-border); box-shadow: var(--shadow-lg); }
 .scrim { background: var(--overlay-modal); backdrop-filter: blur(2px); }
 .auth.modal, #settings { background: var(--overlay-modal); backdrop-filter: blur(4px); }
@@ -120,7 +109,6 @@ select option { background: var(--color-bg-surface); color: var(--color-text-pri
 .vm-panel { background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--r-dialog); box-shadow: var(--shadow-lg); }
 .vm-orb { background: var(--color-action); }
 
-/* ---------------------------------------------------------------- finance workspace and admin */
 .fin-tabs { border-bottom: 1px solid var(--color-border); }
 .fin-tabs button { background: transparent; border-color: transparent; color: var(--color-text-secondary); border-radius: var(--r-control) var(--r-control) 0 0; }
 .fin-tabs button[aria-selected="true"] { color: var(--color-text-primary); background: var(--color-bg-surface); border-color: var(--color-border); border-bottom-color: var(--color-bg-surface); box-shadow: inset 0 -2px 0 var(--color-link); }
@@ -128,7 +116,6 @@ select option { background: var(--color-bg-surface); color: var(--color-text-pri
 .mode-switch button[aria-selected="true"], .seg button[aria-selected="true"] { background: var(--color-nav-selected-bg); color: var(--color-nav-selected-text); border-color: transparent; }
 .admin-users, .admin-stats .kpi { border-color: var(--color-border); }
 
-/* ---------------------------------------------------------------- scrollbars and small details */
 * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--color-brand-bronze) 40%, transparent) transparent; }
 hr { border: 0; border-top: 1px solid var(--color-border-soft); }
 a { color: var(--color-link); text-decoration-color: color-mix(in srgb, var(--color-link) 40%, transparent); text-underline-offset: 3px; }
@@ -136,7 +123,7 @@ a:hover { color: var(--color-link-hover); }
 
 @media (max-width: 760px) {
   .auth.modal .auth-card, #settings .auth-card, .fin-modal { width: calc(100vw - 24px); max-width: 100%; padding: var(--sp-4); }
-  button { min-height: 40px; }                       /* touch targets */
+  button { min-height: 40px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
 
@@ -147,7 +134,6 @@ a:hover { color: var(--color-link-hover); }
 .hero .hero-seal::before { display: none; }
 .hero .hero-seal::after { border-radius: 50%; inset: -8px; border-color: color-mix(in srgb, var(--color-brand-bronze) 35%, transparent); }
 
-/* ---------------------------------------------------------------- greeting: one design in BOTH themes (same fonts, same gradient logic; only the token colours change) */
 .hero-hello { font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: clamp(1.4rem, 2vw + .8rem, 2rem); color: var(--color-text-secondary); margin: 0; }
 .hero-hello b, #heroName {
   font-style: italic; font-weight: 700;
@@ -159,6 +145,6 @@ a:hover { color: var(--color-link-hover); }
 }
 .hero-sub { color: var(--color-hero-sub); opacity: var(--hero-sub-opacity); font-weight: 450; max-width: 52ch; }
 .tg-main { background: linear-gradient(90deg, var(--tagline-a), var(--tagline-b)); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent; font-weight: 600; }
-.hero-title, .hero h1, .hero-hello { line-height: 1.28; padding-bottom: .12em; overflow: visible; }   /* gradient text is clipped to its box: leave room for descenders (y, g, p) */
+.hero-title, .hero h1, .hero-hello { line-height: 1.28; padding-bottom: .12em; overflow: visible; }
 .userbox .avatar { flex: none; min-width: 34px; min-height: 34px; overflow: visible; }
 .userbox { z-index: 3; }

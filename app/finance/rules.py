@@ -1,9 +1,4 @@
-"""Deterministic understanding of a spoken or typed money message (English, Bangla and Banglish).
-
-This is the offline path (USE_MOCK_LLM=1, no API key, or the AI service down) and also the parser for short answers to a
-clarifying question ("before the discount", "yes", "bkash"). It returns only what it can actually see in the text; anything
-it cannot find is left out so the assistant asks for it instead of guessing.
-"""
+"""Deterministic understanding of a spoken or typed money message (English, Bangla and Banglish)."""
 import re
 from datetime import date, timedelta
 from typing import Optional
@@ -46,7 +41,6 @@ ZH_UNIT = {"十": 10, "百": 100, "千": 1000}
 
 
 def zh_to_int(s: str) -> Optional[int]:
-    """Chinese numerals such as 三百五十, 两千, 一万二 to an integer; None if it is not a clean numeral."""
     if not s:
         return None
     total, section, num = 0, 0, None
@@ -64,14 +58,13 @@ def zh_to_int(s: str) -> Optional[int]:
     if num is not None and len(s) > 1 and s[-1] in ZH_DIGIT:
         prev = s[-2]
         if prev == "万":
-            num *= 1000                                          # 一万二 = 12000
+            num *= 1000
         elif prev in ("百", "千"):
-            num *= ZH_UNIT[prev] // 10                           # 三百五 = 350
+            num *= ZH_UNIT[prev] // 10
     return total + section + (num or 0)
 
 
 def zh_numerals(text: str) -> str:
-    """Replaces Chinese numerals with Arabic digits so the same extraction works (三百五十元 -> 350元). Display text is untouched elsewhere."""
     def one(m):
         v = zh_to_int(m.group(0))
         return str(v) if v is not None else m.group(0)
@@ -82,7 +75,6 @@ def _num(s: str) -> str:
     return s.replace(",", "")
 
 
-# ---------------------------------------------------------------------------------------------- dates
 def parse_date(text: str, today: date) -> Optional[date]:
     t = ascii_digits(text).lower()
     if re.search(r"\b(today|just now|this morning|this afternoon|this evening|tonight|aj|ajke|ajk)\b|আজ|এইমাত্র|今天|今日|刚刚|今早|今晚|今儿", t):
@@ -138,13 +130,11 @@ def parse_date(text: str, today: date) -> Optional[date]:
     return None
 
 
-# ---------------------------------------------------------------------------------------------- amounts
 def _spans(text: str):
     return [(m.start(), m.end(), _num(m.group(1))) for m in re.finditer(NUM, text)]
 
 
 def amounts(text: str) -> dict:
-    """Find the main amount and any discount / VAT / service charge in the text."""
     t = ascii_digits(text)
     low = t.lower()
     out: dict = {}
@@ -171,9 +161,9 @@ def amounts(text: str) -> dict:
         after = low[e:e + 14]
         before = low[max(0, s - 12):s]
         if re.match(rf"\s*{UNITS}\b", after) and not re.match(rf"\s*{CUR}", after):
-            continue                                                       # a quantity, not money
+            continue
         if re.match(r"\s*(?:st|nd|rd|th)?\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)", after) or re.search(r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s*$", before):
-            continue                                                       # part of a date
+            continue
         if re.match(r"\s*(?:days? ago|[/-]\d)", after) or re.search(r"\d[/-]$", before):
             continue
         cued = re.match(rf"\s*{CUR}", after) or re.search(rf"{CUR}\s*$", before) or re.search(r"(spent|paid|cost|for|received|got|earned|worth|total|of|bill|price|খরচ)\s*$", before)
@@ -196,7 +186,6 @@ def amount_basis(text: str) -> Optional[str]:
     return None
 
 
-# ---------------------------------------------------------------------------------------------- the rest of the draft
 def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip(" ,.;:!?")
 
@@ -226,10 +215,6 @@ def note_of(text: str) -> Optional[str]:
     return _clean(m.group(1))[:300] if m else None
 
 
-
-# ---------------------------------------------------------------------------------------------- which currency was said
-# Only currencies the app supports. "¥" is read as the Chinese yuan (the Japanese yen is not supported). A bare number has NO currency: it is the
-# account's own, exactly as before. A word like 块 or 元 only counts right after a digit ("10块"), never inside other words.
 CURRENCY_WORDS = [
     ("BDT", r"৳|টাকা|\b(?:taka|takas|tk|bdt)\b|塔卡|孟加拉塔卡|孟加拉国塔卡"),
     ("CNY", r"[¥￥]|人民币|\d\s*元|\d\s*块钱|\d\s*块(?![一-鿿])|\d\s*块(?=[买吃用花付喝])|\b(?:yuan|rmb|cny|renminbi|kuai)\b|ইউয়ান"),
@@ -247,7 +232,6 @@ def currencies_in(text: str) -> list[tuple[int, str]]:
 
 
 def detect_currency(text: str) -> tuple[Optional[str], list[str]]:
-    """(the one currency mentioned, []) or (None, [several]) when the message names more than one, or (None, []) when it names none."""
     codes = []
     for _, c in currencies_in(text):
         if c not in codes:
@@ -259,7 +243,6 @@ CONVERT_CUE = re.compile(r"\b(in|to|into|convert(?:ed)?|equals?|worth|exchange)\
 
 
 def convert_request(text: str) -> Optional[dict]:
-    """"How much is 100 yuan in taka?" / "100元是多少塔卡" / "১০০ টাকা কত ইউয়ান": {amount, from, to}. Needs a number, two different currencies and a conversion cue."""
     t = ascii_digits(text or "").strip()
     low = t.lower()
     found = currencies_in(low)
@@ -270,12 +253,11 @@ def convert_request(text: str) -> Optional[dict]:
     if len(codes) < 2 or not CONVERT_CUE.search(low):
         return None
     if classify_type(t) and not re.search(r"how much|what|convert|多少|কত|换", low):
-        return None                                                  # "I paid 100 yuan, which was 1800 taka" is a purchase, not a question
+        return None
     nums = _spans(low)
     if not nums:
         return None
     return {"amount": nums[0][2], "from": found[0][1], "to": next(c for c in codes if c != found[0][1])}
-
 
 
 def classify_type(text: str) -> Optional[str]:
@@ -320,7 +302,6 @@ def period_of(text: str, today: date) -> tuple[Optional[str], Optional[str], Opt
 
 
 def extract(text: str, today: date) -> dict:
-    """A partial understanding of one message: {"intent": ..., "transaction": {...}, "query": {...}}."""
     raw = text or ""
     t = ascii_digits(raw).strip()
     low = t.lower()
@@ -337,7 +318,6 @@ def extract(text: str, today: date) -> dict:
         return {"intent": "query", "query": dict(cv, kind="convert")}
     amt = amounts(t)
     typ = classify_type(t)
-    # a question about the user's money, not a new entry
     if QUERY.search(low) and not (typ and amt.get("amount") and re.search(r"\b(i|just|today|yesterday)\b", low) and not re.search(r"how much|what", low)):
         kind = "balance" if re.search(r"balance|net worth|কত আছে|ব্যালেন্স|余额|净资产", low) else "budget" if re.search(r"budget|预算", low) else "goal" if re.search(r"goal|目标", low) \
             else "summary" if re.search(r"summary|summari|how am i doing|overview|report|হিসাব|总结|概况|报告", low) else "spend_total" if re.search(r"how much|total|spent|spending|কত|多少|总共", low) else "list"
@@ -353,12 +333,12 @@ def extract(text: str, today: date) -> dict:
     if one:
         tx["currency"] = one
     elif several:
-        tx["currency_options"] = several                                    # two currencies in one entry: ask which one the amount was in
+        tx["currency_options"] = several
     basis = amount_basis(t)
     if basis:
         tx["amount_basis"] = basis
     if re.search(r"discount|\boffer\b|ছাড়|ডিসকাউন্ট", low) and not amt.get("discount") and not amt.get("no_discount") and typ in (None, "expense", "refund"):
-        tx["discount_mentioned"] = True                                    # said there was one, did not say how much
+        tx["discount_mentioned"] = True
     if re.search(r"\bvat\b|\btax\b|service charge|ভ্যাট", low) and not (amt.get("tax") or amt.get("service_charge") or amt.get("no_tax")) and typ in (None, "expense", "refund"):
         tx["tax_mentioned"] = True
     d = parse_date(t, today)
@@ -385,7 +365,7 @@ def extract(text: str, today: date) -> dict:
     if typ == "income":
         tx["category"] = taxonomy.guess_income(t)
     if typ is None and tx.get("amount") and tx.get("category") and not re.search(r"\b(how|what|when|why)\b", low):
-        tx["type"] = "expense"                                              # an amount with a spending category reads as an expense
+        tx["type"] = "expense"
     frm = re.search(r"\b(?:from|using|via|through|paid by|paid with|by)\s+(?:my\s+)?([a-z][a-z0-9 ]{1,24}?)(?=\s+(?:to|for|on|at|today|yesterday)\b|[.,!?]|$)", low)
     to = re.search(r"\b(?:to|into)\s+(?:my\s+)?([a-z][a-z0-9 ]{1,24}?)(?:\s+account)?(?=\s+(?:from|today|yesterday|on)\b|[.,!?]|$)", low)
     if frm and not re.match(r"(a|the|it|me)\b", frm.group(1)):
@@ -393,7 +373,7 @@ def extract(text: str, today: date) -> dict:
     if typ == "transfer" and to:
         tx["to_account_hint"] = _clean(to.group(1))
     if typ == "transfer":
-        tx.pop("merchant", None)                                            # "from City Bank" is an account, not a shop
+        tx.pop("merchant", None)
     if re.search(r"\b(every month|monthly|each month|recurring|subscription|প্রতি মাস)\b", low):
         tx["recurring"] = True
     if re.search(r"\b(essential|necessary|needed|must[- ]have)\b", low):
@@ -407,9 +387,7 @@ def extract(text: str, today: date) -> dict:
     return {"intent": "provide_info" if tx else "other", "transaction": tx}
 
 
-# ---------------------------------------------------------------------------------------------- answers to a specific question
 def answer_slot(slot: str, text: str, today: date, options: Optional[list] = None) -> dict:
-    """Interpret a short reply to the question the assistant just asked. Returns a patch for the draft (may be empty)."""
     t = ascii_digits(text or "").strip()
     low = t.lower()
     if slot == "currency":
@@ -427,7 +405,7 @@ def answer_slot(slot: str, text: str, today: date, options: Optional[list] = Non
         if re.search(r"\b(after|final|paid|net|total)\b|পর", low):
             return {"amount_basis": "final"}
         return {}
-    if slot == "adjustments":                                              # "any discount, VAT or service charge?"
+    if slot == "adjustments":
         if NO.match(t) or re.search(r"\b(no|none|nothing)\b|না", low):
             return {"no_discount": True, "no_tax": True}
         if re.search(r"\bfinal\b|\bpaid\b|\bthat'?s all\b|\bjust that\b|ছাড় নেই", low) and not amounts(t).get("discount"):
@@ -441,7 +419,7 @@ def answer_slot(slot: str, text: str, today: date, options: Optional[list] = Non
         if YES.match(t):
             return {"adjustments_yes": True}
         return out
-    if slot == "tax":                                                       # "any additional VAT or service charge?"
+    if slot == "tax":
         if NO.match(t) or re.search(r"\b(no|none|nothing)\b|না", low):
             return {"no_tax": True}
         a = amounts(t)

@@ -28,7 +28,7 @@ def test_workspace_markup_has_every_tab_the_switch_and_the_assistant_controls():
                'id="finTab-plan"', 'id="finTab-reports"', 'id="finTab-assistant"', 'id="finMic"', 'id="finInput"', 'id="finSend"', 'id="finYes"', 'id="finModal"']:
         assert HTML.count(el) == 1, el
     for tab in ["overview", "transactions", "accounts", "plan", "reports", "assistant"]:
-        assert HTML.count(f'data-tab="{tab}"') == 2, tab                        # sidebar button and mobile tab bar
+        assert HTML.count(f'data-tab="{tab}"') == 2, tab
     assert 'href="/static/finance.css"' in HTML and HTML.index("/static/app.js") < HTML.index("/static/finance.js")
 
 
@@ -49,13 +49,13 @@ def test_retries_reuse_the_request_id_and_forms_carry_an_idempotency_key():
 
 def test_money_is_never_computed_with_floats_in_the_browser():
     assert "toMinor" in JS and "fromMinor" in JS
-    assert "parseFloat" not in JS                                             # amounts go to the server as strings
-    assert re.search(r"Number\(", JS)                                         # Number() is only for drawing charts and comparing display values
+    assert "parseFloat" not in JS
+    assert re.search(r"Number\(", JS)
 
 
 def test_dynamic_text_is_escaped_before_it_reaches_innerhtml():
     assert "const esc" in JS and JS.count("esc(") > 150
-    assert "textContent" in JS                                                # chat messages are inserted as text, not HTML
+    assert "textContent" in JS
 
 
 def test_no_api_key_or_provider_secret_is_present_in_anything_the_browser_loads():
@@ -81,12 +81,12 @@ def test_receipts_reminders_activity_and_report_language_are_wired_in_the_interf
     for token in ["/receipt", "wireReceipt", "image/jpeg,image/png,image/webp", "checkReminders", "wg-notify", "modeBadge", "/activity", "rpLang", "localizeReport", "BN_LABELS"]:
         assert token in JS or token in HTML, token
     assert 'id="modeBadge"' in HTML and 'id="adminAi"' in HTML
-    assert "only works while WealthGuard is open" in JS                                  # no pretence of server-side push
+    assert "only works while WealthGuard is open" in JS
     admin = c.get("/static/admin.js").text
     assert "/ai-usage" in admin and "never message text" in admin
 
 
 def test_sign_in_is_per_tab_session_and_the_admin_member_list_really_hides():
     auth = c.get("/static/auth.js").text
-    assert "sessionStorage.setItem(\"wg-token\"" in auth and "localStorage.setItem(\"wg-token\"" not in auth     # a new visit asks for a login
-    assert ".admin-users[hidden]" in c.get("/static/styles.css").text                                         # display:grid must not override hidden
+    assert "sessionStorage.setItem(\"wg-token\"" in auth and "localStorage.setItem(\"wg-token\"" not in auth
+    assert ".admin-users[hidden]" in c.get("/static/styles.css").text

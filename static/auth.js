@@ -1,12 +1,10 @@
 // Sign in / sign up page, bearer token on every /api call, user box and the Settings dialog (change password).
-// Loaded before every other script: it wraps fetch so the rest of the UI never has to think about tokens.
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
   const T = (x) => (window.WGI18n ? window.WGI18n.t(x) : x);
   let token = "";
-  // The sign-in lives in sessionStorage: closing the tab or browser ends it, so opening the site again always asks for a login.
-  try { localStorage.removeItem("wg-token"); token = sessionStorage.getItem("wg-token") || ""; } catch (e) { /* private mode: sign-in lasts until reload */ }
+  try { localStorage.removeItem("wg-token"); token = sessionStorage.getItem("wg-token") || ""; } catch (e) { }
   let user = null, mode = "login", started = false;
   const waiting = [];
 
@@ -21,18 +19,18 @@
       init = Object.assign({}, init, { headers: h });
     }
     return rawFetch(input, init).then((r) => {
-      if (r.status === 401 && own && user && !/\/api\/auth\/(login|signup)$/.test(path)) forget(true);   // token expired or revoked
+      if (r.status === 401 && own && user && !/\/api\/auth\/(login|signup)$/.test(path)) forget(true);
       return r;
     });
   };
 
-  function save(t) { token = t; try { t ? sessionStorage.setItem("wg-token", t) : sessionStorage.removeItem("wg-token"); } catch (e) { /* ignore */ } }
+  function save(t) { token = t; try { t ? sessionStorage.setItem("wg-token", t) : sessionStorage.removeItem("wg-token"); } catch (e) { } }
   function forget(reload) { save(""); user = null; if (reload) location.reload(); }
 
   async function call(path, body, method) {
     const r = await window.fetch(path, body === undefined && !method ? {} : { method: method || "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     let data = null;
-    try { data = await r.json(); } catch (e) { /* not JSON */ }
+    try { data = await r.json(); } catch (e) { }
     if (!r.ok) throw Object.assign(new Error((data && typeof data.detail === "string" && data.detail) || r.statusText || "Request failed"), { status: r.status });
     return data;
   }
@@ -77,8 +75,6 @@
     $("authUser").focus();
   }
 
-  // Password fields on the sign-in card show gold coins instead of dots. The real <input type="password"> stays (so password managers, autofill
-  // and accessibility work); its text is transparent and a decorative layer draws one coin per character. Nothing about the value is exposed.
   function coinify(input) {
     const wrap = document.createElement("div");
     wrap.className = "pw-wrap";
@@ -95,7 +91,6 @@
     input.coinPaint = paint;
   }
   ["authPass", "authPass2"].forEach((id) => coinify($(id)));
-  // one tap fills a demo account (the password is the documented demo one); the person still presses Sign in
   document.querySelectorAll("[data-demo]").forEach((b) => (b.onclick = () => {
     setMode("login"); $("authUser").value = b.dataset.demo; $("authPass").value = "123"; $("authPass").coinPaint(); $("authGo").focus();
   }));
@@ -109,14 +104,13 @@
     try {
       const out = await call(mode === "signup" ? "/api/auth/signup" : "/api/auth/login", { username, password });
       save(out.token);
-      try { localStorage.removeItem("wg-mode"); } catch (e) { /* ignore */ }      // a fresh sign-in starts on the default screen
+      try { localStorage.removeItem("wg-mode"); } catch (e) { }
       $("authPass").value = ""; $("authPass2").value = ""; $("authPass").coinPaint(); $("authPass2").coinPaint(); err($("authErr"), "");
       begin(out.user);
     } catch (e) { err($("authErr"), e.message); }
     $("authGo").disabled = false;
   });
 
-  // ---------------------------------------------------------------- settings: change password
   const openSettings = () => { show($("settings"), true); window.dispatchEvent(new CustomEvent("wg:settings-open")); $("setWho").hidden = false; $("pwOld").focus(); };
   const closeSettings = () => { show($("settings"), false); $("pwForm").reset(); err($("pwMsg"), ""); };
   $("settingsBtn").onclick = openSettings;
@@ -137,7 +131,7 @@
   });
 
   $("logoutBtn").onclick = async () => {
-    try { await call("/api/auth/logout", {}); } catch (e) { /* the token is dropped locally either way */ }
+    try { await call("/api/auth/logout", {}); } catch (e) { }
     forget(true);
   };
 

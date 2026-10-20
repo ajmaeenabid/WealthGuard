@@ -22,7 +22,6 @@ def _state(client_id: str) -> dict:
 
 
 def _record_answer(client_id: str, message: str) -> bool:
-    """True when the message answered the pending profile question."""
     qid = state.PENDING_QUESTION.get(client_id)
     if not qid:
         return False
@@ -31,7 +30,7 @@ def _record_answer(client_id: str, message: str) -> bool:
         return False
     d = store.load_client(client_id)
     d["facts"][qid] = val
-    d["profile"] = None  # profile must be recomputed from the new answers
+    d["profile"] = None
     store.save_client(client_id, d)
     state.PENDING_QUESTION.pop(client_id, None)
     audit.append("client", "profile_answer", "T1", {"question": qid, "answer": val}, client_id)
@@ -62,8 +61,6 @@ def run_turn(client_id: str, message: str) -> dict:
         warnings = guard.warnings_for(message, "chat message")
         audit.append("system", "injection_flagged", "T1", {"source": "chat", "findings": findings}, client_id)
     store.archive_blocked(client_id)
-    # A questionnaire answer has a fixed next step (next question, or profile -> allocation -> compliance -> stress ->
-    # projection), so it is driven deterministically through the same tier engine: no model round trips, no waiting.
     guided = _record_answer(client_id, message)
 
     history = state.HISTORY.setdefault(client_id, [])
@@ -77,7 +74,7 @@ def run_turn(client_id: str, message: str) -> dict:
         st = _state(client_id)
         st["memory_text"] = memory_text
         resp = (llm.guided_respond(messages, st) if guided else
-                llm.mock_respond(messages, st) if llm.SMALL_TALK.match(message) else   # "hello" gets a hello, instantly
+                llm.mock_respond(messages, st) if llm.SMALL_TALK.match(message) else
                 llm.respond(llm.SYSTEM_PROMPT, messages, tools.anthropic_tools(), st))
         fallback = fallback or resp.fallback
         if not resp.tool_calls:

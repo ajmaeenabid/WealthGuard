@@ -33,7 +33,7 @@ def test_money_workspace_end_to_end(tmp_path):
             except OSError:
                 time.sleep(0.5)
         r = subprocess.run([node, "scripts/e2e_money.mjs", f"http://127.0.0.1:{port}", str(tmp_path / "shots")], capture_output=True, text=True, encoding="utf-8", timeout=600)
-        print(r.stdout.encode("ascii", "replace").decode())      # the console may not be UTF-8 (the checks print taka signs)
+        print(r.stdout.encode("ascii", "replace").decode())
         assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-1000:]
     finally:
         server.terminate()

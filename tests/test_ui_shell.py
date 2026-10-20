@@ -18,7 +18,6 @@ CARDS = ["profileCard", "allocCard", "compCard", "stressCard", "approvalCard", "
 
 
 def block(open_tag_regex: str) -> str:
-    """Text of the element that starts at the first match, up to its matching closing div (simple depth count)."""
     m = re.search(open_tag_regex, HTML)
     assert m, open_tag_regex
     depth, i = 0, m.start()
@@ -36,7 +35,7 @@ def test_every_feature_has_one_sidebar_button_and_one_card_in_the_drawer():
     for cid in CARDS:
         assert drawer.count(f'<div class="card" id="{cid}"') == 1, cid
         assert HTML.count(f'id="{cid}"') == 1
-    for b in re.findall(r"<button[^>]*class=\"nav\"[^>]*data-panel[^>]*>", HTML):          # drawer navigation; the money tabs use data-tab
+    for b in re.findall(r"<button[^>]*class=\"nav\"[^>]*data-panel[^>]*>", HTML):
         assert 'aria-controls="' in b and 'aria-pressed="false"' in b
 
 
@@ -45,7 +44,7 @@ def test_the_advice_flow_is_a_five_step_thread_and_the_tools_are_grouped_apart()
     assert flow.count('class="node"') == 5 and flow.count('class="nav"') == 5
     for cid in ["profileCard", "allocCard", "compCard", "stressCard", "approvalCard"]:
         assert f'data-panel="{cid}"' in flow
-    assert HTML.count('class="group-label"') == 4          # advice flow, insights, trust and evidence, and the My money group
+    assert HTML.count('class="group-label"') == 4
 
 
 def test_the_composer_is_a_growing_textarea_with_send_on_one_side_and_voice_on_the_other():
@@ -97,7 +96,7 @@ def test_theme_and_motion_and_small_screens_are_handled_in_css():
 
 
 def test_shell_behaviour_is_in_ui_js_and_exposed_for_the_app():
-    for token in ["openPanel", "closePanel", "Escape", "wg-theme", "requestSubmit", "WGUI", "has-update", "MutationObserver"]:
+    for token in ["openPanel", "closePanel", "Escape", "requestSubmit", "WGUI", "has-update", "MutationObserver"]:
         assert token in UI, token
     assert "window.WGUI.progress" in APP and "window.WGApp" in APP
 
@@ -105,13 +104,13 @@ def test_shell_behaviour_is_in_ui_js_and_exposed_for_the_app():
 def test_the_screen_has_no_disclaimer_lines_and_chat_replies_hide_the_api_disclaimer():
     assert 'class="banner"' not in HTML and "<footer" not in HTML and "Not real financial advice" not in HTML
     assert "syncBanner" not in UI and "s.disclaimer" not in APP
-    assert "const shown = m && m[1].trim() ? m[1] : body" in APP     # the API reply keeps it; the bubble drops it
+    assert "const shown = m && m[1].trim() ? m[1] : body" in APP
 
 
 def test_the_welcome_page_greets_the_user_by_name_and_there_is_no_client_list_or_client_cards():
     assert 'id="heroName"' in HTML and 'id="heroMemory"' in HTML and 'id="start"' in HTML
     assert 'id="heroCards"' not in HTML and 'id="personaRow"' not in HTML and "persona-card" not in UI
-    assert HTML.count('id="persona"') == 1 and HTML.index('id="persona"') > HTML.index('id="memCard"')   # only the demo-profile loader
+    assert HTML.count('id="persona"') == 1 and HTML.index('id="persona"') > HTML.index('id="memCard"')
     assert "function newChatView" in APP and "paintHero" in APP
     assert re.search(r"async function startSession\(\) \{\s*const s = await api\(\"/api/conversations\", \{\}\);", APP)
 
@@ -128,13 +127,12 @@ def test_charts_use_the_theme_colours():
     assert "PALETTE" in APP and "styleCharts" in UI and "Chart.defaults.color" in UI
 
 
-# ------------------------------------------------------------------------------------------ voice text and the Send button
 def test_the_composer_works_before_a_session_and_send_follows_the_text():
-    assert not re.search(r'<textarea id="chatInput"[^>]*\bdisabled\b', HTML)          # no longer locked until a session exists
-    assert "syncSend" in APP and "!$(\"chatInput\").value.trim()" in APP                 # Send is enabled by having text
-    assert re.search(r"async function send\(text\) \{\s*if \(!text\.trim\(\)\) return;\s*if \(!clientId\)", APP)   # starts a session itself
+    assert not re.search(r'<textarea id="chatInput"[^>]*\bdisabled\b', HTML)
+    assert "syncSend" in APP and "!$(\"chatInput\").value.trim()" in APP
+    assert re.search(r"async function send\(text\) \{\s*if \(!text\.trim\(\)\) return;\s*if \(!clientId\)", APP)
     voice = c.get("/static/voice.js").text
-    assert voice.count('new Event("input"') == 1 and voice.count("announce(input)") >= 2     # spoken text tells the page it changed
+    assert voice.count('new Event("input"') == 1 and voice.count("announce(input)") >= 2
 
 
 @pytest.mark.parametrize("raw,expected", [
@@ -157,7 +155,6 @@ def test_repeated_phrases_from_speech_recognition_are_collapsed_but_real_speech_
     assert json.loads(r.stdout) == expected
 
 
-# ------------------------------------------------------------------------------------------ accounts, saved chats, icons
 AUTH = c.get("/static/auth.js").text
 I18N = c.get("/static/i18n.js").text
 
@@ -168,7 +165,7 @@ def test_sign_in_page_settings_dialog_and_user_box_exist_and_auth_loads_first():
         assert HTML.count(el) == 1, el
     assert HTML.index("/static/auth.js") < HTML.index("/static/i18n.js") < HTML.index("/static/app.js")
     assert 'Bearer' in AUTH and "/api/auth/password" in AUTH and "WGAuth" in AUTH and "WGAuth.onReady" in APP
-    assert "Password 123" in HTML          # the demo hint tells people which accounts exist
+    assert "Password 123" in HTML
 
 
 def test_chat_history_ui_lists_opens_creates_and_deletes_chats():
@@ -180,9 +177,9 @@ def test_chat_history_ui_lists_opens_creates_and_deletes_chats():
 
 def test_voice_settings_no_longer_use_a_sun_icon_and_the_tagline_is_a_real_headline():
     btn = re.search(r'<button[^>]*id="vsetBtn".*?</button>', HTML, re.S).group(0)
-    assert "M12 2.5v3M12 18.5v3" not in btn and 'r="2"' in btn        # sun rays are gone, sliders are in
+    assert "M12 2.5v3M12 18.5v3" not in btn and 'r="2"' in btn
     assert HTML.count('class="vrow"') == 2
-    assert 'class="tg-main"' in HTML and 'tg-sub' not in HTML and "Every recommendation checked" not in HTML      # one line, no second caption
+    assert 'class="tg-main"' in HTML and 'tg-sub' not in HTML and "Every recommendation checked" not in HTML
     assert re.search(r"\.tg-main \{[^}]*white-space: nowrap", CSS)
     size = int(re.search(r"\.tg-main \{[^}]*font:[^;]*?(\d+)px", CSS).group(1))
     assert size >= 17
@@ -204,5 +201,5 @@ def test_memory_panel_and_admin_console_exist_and_admins_do_not_see_the_client_s
     assert '.is-admin [data-for="user"]' in CSS and ".is-admin .chat" in CSS and ".nav[hidden]" in CSS
     for pid in ["profileCard", "allocCard", "ledgerCard", "memCard", "docCard"]:
         assert re.search(rf'data-panel="{pid}" data-for="user"', HTML), pid
-    for pid in ["auditCard", "rtCard", "siCard"]:                                     # what an administrator keeps: oversight
+    for pid in ["auditCard", "rtCard", "siCard"]:
         assert f'data-panel="{pid}" data-for="user"' not in HTML, pid

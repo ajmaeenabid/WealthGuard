@@ -9,7 +9,6 @@ from app.security import audit, tiers
 
 def create_session(persona_id: Optional[str], facts: Optional[dict] = None, extra: Optional[dict] = None,
                    name: Optional[str] = None) -> dict:
-    """A session starts blank (or from facts the account already remembers); a persona is only a demo shortcut."""
     cid = store.new_id("client")
     facts, extra, name = dict(facts or {}), dict(extra or {}), name or "Client"
     if persona_id:
@@ -40,7 +39,6 @@ def why_not_notes(client_id: str, allocation=None, limit: int = 4) -> dict:
 
 
 def run_pipeline(client_id: str, preferred_ids: list[str]) -> dict:
-    """Deterministic propose -> check -> revise loop (max 3 revisions), every step through the tier engine."""
     ctx = Ctx(client_id)
     store.archive_blocked(client_id)
     attempts, exclude, final, last_res = [], [], None, None
@@ -71,7 +69,6 @@ def run_pipeline(client_id: str, preferred_ids: list[str]) -> dict:
 
 
 def sync_profile_with_behaviour(client_id: str) -> bool:
-    """If the ledger changed the behaviour penalty, drop the stale profile so it is recomputed (more cautious only)."""
     d = store.load_client(client_id)
     if not d or not d.get("profile"):
         return False

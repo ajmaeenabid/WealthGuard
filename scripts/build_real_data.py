@@ -1,16 +1,4 @@
-"""Build the processed real-world datasets from the raw downloads in app/data/real/raw.
-
-Run (dev only; needs `pip install xlrd` for the Damodaran .xls):  python -I scripts/build_real_data.py
-
-Outputs (app/data/real/):
-  returns_annual.csv          1928-2025 annual total returns, 7 US asset classes (Damodaran / NYU Stern)
-  shiller_monthly.csv         monthly S&P 500, dividends, earnings, CPI, 10y rate since 1871 (Shiller, PDDL mirror)
-  china_macro.csv             China CPI inflation, deposit/lending rate, GDP growth (World Bank, CC BY 4.0)
-  suitability_zh.json         the 43 articles of the CSRC suitability measures (Chinese original, State Council Gazette)
-  MANIFEST.json               source URL, license, retrieval date, sha256 of every raw and processed file
-
-Raw files are untrusted data: they are only parsed here, never executed.
-"""
+"""Build the processed real-world datasets from the raw downloads in app/data/real/raw."""
 import csv
 import hashlib
 import html
@@ -41,7 +29,6 @@ def write_csv(name: str, header: list, rows: list) -> str:
     return path
 
 
-# ---------------------------------------------------------------------------------------------- Damodaran
 def build_returns() -> str:
     import xlrd
     wb = xlrd.open_workbook(os.path.join(RAW, "damodaran", "histretSP.xls"))
@@ -56,19 +43,17 @@ def build_returns() -> str:
     return write_csv("returns_annual.csv", header, rows)
 
 
-# ---------------------------------------------------------------------------------------------- Shiller
 def build_shiller() -> str:
     rows = []
     with open(os.path.join(RAW, "shiller_sp500", "data.csv"), encoding="utf-8") as f:
         for r in csv.DictReader(f):
             cpi, rate = float(r["Consumer Price Index"]), float(r["Long Interest Rate"])
-            if cpi > 0 and rate > 0:  # the mirror appends price-only months at the end; keep complete months
+            if cpi > 0 and rate > 0:
                 rows.append([r["Date"][:7], r["SP500"], r["Dividend"], r["Earnings"], r["Consumer Price Index"],
                              r["Long Interest Rate"]])
     return write_csv("shiller_monthly.csv", ["month", "sp500", "dividend", "earnings", "cpi", "long_rate"], rows)
 
 
-# ---------------------------------------------------------------------------------------------- World Bank
 def build_china() -> str:
     names = {"FP.CPI.TOTL.ZG": "cpi_inflation_pct", "FR.INR.DPST": "deposit_rate_pct",
              "FR.INR.LEND": "lending_rate_pct", "NY.GDP.MKTP.KD.ZG": "gdp_growth_pct"}
@@ -83,7 +68,6 @@ def build_china() -> str:
     return write_csv("china_macro.csv", ["year"] + cols, rows)
 
 
-# ---------------------------------------------------------------------------------------------- CSRC text
 ART = re.compile(r"(?m)^(第[一二三四五六七八九十百]+条)\s*")
 
 
@@ -96,13 +80,13 @@ def build_suitability() -> str:
     t = re.sub(r"\n\s*\n+", "\n", t)
     start = t.index("证券期货投资者适当性管理办法\n（2016年5月26日")
     body = t[start:]
-    end = body.index("中国政府网")  # page footer boilerplate follows the last article
+    end = body.index("中国政府网")
     body = body[:end]
     parts = ART.split(body)
     articles = []
     for i in range(1, len(parts) - 1, 2):
         text = re.sub(r"\s+", " ", parts[i + 1]).strip()
-        text = text.split(" 附件")[0].strip()  # the gazette page appends the next annex and site links after the last article
+        text = text.split(" 附件")[0].strip()
         articles.append({"article": parts[i], "text": text})
     assert len(articles) == 43 and articles[0]["article"] == "第一条" and articles[-1]["article"] == "第四十三条"
     doc = {"title": "证券期货投资者适当性管理办法", "title_en": "Measures for the Suitability Management of Securities and Futures Investors",

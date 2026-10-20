@@ -1,5 +1,4 @@
-"""CSV export and import of transactions. Import goes through the same validation as manual entry, row by row, and a row
-that was already imported is skipped (a content hash is its idempotency key), so re-uploading a file never duplicates anything."""
+"""CSV export and import of transactions. Import goes through the same validation as manual entry, row by row, and a row that was already imported is skipped (a content hash is its idempotency key), so re-uploading a file."""
 import csv
 import hashlib
 import io
@@ -16,7 +15,6 @@ FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
 
 
 def _safe_cell(v) -> str:
-    """Spreadsheet formula injection: a cell that starts with = + - @ is prefixed so Excel shows it as text."""
     s = "" if v is None else str(v)
     return "'" + s if s.startswith(FORMULA_PREFIXES) and not _is_number(s) else s
 

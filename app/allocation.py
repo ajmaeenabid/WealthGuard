@@ -1,10 +1,4 @@
-"""Constrained, deterministic allocation with a per-line rationale.
-
-Steps: template weights per asset class -> drop products failing R1/R3/R4/R8 -> tilt by net return per risk
-(lower fee wins) -> cap singles (R2) and equity-like total -> liquidity floor -> renormalise.
-`preferred_ids` simulates an over-eager draft (e.g. from the LLM): those products are injected even if
-ineligible. The compliance engine, not this module, is what blocks them.
-"""
+"""Constrained, deterministic allocation with a per-line rationale."""
 import math
 from typing import Iterable, Optional
 
@@ -13,7 +7,7 @@ from app.config import BUCKETS, EQUITY_LIKE, TEMPLATES, effective_bucket
 from app.schemas import Allocation, AllocationLine, ClientProfile, Product
 
 PREFERRED_WEIGHT = 0.15
-RHO = 0.5  # flat correlation between distinct products
+RHO = 0.5
 
 
 def limits_for(profile: ClientProfile) -> tuple[str, dict]:
@@ -58,7 +52,7 @@ def _base_weights(profile: ClientProfile, products: dict[str, Product], bucket: 
     template = TEMPLATES[bucket]
     pool = [p for p in products.values() if p.id not in exclude and eligible(p, profile, bucket)]
     amount = profile.investable_amount_cny
-    for _ in range(10):  # drop products that cannot meet their minimum (R8), then re-spread
+    for _ in range(10):
         by_class: dict[str, list[Product]] = {}
         for p in pool:
             by_class.setdefault(p.asset_class, []).append(p)
@@ -84,7 +78,7 @@ def _cap_singles(w: dict[str, float], cap: float, products: dict[str, Product], 
             break
         w = {k: min(v, cap) for k, v in w.items()}
         free = {k: v for k, v in w.items() if v < cap - 1e-9}
-        if not free:  # bring in additional eligible products, safest first
+        if not free:
             extras = [i for i in pool_ids if i not in w]
             if not extras:
                 break

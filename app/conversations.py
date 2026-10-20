@@ -8,7 +8,6 @@ HISTORY_TURNS = 12
 
 
 def create(user: dict) -> dict:
-    """New chat. It starts blank, with whatever this account already remembers (profile answers), never a preset persona."""
     facts, extra = memory.seed(user["username"])
     s = service.create_session(None, facts=facts, extra=extra, name=user["display_name"])
     now = store.now()
@@ -23,8 +22,6 @@ def get(client_id: str):
 
 
 def can_access(user: Optional[dict], client_id: str) -> bool:
-    """True for the owner and for sessions that predate accounts (no saved conversation). Administrators manage
-    accounts; they cannot read other people's chats."""
     conv = get(client_id)
     if conv is None:
         return True
@@ -44,14 +41,13 @@ def record_turn(client_id: str, message: str, reply: str) -> None:
     title = conv["title"]
     text = message.strip().replace(chr(10), " ")
     if conv["title_custom"]:
-        pass                                               # a name the person chose is never replaced by an automatic one
-    elif title == "New chat" and len(text) >= 15 and not llm.SMALL_TALK.match(text):   # short replies are questionnaire answers
+        pass
+    elif title == "New chat" and len(text) >= 15 and not llm.SMALL_TALK.match(text):
         title = text[:42]
     elif title == "New chat" and store.latest_allocation(client_id):
         title = f"Advice for {conv['name']}"
     store._write("UPDATE conversations SET title=?, updated=?, pending_question=? WHERE client_id=?",
                  (title, store.now(), state.PENDING_QUESTION.get(client_id), client_id))
-    # remember: profile answers, things the user said about themselves, and a one-line summary of this chat
     user = conv["username"]
     memory.sync_from_client(user, client_id)
     for note in memory.extract_notes(message):
@@ -69,7 +65,6 @@ def listing(user: dict) -> list[dict]:
 
 
 def open_chat(client_id: str) -> dict:
-    """Messages plus the in-memory state the agent needs to carry on where the chat stopped."""
     conv = get(client_id)
     c = db.connect()
     rows = c.execute("SELECT role, text, ts FROM messages WHERE client_id=? ORDER BY id", (client_id,)).fetchall()
@@ -100,7 +95,6 @@ def clean_title(raw: str) -> str:
 
 
 def rename(client_id: str, raw_title: str) -> dict:
-    """The person's own name for a chat. Stored as plain text (the page renders it as text, never as HTML) and kept across later messages."""
     title = clean_title(raw_title)
     store._write("UPDATE conversations SET title=?, title_custom=1, updated=? WHERE client_id=?", (title, store.now(), client_id))
     conv = get(client_id)

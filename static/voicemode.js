@@ -1,14 +1,5 @@
-// Hands-free voice mode for the money assistant.
-//
-// What this is, honestly: TURN-BASED voice with barge-in. A client-side voice-activity detector decides when you start and stop
-// speaking; each utterance is recorded and sent to /api/transcribe (Whisper), the text goes through the SAME validated assistant
-// endpoint as typed text (nothing is saved without your spoken or typed "yes"), and the reply is read by the browser's speech
-// synthesis. If you start speaking while it is reading, reading stops and your utterance is captured (barge-in).
-// It is NOT full-duplex streaming audio: there is a short gap while the clip is transcribed. No streaming speech model is claimed.
+// Hands-free voice mode for the money assistant. Turn-based, NOT full-duplex.
 (function (root) {
-  // ---------------------------------------------------------------------------------------------- VAD (pure, unit-tested in Node)
-  // push(level, nowMs) -> list of events: "candidate" (loud frame, recorder may start), "start" (speech confirmed),
-  // "end" (speech then silence), "abort" (candidate was only a click or cough). Level is RMS 0..1. The noise floor adapts while quiet.
   function createVad(opt) {
     const o = Object.assign({ minLevel: 0.015, factor: 3, minSpeechMs: 250, silenceMs: 900, maxMs: 20000, abortMs: 500 }, opt || {});
     let floor = 0.005, state = "quiet", since = 0, lastLoud = 0, confirmedAt = 0;
@@ -40,14 +31,13 @@
   if (typeof document === "undefined") return;
   root.WGVoiceMode = exported;
 
-  // ---------------------------------------------------------------------------------------------- browser part
   const $ = (id) => document.getElementById(id);
   const L = () => root.WGLang;
   const tt = (s) => (L() ? L().t(s) : s);
   const synth = root.speechSynthesis;
-  let S = null;      // the running session
+  let S = null;
 
-  function langCode() {                                           // BCP-47 for synthesis
+  function langCode() {
     const prefs = (L() && L().prefs) || {};
     return L().speechCode(prefs.speech_lang);
   }
@@ -115,11 +105,10 @@
     if (!S) return;
     const speaking = S.state === "speaking";
     if (S.state === "processing") return;
-    // while the assistant is talking its own voice leaks into the microphone, so interruption needs a clearly louder voice
     const level = rms(S) * (speaking ? 0.5 : 1);
     for (const ev of S.vad.push(level, performance.now())) {
       if (ev === "candidate" && !S.rec) beginClip();
-      else if (ev === "start" && speaking) { S.gen++; try { synth.cancel(); } catch (e) { /* ignore */ } setState("listening"); }
+      else if (ev === "start" && speaking) { S.gen++; try { synth.cancel(); } catch (e) { } setState("listening"); }
       else if (ev === "end") endClip(true);
       else if (ev === "abort") endClip(false);
     }
@@ -135,7 +124,7 @@
     const rec = S.rec; S.rec = null;
     if (!rec) return;
     rec.onstop = () => { if (keep && S) handle(new Blob(S.chunks, { type: S.mime || "audio/webm" })); };
-    try { rec.stop(); } catch (e) { /* already stopped */ }
+    try { rec.stop(); } catch (e) { }
   }
 
   async function handle(blob) {
@@ -176,15 +165,15 @@
   function stop() {
     if (!S) return;
     clearInterval(S.timer);
-    try { if (S.rec) S.rec.stop(); } catch (e) { /* ignore */ }
-    try { synth && synth.cancel(); } catch (e) { /* ignore */ }
+    try { if (S.rec) S.rec.stop(); } catch (e) { }
+    try { synth && synth.cancel(); } catch (e) { }
     S.stream.getTracks().forEach((t) => t.stop());
-    try { S.ctx.close(); } catch (e) { /* ignore */ }
+    try { S.ctx.close(); } catch (e) { }
     S = null;
     const p = $("vmPanel"); if (p) p.hidden = true;
     document.documentElement.classList.remove("vm-on");
     const btn = $("finVoiceMode"); if (btn) btn.setAttribute("aria-pressed", "false");
-    const input = $("finInput"); if (input) input.focus();                       // back to the same conversation, nothing lost
+    const input = $("finInput"); if (input) input.focus();
   }
 
   root.WGVoiceMode.start = start;

@@ -78,8 +78,8 @@ def test_change_password_needs_the_old_one_and_signs_other_devices_out():
     assert c.post("/api/auth/password", headers=h1, json={"old_password": "wrong", "new_password": "fresh-pass"}).status_code == 403
     assert c.post("/api/auth/password", headers=h1, json={"old_password": "123", "new_password": "12"}).status_code == 400
     assert c.post("/api/auth/password", headers=h1, json={"old_password": "123", "new_password": "fresh-pass"}).status_code == 200
-    assert c.get("/api/auth/me", headers=h1).status_code == 200      # this device stays signed in
-    assert c.get("/api/auth/me", headers=h2).status_code == 401      # the other one does not
+    assert c.get("/api/auth/me", headers=h1).status_code == 200
+    assert c.get("/api/auth/me", headers=h2).status_code == 401
     assert login("chen", "123")[0].status_code == 401 and login("chen", "fresh-pass")[0].status_code == 200
 
 
@@ -89,9 +89,8 @@ def test_logout_ends_the_token():
     assert c.get("/api/auth/me", headers=h).status_code == 401
 
 
-# ------------------------------------------------------------------------------------------ chats
 def test_every_account_starts_a_blank_chat_with_no_preset_client_and_no_stored_greeting():
-    _, h = login("wang")                                           # even the Mr. Wang account has no preset facts
+    _, h = login("wang")
     s = c.post("/api/conversations", headers=h).json()
     assert s["persona_id"] is None and s["name"] == "Mr. Wang" and s["next_question"]["id"] == "age"
     assert c.get(f"/api/conversations/{s['client_id']}", headers=h).json()["messages"] == []
@@ -104,15 +103,15 @@ def test_chat_history_is_saved_listed_reopened_and_resumes_the_questionnaire():
     chat(h, a, "hello")
     chat(h, a, "I would like some investment advice")
     chat(h, a, "I am 50")
-    b = new_chat(h)                                                  # a second, separate chat
+    b = new_chat(h)
     listing = c.get("/api/conversations", headers=h).json()
     assert [x["id"] for x in listing] == [b, a] and listing[1]["title"] == "I would like some investment advice"
     from app import state
-    state.HISTORY.clear(); state.PENDING_QUESTION.clear()            # as after a server restart
+    state.HISTORY.clear(); state.PENDING_QUESTION.clear()
     out = c.get(f"/api/conversations/{a}", headers=h).json()
     assert [m["role"] for m in out["messages"]] == ["user", "agent"] * 3
     assert out["messages"][0]["text"] == "hello" and out["next_question"]["id"] == "horizon_years"
-    r = chat(h, a, "in 8 years")                                      # the answer lands on the right question
+    r = chat(h, a, "in 8 years")
     assert r["question"]["id"] == "monthly_income_cny"
 
 
@@ -127,10 +126,10 @@ def test_chats_are_private_and_even_the_admin_cannot_read_them():
         assert c.get(f"/api/state?client_id={cid}", headers=h).status_code == 403
         assert c.post(f"/api/conversations/{cid}/delete", headers=h).status_code == 403
         assert cid not in [x["id"] for x in c.get("/api/conversations", headers=h).json()]
-    assert c.get("/api/audit", headers=hc).json() == []                       # members see no one else's log
+    assert c.get("/api/audit", headers=hc).json() == []
     assert c.get(f"/api/audit?client_id={cid}", headers=hc).status_code == 403
-    assert len(c.get("/api/audit", headers=ha).json()) > 0                   # the admin reads the audit log
-    assert c.post("/api/conversations", headers=ha).status_code == 403       # admins have no advice chats
+    assert len(c.get("/api/audit", headers=ha).json()) > 0
+    assert c.post("/api/conversations", headers=ha).status_code == 403
 
 
 def test_delete_removes_the_chat_from_the_list():
@@ -164,7 +163,6 @@ def test_sign_in_and_password_changes_are_in_the_audit_log_without_secrets():
     assert c.get("/api/audit/verify", headers=h).json()["valid"] is True
 
 
-# ------------------------------------------------------------------------------------------ scope and conversation
 def test_greetings_get_a_greeting_and_other_topics_get_a_polite_redirect_without_the_questionnaire():
     _, h = signup("talker")
     cid = new_chat(h)

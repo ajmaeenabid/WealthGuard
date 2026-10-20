@@ -1,13 +1,4 @@
-"""Versioned financial-jurisdiction configuration (Bangladesh, mainland China). One place for every country-specific convention, so no
-`if country == ...` is scattered through the code. Language is a separate setting: any language can be combined with any jurisdiction.
-
-What is and is NOT in here (checked against the official sites on 2026-10-19, see `sources`):
-  * included: home currency and its subunit, the payment methods and wallet names offered when recording a transaction, which tax-like
-    fields a transaction may carry, number/date formats, and what integrations are NOT offered;
-  * NOT included: tax rates, payment limits, KYC thresholds, or any legal requirement. The official home pages checked state none of
-    these, so they are not invented; anything not confirmed from an official page is listed under `unverified`.
-Nothing here asks for bank credentials, PINs or OTPs. Money is only ever tracked from what the user enters or imports.
-"""
+"""Versioned financial-jurisdiction configuration (Bangladesh, mainland China). One place for every country-specific convention, so no `if country == ...` is scattered through the code. Language is a separate setting: any."""
 from typing import Optional
 
 VERSION = "2026.10.1"
@@ -103,13 +94,11 @@ def payment_method_ids(code: Optional[str]) -> list[str]:
 
 
 def summary(code: Optional[str]) -> dict:
-    """The part of a configuration the interface needs (no source list)."""
     c = get(code)
     return {k: c[k] for k in ("code", "version", "name", "currency", "currency_name", "symbol", "subunit", "precision", "supported_currencies", "number_locale", "date_format",
                               "timezone", "account_types", "payment_methods", "wallet_suggestions", "tax_fields", "terms", "integrations", "import_formats")}
 
 
 def details(code: Optional[str]) -> dict:
-    """The full configuration including the official sources checked and what could not be verified."""
     c = get(code)
     return dict(summary(code), sources=c["sources"], unverified=c["unverified"])

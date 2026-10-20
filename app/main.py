@@ -26,7 +26,7 @@ async def lifespan(_app):
     from app import knowledge, vectorstore
     try:
         knowledge.ensure_index()
-    except Exception as e:  # the app must start even if the vector index cannot be built
+    except Exception as e:
         print(f"WealthGuard vector DB: index build failed ({type(e).__name__})", flush=True)
     st = vectorstore.backend_status()
     print(f"WealthGuard vector DB: {st['backend']}" + (f" (qdrant: {st['qdrant_state']})" if st["qdrant_configured"] else
@@ -35,7 +35,7 @@ async def lifespan(_app):
 
 
 app = FastAPI(title="WealthGuard", description=config.DISCLAIMER, lifespan=lifespan)
-from app.finance.routes import router as finance_router  # noqa: E402
+from app.finance.routes import router as finance_router
 app.include_router(finance_router)
 STATIC = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
 
@@ -45,7 +45,6 @@ OPEN_API = {"/api/health", "/api/auth/login", "/api/auth/signup"}
 
 @app.middleware("http")
 async def auth_gate(request: Request, call_next):
-    """Every /api route needs a signed-in user, except health and the sign-in / sign-up routes."""
     request.state.user, request.state.token = None, ""
     path = request.url.path
     if path.startswith("/api/"):
@@ -65,12 +64,11 @@ async def auth_gate(request: Request, call_next):
                                                "Ask an administrator."}, status_code=403)
     response = await call_next(request)
     if not path.startswith("/api/"):
-        response.headers["Cache-Control"] = "no-cache"      # the page and its scripts are re-validated on every load, so an update is never masked by a stale copy
+        response.headers["Cache-Control"] = "no-cache"
     return response
 
 
 class _RestoreVercelPath:
-    """Vercel rewrites every URL to /api/index?__p=<original path>; put the original path back before routing (and before auth_gate)."""
 
     def __init__(self, inner):
         self.inner = inner
@@ -95,7 +93,6 @@ def _me(request: Request) -> dict:
 
 
 def _owns(request: Request, client_id: str) -> None:
-    """A signed-in user can only open their own chats (admins can open any). Sessions without a saved chat are open."""
     if accounts.auth_required() and not conversations.can_access(request.state.user, client_id):
         raise HTTPException(403, "This chat belongs to another account.")
 
@@ -204,7 +201,6 @@ def new_conversation(request: Request):
     return conversations.create(me)
 
 
-# ---- administration: accounts, roles, per-account feature access (never chat contents)
 def _admin(request: Request) -> dict:
     me = _me(request)
     if me["role"] != "admin":
@@ -269,7 +265,6 @@ def admin_delete(username: str, req: DeleteUser, request: Request):
 
 @app.get("/api/admin/activity")
 def admin_activity(request: Request, limit: int = Query(40, ge=1, le=200)):
-    """Recent account-level events: sign-ins, sign-ups and every administrator action (who did what to whom, never contents)."""
     _admin(request)
     kinds = ("login", "account_created", "password_changed")
     rows = [e for e in audit.list_entries(None) if e["action"] in kinds or e["action"].startswith("admin_")]
@@ -278,7 +273,6 @@ def admin_activity(request: Request, limit: int = Query(40, ge=1, le=200)):
 
 @app.get("/api/admin/ai-usage")
 def admin_ai_usage(request: Request, days: int = Query(30, ge=1, le=365)):
-    """Token use and estimated cost of the finance assistant across all accounts (no message contents)."""
     _admin(request)
     from app.finance import ai
     return ai.usage_summary(None, days)
@@ -292,7 +286,6 @@ def admin_password(username: str, req: NewPassword, request: Request):
     return {"ok": True}
 
 
-# ---- memory: what the assistant remembers about the signed-in account
 def _memory_user(request: Request) -> str:
     me = _me(request)
     if me["role"] == "admin":
@@ -436,9 +429,6 @@ def chat(req: ChatReq, request: Request):
 
 @app.post("/api/transcribe")
 async def transcribe_audio(request: Request, language: Optional[str] = None, client_id: Optional[str] = None):
-    """Whisper speech-to-text. The body is the raw audio; the answer is text for the chat box (nothing is sent to the agent).
-
-    T1, audited (provider, model, size, language, length; never the audio or the transcript)."""
     if client_id:
         _client(client_id)
     cl = request.headers.get("content-length")
@@ -514,7 +504,6 @@ def delete_ledger(entry_id: str, req: ApproveReq):
 
 @app.post("/api/ledger/command")
 def ledger_command(req: LedgerCommandReq):
-    """Parse a typed or spoken command into a proposal. Nothing changes until /confirm (an explicit click)."""
     _client(req.client_id)
     findings = guard.scan(req.text)
     if findings:
@@ -561,7 +550,6 @@ KB_SOURCES = {"csrc_suitability", "data_sources", "market_episodes", "wealthguar
 @app.get("/api/knowledge/search")
 def knowledge_search(q: str = Query(min_length=2, max_length=300), k: int = Query(3, ge=1, le=5),
                      source: Optional[str] = None, client_id: Optional[str] = None):
-    """Vector search over the regulation text, data sources, stress episodes and our rules (T0 read, audited)."""
     if source and source not in KB_SOURCES:
         raise HTTPException(422, f"unknown source; choose from {sorted(KB_SOURCES)}")
     if client_id:
@@ -580,7 +568,6 @@ def _replay_result(out: dict) -> dict:
 
 @app.post("/api/replay/start")
 def replay_start(req: ReplayStartReq):
-    """Start a revealed-risk replay of a real market episode with the client's approved allocation."""
     _client(req.client_id)
     out = replay.start(req.client_id, req.episode, req.portfolio)
     if out.get("ok") is False:
@@ -596,14 +583,12 @@ def replay_step(session_id: str, req: ReplayStepReq):
 
 @app.post("/api/replay/{session_id}/apply")
 def replay_apply(session_id: str, req: ApproveReq):
-    """Apply the revealed (more cautious) reaction to the profile: an explicit click, never automatic."""
     _client(req.client_id)
     return _replay_result(replay.apply(session_id, req.client_id))
 
 
 @app.get("/api/provenance")
 def get_provenance(client_id: str, kind: str, allocation_id: str = "", scenario: str = "", shock_pct: float = Query(0.0, ge=-100, le=100)):
-    """Where a displayed number comes from, with a fresh recomputation (T0 read, audited)."""
     _client(client_id)
     out = provenance.explain(client_id, kind, allocation_id, scenario, shock_pct)
     if out.get("ok") is False:
@@ -614,7 +599,6 @@ def get_provenance(client_id: str, kind: str, allocation_id: str = "", scenario:
 
 @app.get("/api/receipt")
 def get_receipt(client_id: str):
-    """A verifiable advice receipt for the latest compliance-approved allocation (T1, audited)."""
     _client(client_id)
     r = receipt.build(client_id)
     if not r:
@@ -626,7 +610,6 @@ def get_receipt(client_id: str):
 
 @app.post("/api/receipt/verify")
 def verify_receipt(body: dict = Body(...)):
-    """Verify a receipt (the receipt itself, or {"receipt": ...}) against this server's audit log and key."""
     r = body.get("receipt", body)
     if len(json.dumps(r, default=str)) > 2_000_000:
         raise HTTPException(413, "receipt too large")
@@ -637,7 +620,6 @@ def verify_receipt(body: dict = Body(...)):
 
 @app.get("/api/counterfactual")
 def counterfactual_route(client_id: str, product_id: str = Query(min_length=2, max_length=20)):
-    """What would have to be true for this product to be allowed (T1, audited through the tier engine)."""
     _client(client_id)
     out = tiers.execute("explain_counterfactual", {"product_id": product_id}, Ctx(client_id))
     if out.get("ok") is False:
@@ -647,13 +629,11 @@ def counterfactual_route(client_id: str, product_id: str = Query(min_length=2, m
 
 @app.post("/api/redteam/run")
 def redteam_run():
-    """Run the attack battery against the live engines (deterministic, no model call) on throw-away probe clients."""
     return redteam.run_all()
 
 
 @app.get("/api/selfinspection")
 def self_inspection(lang: str = "en", client_id: Optional[str] = None):
-    """Article 30 style self-inspection report counted from the audit log (T1 read, audited after it is computed)."""
     if lang not in ("en", "zh"):
         raise HTTPException(422, "lang must be en or zh")
     if client_id:
@@ -788,7 +768,7 @@ def get_state(client_id: str, request: Request):
 def get_audit(request: Request, client_id: Optional[str] = None):
     if accounts.auth_required() and request.state.user and request.state.user["role"] != "admin":
         if not client_id:
-            return []              # members only ever see the log of their own chat
+            return []
         _owns(request, client_id)
     return audit.list_entries(client_id)
 

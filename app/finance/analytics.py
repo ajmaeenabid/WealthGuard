@@ -1,13 +1,4 @@
-"""Deterministic financial analysis. Every number the dashboard, the reports and the AI explanations use is computed here
-from the user's own ledger entries; the language model only ever sees these results, never raw rows to add up.
-
-Definitions (shown to the user wherever they matter):
-  spending       expenses minus refunds, actual (dated now or earlier) and in the user's base currency
-  income         income transactions only; refunds, transfers and adjustments are never income
-  net cash flow  income - spending
-  savings        money moved into savings or investment accounts (transfers) minus money moved out
-  savings rate   savings / income (actual), and net cash flow / income (implied), reported separately
-"""
+"""Deterministic financial analysis. Every number the dashboard, the reports and the AI explanations use is computed here from the user's own ledger entries; the language model only ever sees these results, never raw rows."""
 import statistics
 from collections import defaultdict
 from datetime import date, datetime, timedelta
@@ -19,7 +10,6 @@ from app.finance.books import FinanceError
 SAVINGS_TYPES = {"savings", "investment"}
 
 
-# ---------------------------------------------------------------------------------------------- periods
 def period(kind: str = "month", ref: Optional[str] = None, start: Optional[str] = None, end: Optional[str] = None) -> tuple[date, date]:
     d = date.fromisoformat(ref) if ref else money.today()
     if kind == "day":
@@ -54,7 +44,6 @@ def previous(start: date, end: date, kind: str = "custom") -> tuple[date, date]:
 
 
 def _rows(user: str, start: date, end: date) -> list:
-    """Actual, non-deleted transactions in the base currency within the window (future-dated ones are scheduled, not actual)."""
     base = books.base_currency(user)
     upper = min(money.iso(datetime.combine(end, datetime.max.time())), money.iso(money.now()))
     c = books.db.connect()
@@ -176,7 +165,6 @@ def compare(cur: dict, prev: dict) -> dict:
             "previous_period": {"start": prev["start"], "end": prev["end"]}}
 
 
-# ---------------------------------------------------------------------------------------------- insights
 def _insight(kind: str, title: str, pattern: str, evidence: dict, why: str, action: str, impact_minor: Optional[int] = None,
              assumptions: Optional[list] = None, severity: str = "info") -> dict:
     return {"kind": kind, "severity": severity, "title": title, "pattern": pattern, "evidence": evidence, "why": why, "action": action,
@@ -211,14 +199,13 @@ def insights(user: str, start: date, end: date, cur: Optional[dict] = None, prev
                                     "A sharp rise is worth checking in case it is a one-off rather than a new habit.",
                                     f"Review this period's {c['category']} purchases and mark the one-offs as such.", inc // 2,
                                     ["Assumes about half of the increase could be avoided."], "attention"))
-    # small purchases that add up
     c = books.db.connect()
     try:
         rows = c.execute("SELECT final_minor, merchant, category FROM fin_transactions WHERE username=? AND type='expense' AND deleted_at IS NULL AND currency=? AND ts>=? AND ts<=?",
                          (user, base, start.isoformat() + "T00:00:00", end.isoformat() + "T23:59:59")).fetchall()
     finally:
         c.close()
-    small_limit = int(spending * 0.02)                       # "small" = each purchase is at most 2% of the period's spending
+    small_limit = int(spending * 0.02)
     small = [r for r in rows if r["final_minor"] <= small_limit]
     small_total = sum(r["final_minor"] for r in small)
     if len(small) >= 8 and small_total >= spending * 0.10:
@@ -228,7 +215,6 @@ def insights(user: str, start: date, end: date, cur: Optional[dict] = None, prev
                             "Frequent small amounts are easy to overlook but can be a meaningful share of the month.",
                             "Pick the one or two small habits you value least and set a weekly limit for them.", int(small_total * 0.2),
                             ["Assumes a 20% cut in small purchases."]))
-    # frequent merchant
     for m in cur["by_merchant"][:3]:
         if m["count"] >= 5 and (m["share"] or 0) >= 0.08:
             out.append(_insight("frequent_merchant", f"Frequent spending at {m['merchant']}",
@@ -238,7 +224,6 @@ def insights(user: str, start: date, end: date, cur: Optional[dict] = None, prev
                                 f"Check whether a weekly plan or a bulk purchase at {m['merchant']} would cost less.", int(m["minor"] * 0.1),
                                 ["Assumes a 10% saving from planning."]))
             break
-    # unusual days
     vals = [d["minor"] for d in cur["daily"] if d["minor"] > 0]
     if len(vals) >= 10:
         mean, sd = statistics.mean(vals), statistics.pstdev(vals)
@@ -250,7 +235,6 @@ def insights(user: str, start: date, end: date, cur: Optional[dict] = None, prev
                                     {"date": hi["date"], "amount": hi["amount"], "typical_day": money.s(int(mean)), "z_score": round(z, 2)},
                                     "Unusually large days can be one-off events or an unplanned purchase.",
                                     "Check what happened that day and tag it as a one-off if it will not repeat.", None, [], "attention"))
-    # discretionary share
     es = cur["essential_split"]
     classified = es["essential"]["minor"] + es["discretionary"]["minor"]
     if classified and es["discretionary"]["minor"] / classified >= 0.40:
@@ -260,7 +244,6 @@ def insights(user: str, start: date, end: date, cur: Optional[dict] = None, prev
                             {"discretionary": money.s(d), "essential": es["essential"]["amount"], "unclassified": es["unclassified"]["amount"]},
                             "Discretionary spending is the part you can adjust without touching bills or food.",
                             "Choose one discretionary category to cap next month.", int(d * 0.10), ["Assumes a 10% reduction in discretionary spending."]))
-    # savings rate
     inc = cur["income_minor"]
     if inc > 0 and cur["savings_rate_implied"] is not None and cur["savings_rate_implied"] < 0.10:
         out.append(_insight("low_savings", "Little is left to save" if cur["net_cash_flow_minor"] >= 0 else "Spending exceeded income",
@@ -268,7 +251,6 @@ def insights(user: str, start: date, end: date, cur: Optional[dict] = None, prev
                             {"income": cur["income"], "spending": cur["spending"], "net_cash_flow": cur["net_cash_flow"]},
                             "Saving less than about 10% of income leaves little buffer for surprises.",
                             "Set a fixed monthly transfer to savings on payday, even a small one.", None, [], "attention"))
-    # subscriptions (same merchant, same amount, about a month apart)
     subs = detect_subscriptions(user)
     if subs:
         total = sum(s["monthly_minor"] for s in subs)

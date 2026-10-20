@@ -44,7 +44,7 @@ def test_t2_is_staged_never_approved_by_agent():
     assert r["status"] == "awaiting_approval"
     assert store.load_ticket(r["ticket_id"]).status == "awaiting_approval"
     r2 = tiers.execute("create_order_ticket", {"allocation_id": aid, "approved": True}, Ctx(cid))
-    assert r2["ok"] is False  # approval cannot be smuggled through arguments
+    assert r2["ok"] is False
 
 
 def test_t2_refused_without_compliance():
@@ -60,7 +60,7 @@ def test_approve_requires_owner_and_state():
         tiers.approve_ticket(t, "someone_else")
     assert tiers.approve_ticket(t, cid)["status"] == "approved"
     with pytest.raises(PermissionError):
-        tiers.approve_ticket(t, cid)  # already approved
+        tiers.approve_ticket(t, cid)
 
 
 def test_approve_refused_if_not_compliant():

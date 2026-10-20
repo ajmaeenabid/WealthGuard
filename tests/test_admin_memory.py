@@ -33,7 +33,6 @@ def admin():
     return login("admin")[1]
 
 
-# ------------------------------------------------------------------------------------------ administrator
 def test_only_administrators_can_use_the_admin_console():
     _, h = login("li")
     assert c.get("/api/admin/users", headers=h).status_code == 403
@@ -47,7 +46,7 @@ def test_suspending_an_account_signs_it_out_at_once_and_blocks_sign_in_until_res
     _, hw = login("wang")
     ha = admin()
     assert c.post("/api/admin/users/wang/ban", headers=ha, json={"banned": True}).json()["banned"] is True
-    assert c.get("/api/auth/me", headers=hw).status_code == 401                        # existing session is dead
+    assert c.get("/api/auth/me", headers=hw).status_code == 401
     r, _ = login("wang")
     assert r.status_code == 403 and "suspended" in r.json()["detail"]
     assert c.post("/api/admin/users/wang/ban", headers=ha, json={"banned": False}).json()["banned"] is False
@@ -60,7 +59,7 @@ def test_an_admin_cannot_lock_themselves_out_or_remove_the_last_administrator():
     assert c.post("/api/admin/users/admin/role", headers=ha, json={"role": "client"}).status_code == 400
     assert c.post("/api/admin/users/li/role", headers=ha, json={"role": "admin"}).json()["role"] == "admin"
     _, hli = login("li")
-    assert c.get("/api/admin/users", headers=hli).status_code == 200                      # li is now an administrator
+    assert c.get("/api/admin/users", headers=hli).status_code == 200
     assert c.post("/api/admin/users/li/role", headers=ha, json={"role": "wizard"}).status_code == 400
     assert c.post("/api/admin/users/nobody/ban", headers=ha, json={"banned": True}).status_code == 404
 
@@ -77,9 +76,8 @@ def test_feature_access_can_be_switched_off_for_one_account_only():
     assert c.get(f"/api/ledger?client_id={cid}", headers=hl).status_code == 403
     assert "does not have access" in c.get(f"/api/ledger?client_id={cid}", headers=hl).json()["detail"]
     assert c.post("/api/documents", headers=hl, json={"client_id": cid, "filename": "a.txt", "text": "x"}).status_code == 403
-    assert c.get(f"/api/ledger?client_id={new_chat(hc)}", headers=hc).status_code == 200         # others are unaffected
+    assert c.get(f"/api/ledger?client_id={new_chat(hc)}", headers=hc).status_code == 200
     assert c.get("/api/products", headers=hl).status_code == 200
-    # and back on
     c.post("/api/admin/users/li/permissions", headers=ha, json={"permissions": {"ledger": True}})
     assert c.get(f"/api/ledger?client_id={cid}", headers=hl).status_code == 200
     assert c.post("/api/admin/users/li/permissions", headers=ha, json={"permissions": {"flying": True}}).status_code == 400
@@ -124,7 +122,6 @@ def test_older_databases_get_the_new_columns_once(tmp_path, monkeypatch):
     assert {"banned", "permissions"} <= cols
 
 
-# ------------------------------------------------------------------------------------------ memory
 def test_answers_given_in_one_chat_are_remembered_and_not_asked_again_in_the_next():
     _, h = login("chen")
     a = new_chat(h)
@@ -133,7 +130,7 @@ def test_answers_given_in_one_chat_are_remembered_and_not_asked_again_in_the_nex
     chat(h, a, "20 years")
     facts = {f["key"]: f["text"] for f in c.get("/api/memory", headers=h).json()["facts"]}
     assert facts == {"age": "28", "horizon_years": "20"}
-    b = new_chat(h)                                                    # a brand new chat: knows age and horizon already
+    b = new_chat(h)
     r = chat(h, b, "I want investment advice")
     assert r["question"]["id"] == "monthly_income_cny"
 
@@ -145,7 +142,7 @@ def test_notes_are_taken_from_what_the_user_says_about_themselves_and_survive_a_
     chat(h, a, "My name is Lily and I am saving for my daughter's university")
     notes = [n["text"] for n in c.get("/api/memory", headers=h).json()["notes"]]
     assert "I prefer low fees" in notes and any(n.startswith("Name: Lily") for n in notes)
-    state.HISTORY.clear(); state.PENDING_QUESTION.clear()              # server restart, new chat days later
+    state.HISTORY.clear(); state.PENDING_QUESTION.clear()
     b = new_chat(h)
     r = chat(h, b, "what do you remember about me?")
     assert "I prefer low fees" in r["reply"] and "Name: Lily" in r["reply"]
@@ -185,13 +182,13 @@ def test_the_memory_panel_can_edit_validate_delete_add_and_clear():
     _, h = login("wang")
     ok = c.post("/api/memory/fact", headers=h, json={"key": "age", "value": "68"})
     assert ok.status_code == 200 and ok.json()["facts"][0]["text"] == "68"
-    assert c.post("/api/memory/fact", headers=h, json={"key": "age", "value": "7"}).status_code == 400          # out of range
+    assert c.post("/api/memory/fact", headers=h, json={"key": "age", "value": "7"}).status_code == 400
     assert c.post("/api/memory/fact", headers=h, json={"key": "goal", "value": "nonsense"}).status_code == 400
     assert c.post("/api/memory/fact", headers=h, json={"key": "goal", "value": "Retirement"}).json()["facts"][-1]["text"] == "Retirement"
     assert c.post("/api/memory/fact", headers=h, json={"key": "password", "value": "x"}).status_code == 400
     n = c.post("/api/memory/notes", headers=h, json={"text": "Needs income every month"}).json()["notes"]
     assert [x["text"] for x in n] == ["Needs income every month"]
-    assert c.post("/api/memory/notes", headers=h, json={"text": "needs income every month"}).json()["notes"].__len__() == 1   # no duplicate
+    assert c.post("/api/memory/notes", headers=h, json={"text": "needs income every month"}).json()["notes"].__len__() == 1
     after = c.post(f"/api/memory/item/{n[0]['id']}/delete", headers=h).json()
     assert after["notes"] == [] and len(after["facts"]) == 2
     assert [f["key"] for f in c.post("/api/memory/fact/age/delete", headers=h).json()["facts"]] == ["goal"]

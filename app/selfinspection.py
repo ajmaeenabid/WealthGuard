@@ -1,16 +1,10 @@
-"""Self-inspection report modelled on CSRC Suitability Measures Art. 30 (a periodic self-check report) and Art. 32 (record keeping).
-
-Everything is counted from the hash-chained audit log, so the report is reproducible and cannot disagree with the record.
-It lists, per regulatory duty, how this system addresses it and the evidence count, then findings and honest gaps.
-English and Chinese use fixed templates (no model), so the wording is stable and checkable.
-"""
+"""Self-inspection report modelled on CSRC Suitability Measures Art. 30 (a periodic self-check report) and Art. 32 (record keeping)."""
 from collections import Counter
 
 from app.security import audit
 
 ARTICLE_URL = "https://www.gov.cn/gongbao/content/2023/content_5742209.htm"
 
-# duty -> (article, requirement en, requirement zh, how en, how zh)
 DUTIES = [
     ("第六条", "Know the investor (collect information)", "了解投资者信息",
      "Adaptive questionnaire; only unknown facts are asked", "自适应问卷，只询问未知信息"),
@@ -31,7 +25,6 @@ DUTIES = [
      "Append-only SHA-256 hash-chained audit log, verifiable on demand", "只追加的SHA-256哈希链审计日志，可随时校验"),
 ]
 
-# Duties the demo does not implement (stated, not hidden).
 GAPS = [
     ("第八条/第十一条/第十二条", "Professional-investor classification and conversion is not implemented; every client is treated as an ordinary investor.",
      "未实现专业投资者的认定与转化；所有客户均按普通投资者处理。"),
@@ -91,7 +84,7 @@ def metrics(entries: list[dict]) -> dict:
     blocked = sum(1 for e in checks if not e["payload"].get("passed", True))
     t3 = Counter(e["action"].split(":", 1)[1] for e in entries if e["action"].startswith("refused_forbidden:"))
     inj = Counter(e["payload"].get("source") if e["payload"].get("source") in ("chat", "ledger_command") else "document"
-                  for e in entries if e["action"] == "injection_flagged")  # other sources are uploaded file names
+                  for e in entries if e["action"] == "injection_flagged")
     return {
         "entries": len(entries),
         "first_ts": entries[0]["ts"] if entries else None, "last_ts": entries[-1]["ts"] if entries else None,

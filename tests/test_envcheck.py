@@ -59,11 +59,11 @@ def test_feature_status_and_cross_checks():
 
 
 def test_strict_mode_stops_only_on_invalid():
-    envcheck.enforce_at_startup({"FIN_AI_RPM": "abc"})  # warns, continues
+    envcheck.enforce_at_startup({"FIN_AI_RPM": "abc"})
     with pytest.raises(SystemExit) as e:
         envcheck.enforce_at_startup({"FIN_AI_RPM": "abc", "WEALTHGUARD_STRICT_CONFIG": "1"})
     assert "FIN_AI_RPM" in str(e.value) and "abc" not in str(e.value)
-    envcheck.enforce_at_startup({"WEALTHGUARD_STRICT_CONFIG": "1"})  # nothing invalid
+    envcheck.enforce_at_startup({"WEALTHGUARD_STRICT_CONFIG": "1"})
 
 
 def test_jurisdiction_config_has_no_invented_rates_and_separates_currencies():

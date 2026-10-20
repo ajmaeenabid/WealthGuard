@@ -1,11 +1,4 @@
-"""Receipt photos attached to a transaction.
-
-Security posture (there is no OCR and nothing is "read" from the image; it is stored so the person can look at it later):
-  * the file type is decided by its bytes (JPEG, PNG or WebP), never by the file name or the Content-Type the browser sent
-  * at most 2 MB per receipt and 200 per account; one receipt per transaction (a new one replaces it)
-  * location and camera metadata (EXIF, XMP, PNG text chunks) is removed before storing
-  * served only to the owner, with nosniff, a sandboxing CSP and no caching, so a crafted file can never run as a page
-"""
+"""Receipt photos attached to a transaction."""
 import hashlib
 import struct
 from typing import Optional
@@ -30,13 +23,12 @@ def sniff(data: bytes) -> Optional[str]:
 
 
 def strip_jpeg(data: bytes) -> bytes:
-    """Drop APP1 (EXIF/XMP) and comment segments; everything else, including the picture data, is copied untouched."""
     out, i = bytearray(data[:2]), 2
     while i + 4 <= len(data):
         if data[i] != 0xFF:
-            return data                                   # not a clean segment stream: keep the original rather than damage it
+            return data
         marker = data[i + 1]
-        if marker == 0xDA:                                # start of scan: the rest is image data
+        if marker == 0xDA:
             out += data[i:]
             return bytes(out)
         if marker == 0xD9 or 0xD0 <= marker <= 0xD7 or marker == 0x01:
@@ -46,7 +38,7 @@ def strip_jpeg(data: bytes) -> bytes:
         length = struct.unpack(">H", data[i + 2:i + 4])[0]
         if length < 2 or i + 2 + length > len(data):
             return data
-        if marker not in (0xE1, 0xFE):                    # keep everything except EXIF/XMP (APP1) and comments
+        if marker not in (0xE1, 0xFE):
             out += data[i:i + 2 + length]
         i += 2 + length
     return bytes(out)
@@ -72,7 +64,7 @@ def clean(data: bytes, mime: str) -> bytes:
 
 
 def attach(user: str, txn_id: str, data: bytes, claimed: Optional[str] = None) -> dict:
-    books.get_transaction(user, txn_id)                   # 404 for someone else's or a deleted transaction
+    books.get_transaction(user, txn_id)
     if not data:
         raise FinanceError("The file is empty.")
     if len(data) > MAX_BYTES:

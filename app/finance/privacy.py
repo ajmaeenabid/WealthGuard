@@ -1,11 +1,4 @@
-"""Retention and deletion for personal finance data, and redaction of identifiers before text goes to a model or into history.
-
-What is kept and for how long:
-  * ledger, accounts, budgets, goals, bills: until the user deletes them (or erases everything)
-  * assistant conversations: `history_days` (default 90), then removed automatically
-  * idempotency records for retried requests: 7 days (long enough to survive any realistic retry)
-  * the tamper-evident audit log keeps ids and amounts of changes (not names or notes) and cannot be edited by design
-"""
+"""Retention and deletion for personal finance data, and redaction of identifiers before text goes to a model or into history."""
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -19,7 +12,6 @@ LONG_NUMBER = re.compile(r"(?<![\d.,])(?:\d[ -]?){10,}\d(?![\d])")
 
 
 def redact(text: str) -> str:
-    """Hide card, account and phone numbers (10+ digits) before text is stored or sent to a model. Amounts are far shorter."""
     return LONG_NUMBER.sub("[number hidden]", text or "")
 
 
@@ -28,7 +20,6 @@ def _cutoff(days: int) -> str:
 
 
 def purge(user: str) -> dict:
-    """Remove expired idempotency records and old finished conversations for one user. Cheap; called while chatting."""
     days = settings.get(user)["history_days"]
     with db.LOCK:
         c = db.connect()
@@ -61,7 +52,6 @@ def clear_assistant_history(user: str) -> dict:
 
 
 def erase_all(user: str, confirm: str) -> dict:
-    """Delete everything this account holds in the finance module, in one database transaction (all or nothing)."""
     if confirm != CONFIRM_PHRASE:
         raise FinanceError(f'To erase everything, send confirm exactly as "{CONFIRM_PHRASE}".')
     counts = {}

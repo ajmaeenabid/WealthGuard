@@ -41,16 +41,15 @@ def test_brochure_injection_flagged_and_cannot_change_allocation():
 
 
 def test_fooled_model_is_still_blocked_by_compliance():
-    cid, _ = ready_client(passed=False)  # allocation containing the tempting note
+    cid, _ = ready_client(passed=False)
     store_alloc = store.latest_allocation(cid, passed_only=False)
     assert any(l.product_id == "P13" for l in store_alloc.lines)
     assert store.load_compliance(store_alloc.id).passed is False
-    # blocked drafts can neither be stress-tested, nor reported, nor turned into an order
     for tool, args in [("run_stress_test", {"scenario": "equity_-20"}), ("create_order_ticket", {}),
                        ("generate_report", {}), ("run_goal_projection", {})]:
         r = tiers.execute(tool, {"allocation_id": store_alloc.id, **args}, Ctx(cid))
         assert r["ok"] is False, tool
-    assert store.latest_allocation(cid) is None  # nothing is "shown"
+    assert store.latest_allocation(cid) is None
 
 
 def test_pipeline_with_forced_preferred_note_never_returns_it():

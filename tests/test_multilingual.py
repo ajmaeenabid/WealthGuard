@@ -45,7 +45,7 @@ def test_chinese_conversation_end_to_end_in_cny():
     books.create_account(U, "支付宝", "wallet", "1000", opening_date=(money.today() - timedelta(days=30)).isoformat())
     r = say("今天在超市花了三百五十元买菜，用支付宝")
     assert r["language"] == "zh" and "¥350.00" in r["reply"] and "我将记录" in r["reply"]
-    assert books.list_transactions(U)["total"] == 0                       # nothing saved before confirming
+    assert books.list_transactions(U)["total"] == 0
     r = say("是")
     assert r["state"] == "completed" and r["reply"].startswith("已保存") and books.list_transactions(U)["total"] == 1
     t = books.list_transactions(U)["items"][0]
@@ -71,10 +71,10 @@ def test_choosing_a_country_sets_its_currency_immediately_and_usd_stays_selectab
     s = settings.update(U, {"jurisdiction": "CN"})
     assert s["base_currency"] == "CNY" and s["currency_chosen"] and s["currency_changed_to"] == "CNY"
     assert settings.update(U, {"jurisdiction": "BD"})["base_currency"] == "BDT"
-    assert settings.update(U, {"base_currency": "USD"})["base_currency"] == "USD"           # a manual pick still works
-    assert settings.update(U, {"ui_lang": "zh"})["base_currency"] == "USD"                  # unrelated changes do not touch it
-    assert settings.update(U, {"jurisdiction": "CN"})["base_currency"] == "CNY"             # but choosing a country sets it again
-    assert settings.update(U, {"jurisdiction": "CN"})["base_currency"] == "CNY"             # re-selecting the same country is a no-op
+    assert settings.update(U, {"base_currency": "USD"})["base_currency"] == "USD"
+    assert settings.update(U, {"ui_lang": "zh"})["base_currency"] == "USD"
+    assert settings.update(U, {"jurisdiction": "CN"})["base_currency"] == "CNY"
+    assert settings.update(U, {"jurisdiction": "CN"})["base_currency"] == "CNY"
     with pytest.raises(Exception):
         settings.update(U, {"base_currency": "EUR"})
 
@@ -95,7 +95,7 @@ def test_each_account_has_its_own_currency_and_totals_follow_the_chosen_one():
     assert pos["currency"] == "USD" and pos["liquid"] == "100.00" and sorted(pos["excluded_other_currency"]) == ["Taka bKash", "Yuan wallet"]
     settings.update(U, {"base_currency": "CNY"})
     pos = books.position(U)
-    assert pos["currency"] == "CNY" and pos["liquid"] == "700.00"                       # nothing was converted, only the view changed
+    assert pos["currency"] == "CNY" and pos["liquid"] == "700.00"
     with pytest.raises(Exception):
         books.create_account(U, "Euro", "cash", "1", currency="EUR")
 
@@ -123,7 +123,7 @@ def test_relabel_all_accounts_changes_the_label_not_the_amounts():
     out = books.relabel_currency(U, "USD")
     assert out["accounts"] == 2 and out["transactions"] >= 1
     assert {a["currency"] for a in books.list_accounts(U)} == {"USD"}
-    assert books.list_accounts(U)[0]["opening_balance"] in ("1000.00", "500.00")          # same numbers, new label
+    assert books.list_accounts(U)[0]["opening_balance"] in ("1000.00", "500.00")
     assert books.list_transactions(U)["items"][0]["currency"] == "USD"
 
 
@@ -134,8 +134,8 @@ def test_one_account_can_be_relabelled_unless_a_transfer_ties_it_to_another_curr
     b = books.create_account(U, "Dollar savings", "savings", "0", currency="USD")
     books.create_transaction(U, {"type": "transfer", "account_id": a["id"], "to_account_id": b["id"], "amount": "50"})
     with pytest.raises(Exception) as e:
-        books.update_account(U, a["id"], {"currency": "CNY"})                    # its transfer partner is still USD
+        books.update_account(U, a["id"], {"currency": "CNY"})
     assert "transfers" in str(e.value)
-    assert books.relabel_currency(U, "CNY")["accounts"] == 3                      # together it is fine
+    assert books.relabel_currency(U, "CNY")["accounts"] == 3
     with pytest.raises(Exception):
         books.update_account(U, a["id"], {"currency": "EUR"})

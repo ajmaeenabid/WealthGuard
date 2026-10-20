@@ -5,8 +5,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def load_dotenv(path: str | None = None) -> int:
-    """Minimal .env loader: KEY=VALUE lines, # comment lines, optional quotes. Variables already set in the real
-    environment win over the file, and empty values are skipped. Returns how many variables were loaded."""
     path = path or os.path.join(ROOT, ".env")
     if not os.path.isfile(path):
         return 0
@@ -26,7 +24,7 @@ def load_dotenv(path: str | None = None) -> int:
     return n
 
 
-if os.environ.get("WEALTHGUARD_NO_DOTENV") != "1":  # tests set this so a real key in .env is never used
+if os.environ.get("WEALTHGUARD_NO_DOTENV") != "1":
     load_dotenv()
 
 DISCLAIMER = "Educational demo with synthetic products. Not real financial advice."
@@ -34,7 +32,6 @@ DISCLAIMER_ZH = "教育演示，产品均为合成数据，不构成真实的投
 
 BUCKET_ORDER = ["Conservative", "Moderate", "Balanced", "Growth", "Aggressive"]
 
-# bucket -> limits (CLAUDE.md table)
 BUCKETS = {
     "Conservative": {"max_risk": 2, "max_equity_pct": 10, "max_single_pct": 40},
     "Moderate": {"max_risk": 3, "max_equity_pct": 30, "max_single_pct": 35},
@@ -43,10 +40,8 @@ BUCKETS = {
     "Aggressive": {"max_risk": 5, "max_equity_pct": 90, "max_single_pct": 30},
 }
 
-# asset classes counted towards the "equity-like" limit
 EQUITY_LIKE = {"equity_fund", "balanced_fund", "structured_note"}
 
-# Template weights per asset class (sum = 1) used as the allocation starting point.
 TEMPLATES = {
     "Conservative": {"cash": 0.35, "bond": 0.55, "gold": 0.10},
     "Moderate": {"cash": 0.20, "bond": 0.50, "balanced_fund": 0.20, "gold": 0.10},
@@ -66,7 +61,6 @@ MAX_REVISIONS = 3
 MC_PATHS = 5000
 MC_SEED = 42
 
-# URL allowlist for any outbound call (T3: anything else is refused).
 URL_ALLOWLIST = ["https://api.anthropic.com", "https://api.groq.com"]
 
 
@@ -83,7 +77,6 @@ def qdrant_prefix() -> str:
 
 
 def url_allowlist() -> list[str]:
-    """Static allowlist plus the Qdrant origin, which is allowed only because the operator configured it."""
     out = list(URL_ALLOWLIST)
     u = qdrant_url()
     if u:
@@ -95,7 +88,6 @@ def url_allowlist() -> list[str]:
 
 
 def provider() -> str:
-    """LLM_PROVIDER=anthropic|groq. If unset: Anthropic when its key exists, else Groq when its key exists."""
     p = os.environ.get("LLM_PROVIDER", "").lower()
     if p in ("anthropic", "groq"):
         return p
@@ -108,7 +100,6 @@ def use_mock_llm() -> bool:
 
 
 def describe_llm() -> str:
-    """Which model answers, for the startup log and /api/health. Never includes a key."""
     if not use_mock_llm():
         return f"{provider()} (live), model {groq_model() if provider() == 'groq' else anthropic_model()}"
     if os.environ.get("USE_MOCK_LLM", "0") == "1":
@@ -134,7 +125,7 @@ def groq_model() -> str:
 
 def db_path() -> str:
     default = os.path.join(os.getcwd(), "wealthguard.db")
-    if os.environ.get("VERCEL"):                       # Vercel's disk is read-only except the temp folder
+    if os.environ.get("VERCEL"):
         import tempfile
         default = os.path.join(tempfile.gettempdir(), "wealthguard.db")
     return os.environ.get("WEALTHGUARD_DB", default)
@@ -145,12 +136,10 @@ def lower_bucket(a: str, b: str) -> str:
 
 
 def effective_bucket(bucket: str, age: int, horizon_years: float) -> str:
-    """R5: vulnerable clients are capped at Moderate regardless of score."""
     if age >= VULNERABLE_AGE or horizon_years < VULNERABLE_HORIZON_YEARS:
         return lower_bucket(bucket, VULNERABLE_CAP_BUCKET)
     return bucket
 
-# R6 disclosure marker phrases (lower-case) - client text must contain all three.
 RISK_WARNING = "Investing involves risk, and you can lose part or all of your capital."
 PERF_DISCLAIMER = "Past performance is not a reliable indicator of future results."
 FEE_MARKER = "annual fees"

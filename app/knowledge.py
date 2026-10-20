@@ -1,12 +1,4 @@
-"""Knowledge base for retrieval: the real CSRC regulation text, the real-data sources and episodes, and our own rules.
-
-Sources (all indexed in app/vectorstore.py):
-  csrc_suitability  43 articles of the Suitability Management Measures (Chinese original, real, public)
-  data_sources      where each real dataset comes from, its license and what it is used for (MANIFEST.json)
-  market_episodes   the real historical episodes behind the stress scenarios
-  wealthguard_rules our compliance rules R1-R9 in plain English, with the regulatory articles they relate to
-  history_cards     real yearly US returns, China macro data and decade averages, as short text cards
-"""
+"""Knowledge base for retrieval: the real CSRC regulation text, the real-data sources and episodes, and our own rules."""
 import hashlib
 import json
 import os
@@ -19,7 +11,6 @@ REAL = realdata.DIR
 GAZETTE = "https://www.gov.cn/gongbao/content/2023/content_5742209.htm"
 _LOCK = threading.RLock()
 
-# English phrase -> Chinese terms used in the regulation, so English questions can reach Chinese text.
 GLOSSARY = {
     "suitab": "适当性 适当性匹配", "risk tolerance": "风险承受能力", "risk capacity": "风险承受能力",
     "risk level": "产品或者服务风险等级 划分风险等级", "risk rating": "产品或者服务风险等级 划分风险等级",
@@ -44,7 +35,7 @@ GLOSSARY = {
     "convert": "互相转化", "agent": "代销", "distribut": "代销 委托销售",
 }
 
-RULE_QUERIES = {  # fixed Chinese retrieval queries; the best-matching article is shown as the regulatory basis
+RULE_QUERIES = {
     "R1": "根据产品或者服务的不同风险等级 对其适合销售产品的投资者类型作出判断 适当性匹配",
     "R3": "划分产品或者服务风险等级时应当综合考虑 结构复杂性 杠杆情况",
     "R4": "产品风险等级 流动性 到期时限 投资期限",
@@ -76,7 +67,6 @@ RULE_DOCS = [
 
 
 def expand(query: str) -> str:
-    """Append Chinese regulation terms for the English key phrases found in the query."""
     q = query.lower()
     extra = [zh for en, zh in GLOSSARY.items() if en in q]
     return query + (" " + " ".join(extra) if extra else "")
@@ -96,7 +86,6 @@ def _p(x: float) -> str:
 
 
 def history_items() -> list[dict]:
-    """Short text cards generated from the real CSVs: one per US year, one per China year, one per decade."""
     out = []
     rets = realdata.annual_returns()
     for y in realdata.years():
@@ -179,11 +168,10 @@ def _fingerprint(its: list[dict]) -> str:
     return h.hexdigest()
 
 
-_BASIS: dict = {}   # (index fingerprint, rule_id) -> basis; the rule queries are fixed, so it only changes with the index
+_BASIS: dict = {}
 
 
 def ensure_index() -> int:
-    """Build the index if missing or stale (data or code changed). Cheap: about 60 chunks."""
     its = items()
     fp = _fingerprint(its)
     with _LOCK:
@@ -200,13 +188,11 @@ def search(query: str, k: int = 3, source: str | None = None, min_score: float =
 
 
 def search_ex(query: str, k: int = 3, source: str | None = None, min_score: float = 0.0):
-    """Like search, but also returns which backend answered ('qdrant' or 'local')."""
     ensure_index()
     return vectorstore.search_ex(expand(query), k=k, source=source, min_score=min_score)
 
 
 def basis_for_rule(rule_id: str) -> dict | None:
-    """The CSRC article that best supports a compliance rule, or None when no article is a close match."""
     q = RULE_QUERIES.get(rule_id)
     if not q:
         return None
@@ -229,7 +215,6 @@ def _basis_lookup(rule_id: str, q: str) -> dict | None:
 
 
 def article_number(ref: str) -> int:
-    """第十六条 -> 16"""
     digits = {"零": 0, "一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
     s = re.sub(r"[第条]", "", ref)
     if "百" in s:

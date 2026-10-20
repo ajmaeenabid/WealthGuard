@@ -1,17 +1,12 @@
-"""Behaviour insights from the purchase ledger. Pure arithmetic and fixed templates: no model is involved, so every
-number is reproducible and every sentence can be traced to a rule.
-
-The only effect on advice is a capped, one-way reduction of risk *capacity* (never an increase), so behaviour data can
-make the profile more cautious but never riskier.
-"""
+"""Behaviour insights from the purchase ledger. Pure arithmetic and fixed templates: no model is involved, so every number is reproducible and every sentence can be traced to a rule."""
 from collections import defaultdict
 from typing import Optional
 
 from app import ledger, store
 
-HIGH_SPEND_RATIO = 0.80      # recorded spending vs monthly income
+HIGH_SPEND_RATIO = 0.80
 ELEVATED_SPEND_RATIO = 0.60
-IMPULSE_SHARE = 0.30         # share of bought spending the client tagged as impulse
+IMPULSE_SHARE = 0.30
 CONCENTRATION_SHARE = 0.50
 CANCEL_RATE = 0.30
 PENALTY_PER_FLAG = 5.0

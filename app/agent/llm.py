@@ -1,8 +1,4 @@
-"""LLM wrapper: real Anthropic or Groq client, with a deterministic mock (USE_MOCK_LLM=1) as the demo safety net.
-
-Messages use Anthropic's block format: content is a str or a list of {"type": "text"|"tool_use"|"tool_result"}.
-The mock is a pure function of (messages, state), so every test and the offline demo are reproducible.
-"""
+"""LLM wrapper: real Anthropic or Groq client, with a deterministic mock (USE_MOCK_LLM=1) as the demo safety net."""
 import json
 import os
 import re
@@ -40,7 +36,7 @@ End client-facing answers with: "{config.DISCLAIMER}"
 @dataclass
 class LLMResponse:
     text: str = ""
-    tool_calls: list = field(default_factory=list)  # [{"id","name","input"}]
+    tool_calls: list = field(default_factory=list)
     fallback: bool = False
 
     def blocks(self) -> list:
@@ -49,7 +45,6 @@ class LLMResponse:
         return b
 
 
-# ---------------------------------------------------------------------------------------------- review
 HYPE = re.compile(r"(!!|act now|limited time|don't miss|cant miss|once in a lifetime)", re.IGNORECASE)
 
 
@@ -78,7 +73,6 @@ def review(text: str) -> dict:
     return json.loads(m.group()) if m else {"approve": True, "concerns": []}
 
 
-# ---------------------------------------------------------------------------------------------- real
 def _client():
     import anthropic
     return anthropic.Anthropic(api_key=config.anthropic_key())
@@ -88,16 +82,15 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 
 def _groq_chat(messages: list, tools: list | None = None, max_tokens: int = 1500) -> dict:
-    """Groq is OpenAI-compatible; plain httpx keeps this dependency-free. Returns the assistant message dict."""
     import httpx
     from app.finance import tokens
-    messages, _cut = tokens.fit_messages(messages)          # long histories are trimmed to the input budget (oldest turns first, newest kept)
+    messages, _cut = tokens.fit_messages(messages)
     body = {"model": config.groq_model(), "messages": messages, "max_tokens": tokens.clamp_output(max_tokens), "temperature": 0.2}
     if tools:
         body["tools"] = tools
     started = time.monotonic()
-    limit = float(os.environ.get("WEALTHGUARD_LLM_DEADLINE", "30"))      # whole call incl. retries; then the caller shows a clear notice
-    for attempt in range(3):  # free-tier limits are small: honour retry-after on 429, then give up (mock fallback)
+    limit = float(os.environ.get("WEALTHGUARD_LLM_DEADLINE", "30"))
+    for attempt in range(3):
         left = limit - (time.monotonic() - started)
         if left <= 1:
             raise TimeoutError("The AI service did not answer in time.")
@@ -114,7 +107,6 @@ def _groq_chat(messages: list, tools: list | None = None, max_tokens: int = 1500
 
 
 def _to_openai_messages(system: str, messages: list) -> list:
-    """Convert Anthropic-style blocks (text / tool_use / tool_result) to OpenAI chat messages."""
     out = [{"role": "system", "content": system}]
     for m in messages:
         c = m["content"]
@@ -166,16 +158,14 @@ def respond(system: str, messages: list, tools: list, state: dict) -> LLMRespons
         return mock_respond(messages, state)
     try:
         return _real_respond(system, messages, tools)
-    except Exception as e:  # network/key failure: fall back so the demo never dies
+    except Exception as e:
         r = mock_respond(messages, state)
         r.fallback = True
         state["llm_error"] = f"{type(e).__name__}"
         return r
 
 
-# ---------------------------------------------------------------------------------------------- mock
 def _turn_results(messages: list) -> list[tuple[str, dict, dict]]:
-    """(tool name, input, parsed result) for tool calls made since the last human message."""
     last_human = max(i for i, m in enumerate(messages) if m["role"] == "user" and isinstance(m["content"], str))
     calls, out = {}, []
     for m in messages[last_human + 1:]:
@@ -214,7 +204,6 @@ SMALL_TALK = re.compile(
     r"(there|wealthguard|again|today)?[\s!.,?？！。，~]*$", re.IGNORECASE)
 
 
-# wording that means "start advising me"; without it (and without a pending question) the mock stays in conversation
 ADVICE_INTENT = re.compile(
     r"advice|advis|invest|portfolio|allocat|\bplan\b|retire|saving|\bsave\b|goal|risk|profile|recommend|propos|let'?s (start|begin|go)|"
     r"\b(start|begin)\b|help me|money|wealth|\bfunds?\b|bond|stock|budget|growth|pension|education fund|"
@@ -241,7 +230,6 @@ def small_talk_reply(text: str) -> str:
 
 
 def guided_respond(messages: list, state: dict) -> LLMResponse:
-    """The deterministic advisory flow for questionnaire answers (used in live mode too: the next step is fixed)."""
     return mock_respond(messages, state, guided=True)
 
 
@@ -257,7 +245,6 @@ def mock_respond(messages: list, state: dict, guided: bool = False) -> LLMRespon
     def refused(r):
         return isinstance(r, dict) and r.get("ok") is False
 
-    # --- explicit single-purpose intents -------------------------------------------------------------
     if not guided and not res and SMALL_TALK.match(_user_text(messages)):
         return LLMResponse(text=f"{small_talk_reply(_user_text(messages))} {disclaimer}")
 
@@ -314,7 +301,7 @@ def mock_respond(messages: list, state: dict, guided: bool = False) -> LLMRespon
             reg = any(w in text for w in ["regulation", "regulator", "csrc", "law", "legal", "suitability measures", "法规",
                                           "监管", "适当性管理办法", "条例", "法律"])
             args = {"query": _user_text(messages)[:300], "k": 3}
-            if reg:  # regulation questions are answered from the regulation text, not from our own rule notes
+            if reg:
                 args["source"] = "csrc_suitability"
             return _call("search_knowledge", args, n)
         hits = last[2].get("results", [])
@@ -396,8 +383,7 @@ def mock_respond(messages: list, state: dict, guided: bool = False) -> LLMRespon
                                 f"Chance of reaching your goal: {gp['base_probability']:.0%} normally, "
                                 f"{gp['probability']:.0%} if the shock hits today. {_history_sentence(gp)} {disclaimer}")
 
-    # --- advisory flow -------------------------------------------------------------------------------
-    answer_attempt = state.get("pending_question") and len(text.split()) <= 4   # "dunno", "not sure": ask the question again
+    answer_attempt = state.get("pending_question") and len(text.split()) <= 4
     if not guided and not res and not answer_attempt and not ADVICE_INTENT.search(text):
         return LLMResponse(text=f"{SCOPE_REPLY} {disclaimer}")
     if not state.get("facts_complete"):
@@ -461,9 +447,7 @@ def last_of(res, name):
     return [r for nm, _, r in res if nm == name][-1]
 
 
-# ---------------------------------------------------------------------------------------------- plain completion
 def complete(system: str, prompt: str, max_tokens: int = 1500) -> str:
-    """One plain text completion (no tools) on the active provider. Callers handle mock mode and failures."""
     if config.provider() == "groq":
         return _groq_chat([{"role": "system", "content": system}, {"role": "user", "content": prompt}],
                           max_tokens=max_tokens).get("content") or ""

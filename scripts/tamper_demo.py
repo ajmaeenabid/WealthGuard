@@ -4,8 +4,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import db  # noqa: E402
-from app.security import audit  # noqa: E402
+from app import db
+from app.security import audit
 
 if __name__ == "__main__":
     print("before:", audit.verify())

@@ -21,7 +21,6 @@ def run_vad(frames):
 
 
 def frames(spec, step=50):
-    """spec: list of (level, duration_ms)"""
     out, t = [], 0
     for lvl, dur in spec:
         for _ in range(dur // step):
@@ -56,7 +55,7 @@ def test_a_pause_inside_a_sentence_does_not_split_it():
 @pytest.mark.skipif(not NODE, reason="node is not installed")
 def test_a_long_monologue_is_cut_at_the_limit():
     ev = [e for e, _ in run_vad(frames([(0.1, 25000)]))]
-    assert ev[:3] == ["candidate", "start", "end"]                        # cut at 20 s; speech that continues is captured as the next clip
+    assert ev[:3] == ["candidate", "start", "end"]
     assert ev[3:] == ["candidate", "start"]
 
 
@@ -69,8 +68,8 @@ def test_quiet_room_noise_adapts_without_false_starts():
 def test_voice_mode_is_wired_honestly():
     js = (STATIC / "voicemode.js").read_text(encoding="utf-8")
     assert "NOT full-duplex" in js and "/api/transcribe" in js and "sendVoice" in js
-    assert "No ${code} voice is installed" in js                          # text fallback when no voice for the language exists
-    assert "speechSynthesis" in js and "synth.cancel()" in js             # barge-in
+    assert "No ${code} voice is installed" in js
+    assert "speechSynthesis" in js and "synth.cancel()" in js
     for state in ("listening", "processing", "speaking"):
         assert state in js
     html = (STATIC / "index.html").read_text(encoding="utf-8")

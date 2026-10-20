@@ -1,23 +1,16 @@
 // Voice input and read-aloud.
-// Two speech-to-text engines fill a text box; the user then presses Send / Interpret, so spoken and typed text take the same guarded
-// path (injection guard, compliance, tiers). Push-to-talk only: nothing listens in the background and nothing is sent automatically.
-//   Whisper  (server): records with MediaRecorder and uploads the clip to /api/transcribe (Groq-hosted or local Whisper).
-//            Works in any modern browser, in English and Chinese. The audio is sent to the transcription service.
-//   Browser  : the Web Speech API (Chrome/Edge). The browser vendor may process the audio.
-// "Auto" uses Whisper when the server reports it as available, otherwise the browser engine.
 (function () {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const synth = window.speechSynthesis;
   const $ = (id) => document.getElementById(id);
-  const MAX_MS = 30000;   // a voice command is short; the server also limits the upload size
+  const MAX_MS = 30000;
   let speakOn = false;
-  let active = null;      // the one recording or recognition session that may run at a time
+  let active = null;
   let whisper = { available: false, provider: null, model: null };
   let getClientId = null;
 
   function lang() { return $("voiceLang") ? $("voiceLang").value : "en-US"; }
 
-  // Some browsers return the same phrase twice ("Hello, how are you? Hello, how are you?"): collapse an exact repeat of a multi-word phrase.
   function tidy(text) {
     const t = String(text || "").replace(/\s+/g, " ").trim();
     const words = t.split(" ");
@@ -29,7 +22,6 @@
       for (let i = len; i < words.length && same; i += len) same = words.slice(i, i + len).map(norm).join(" ") === first;
       if (same) return words.slice(0, len).join(" ");
     }
-    // spaceless scripts (Chinese): an exact doubled string
     const h = t.length / 2;
     if (!t.includes(" ") && t.length >= 4 && t.length % 2 === 0 && t.slice(0, h) === t.slice(h)) return t.slice(0, h);
     return t;
@@ -42,7 +34,6 @@
     return whisper.available ? "whisper" : (SR ? "browser" : "none");
   }
 
-  // Wire a mic button to a text input. noteId is a status line shown next to the control.
   function attach(btnId, inputId, noteId) {
     const btn = $(btnId), input = $(inputId), note = $(noteId);
     if (!btn || !input) return;
@@ -140,7 +131,7 @@
   }
 
   function describe() {
-    return;                      // the engine description line was removed on purpose; status messages still use the note
+    return;
     const n = $("voiceNote");
     if (!n) return;
     const e = engine();
@@ -152,7 +143,7 @@
     try {
       const h = await (await fetch("/api/health")).json();
       if (h.transcription) whisper = h.transcription;
-    } catch (e) { /* offline: browser engine only */ }
+    } catch (e) { }
     attach("micBtn", "chatInput", "voiceNote");
     attach("ledgerMic", "ledgerCmd", "ledgerNote");
     attach("finMic", "finInput", "finNote");
@@ -174,7 +165,6 @@
     };
   }
 
-  // the Money settings can switch "read replies aloud" on or off for the whole page
   function setSpeak(on) {
     speakOn = !!on && !!synth;
     const sb = $("speakBtn");
