@@ -1,4 +1,4 @@
-"""Deterministic financial analysis. Every number the dashboard, the reports and the AI explanations use is computed here from the user's own ledger entries; the language model only ever sees these results, never raw rows."""
+"""Deterministic financial analysis. Every number the dashboard, reports and AI explanations use is computed here from the user's own ledger entries."""
 import statistics
 from collections import defaultdict
 from datetime import date, datetime, timedelta

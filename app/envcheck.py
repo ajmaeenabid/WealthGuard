@@ -1,4 +1,4 @@
-"""Configuration inventory and validation. Reports variable NAMES, presence and validity only: a value is never read into a report, logged or returned. `python scripts/check_env.py` prints the table; the server runs."""
+"""Configuration inventory and validation. Reports variable names, presence and validity only; a value is never read into a report, logged or returned."""
 import os
 import re
 from dataclasses import dataclass, field

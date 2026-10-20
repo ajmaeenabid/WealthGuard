@@ -1,4 +1,4 @@
-"""CSV export and import of transactions. Import goes through the same validation as manual entry, row by row, and a row that was already imported is skipped (a content hash is its idempotency key), so re-uploading a file."""
+"""CSV export and import of transactions. Import uses the same validation as manual entry and skips rows that were already imported."""
 import csv
 import hashlib
 import io

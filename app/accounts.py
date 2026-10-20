@@ -1,4 +1,4 @@
-"""Accounts: username + password sign-up and sign-in, bearer tokens, password change, and what an administrator can do (suspend accounts, change roles, switch individual features on or off per account). Passwords are."""
+"""Accounts: sign-up and sign-in with username and password, bearer tokens, password change, and administrator controls (suspend accounts, change roles, switch features per account)."""
 import hashlib
 import hmac
 import json

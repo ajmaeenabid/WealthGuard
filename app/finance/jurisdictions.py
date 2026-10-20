@@ -1,4 +1,4 @@
-"""Versioned financial-jurisdiction configuration (Bangladesh, mainland China). One place for every country-specific convention, so no `if country == ...` is scattered through the code. Language is a separate setting: any."""
+"""Versioned financial-jurisdiction configuration (Bangladesh, mainland China). Language is a separate setting from jurisdiction."""
 from typing import Optional
 
 VERSION = "2026.10.1"

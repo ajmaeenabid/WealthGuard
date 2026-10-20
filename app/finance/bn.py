@@ -1,4 +1,4 @@
-"""Bangla wording for answers, insights, report text and data-quality notes. Numbers stay in ASCII digits with the taka sign so they are identical to what the ledger shows and can be checked against it. Anything without a."""
+"""Bangla wording for answers, insights, report text and data-quality notes. Numbers stay in ASCII digits with the taka sign so they match the ledger."""
 from typing import Optional
 
 from app.finance import money

@@ -17,6 +17,13 @@ def create(user: dict) -> dict:
     return s
 
 
+def adopt(user: dict, session: dict) -> None:
+    now = store.now()
+    store._write("INSERT INTO conversations (client_id, username, title, persona_id, name, pending_question, created, updated) VALUES (?,?,?,?,?,?,?,?)",
+                 (session["client_id"], user["username"], "New chat", None, session["name"],
+                  state.PENDING_QUESTION.get(session["client_id"]), now, now))
+
+
 def get(client_id: str):
     return store._one("SELECT * FROM conversations WHERE client_id=?", (client_id,))
 

@@ -63,6 +63,10 @@ async def auth_gate(request: Request, call_next):
                 return JSONResponse({"detail": f"Your account does not have access to {accounts.FEATURES[feat].lower()}. "
                                                "Ask an administrator."}, status_code=403)
     response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["Permissions-Policy"] = "microphone=(self), camera=(), geolocation=()"
     if not path.startswith("/api/"):
         response.headers["Cache-Control"] = "no-cache"
     return response
@@ -411,9 +415,12 @@ def personas():
 
 
 @app.post("/api/session")
-def session(req: SessionReq):
+def session(req: SessionReq, request: Request):
     try:
-        return service.create_session(req.persona_id)
+        out = service.create_session(req.persona_id)
+        if accounts.auth_required() and request.state.user:
+            conversations.adopt(request.state.user, out)
+        return out
     except KeyError:
         raise HTTPException(404, "unknown persona")
 
@@ -429,6 +436,8 @@ def chat(req: ChatReq, request: Request):
 
 @app.post("/api/transcribe")
 async def transcribe_audio(request: Request, language: Optional[str] = None, client_id: Optional[str] = None):
+    if client_id:
+        _owns(request, client_id)
     if client_id:
         _client(client_id)
     cl = request.headers.get("content-length")
@@ -451,7 +460,9 @@ async def transcribe_audio(request: Request, language: Optional[str] = None, cli
 
 
 @app.post("/api/translate")
-def translate_texts(req: TranslateReq):
+def translate_texts(request: Request, req: TranslateReq):
+    if req.client_id:
+        _owns(request, req.client_id)
     if req.client_id:
         _client(req.client_id)
     return translate.translate_many(req.texts, req.target, req.client_id)
@@ -463,13 +474,15 @@ def _ledger_view(client_id: str) -> dict:
 
 
 @app.get("/api/ledger")
-def get_ledger(client_id: str):
+def get_ledger(request: Request, client_id: str):
+    _owns(request, client_id)
     _client(client_id)
     return _ledger_view(client_id)
 
 
 @app.post("/api/ledger")
-def add_ledger(req: LedgerIn):
+def add_ledger(request: Request, req: LedgerIn):
+    _owns(request, req.client_id)
     _client(req.client_id)
     try:
         ledger.add_entry(req.client_id, req.item, req.amount_cny, req.category, req.status, req.impulse, req.ts)
@@ -480,7 +493,8 @@ def add_ledger(req: LedgerIn):
 
 
 @app.post("/api/ledger/{entry_id}/update")
-def update_ledger(entry_id: str, req: LedgerPatch):
+def update_ledger(request: Request, entry_id: str, req: LedgerPatch):
+    _owns(request, req.client_id)
     _client(req.client_id)
     try:
         ledger.update_entry(entry_id, req.client_id, item=req.item, category=req.category,
@@ -492,7 +506,8 @@ def update_ledger(entry_id: str, req: LedgerPatch):
 
 
 @app.post("/api/ledger/{entry_id}/delete")
-def delete_ledger(entry_id: str, req: ApproveReq):
+def delete_ledger(request: Request, entry_id: str, req: ApproveReq):
+    _owns(request, req.client_id)
     _client(req.client_id)
     try:
         ledger.delete_entry(entry_id, req.client_id)
@@ -503,7 +518,8 @@ def delete_ledger(entry_id: str, req: ApproveReq):
 
 
 @app.post("/api/ledger/command")
-def ledger_command(req: LedgerCommandReq):
+def ledger_command(request: Request, req: LedgerCommandReq):
+    _owns(request, req.client_id)
     _client(req.client_id)
     findings = guard.scan(req.text)
     if findings:
@@ -516,7 +532,8 @@ def ledger_command(req: LedgerCommandReq):
 
 
 @app.post("/api/ledger/confirm/{change_id}")
-def ledger_confirm(change_id: str, req: ApproveReq):
+def ledger_confirm(request: Request, change_id: str, req: ApproveReq):
+    _owns(request, req.client_id)
     _client(req.client_id)
     try:
         ledger.confirm(change_id, req.client_id)
@@ -527,7 +544,8 @@ def ledger_confirm(change_id: str, req: ApproveReq):
 
 
 @app.post("/api/ledger/reject/{change_id}")
-def ledger_reject(change_id: str, req: ApproveReq):
+def ledger_reject(request: Request, change_id: str, req: ApproveReq):
+    _owns(request, req.client_id)
     _client(req.client_id)
     try:
         ledger.reject(change_id, req.client_id)
@@ -537,7 +555,8 @@ def ledger_reject(change_id: str, req: ApproveReq):
 
 
 @app.post("/api/ledger/sample")
-def ledger_sample(req: LedgerSampleReq):
+def ledger_sample(request: Request, req: LedgerSampleReq):
+    _owns(request, req.client_id)
     _client(req.client_id)
     ledger.load_sample(req.client_id, req.kind)
     service.sync_profile_with_behaviour(req.client_id)
@@ -548,8 +567,10 @@ KB_SOURCES = {"csrc_suitability", "data_sources", "market_episodes", "wealthguar
 
 
 @app.get("/api/knowledge/search")
-def knowledge_search(q: str = Query(min_length=2, max_length=300), k: int = Query(3, ge=1, le=5),
+def knowledge_search(request: Request, q: str = Query(min_length=2, max_length=300), k: int = Query(3, ge=1, le=5),
                      source: Optional[str] = None, client_id: Optional[str] = None):
+    if client_id:
+        _owns(request, client_id)
     if source and source not in KB_SOURCES:
         raise HTTPException(422, f"unknown source; choose from {sorted(KB_SOURCES)}")
     if client_id:
@@ -567,7 +588,8 @@ def _replay_result(out: dict) -> dict:
 
 
 @app.post("/api/replay/start")
-def replay_start(req: ReplayStartReq):
+def replay_start(request: Request, req: ReplayStartReq):
+    _owns(request, req.client_id)
     _client(req.client_id)
     out = replay.start(req.client_id, req.episode, req.portfolio)
     if out.get("ok") is False:
@@ -576,20 +598,27 @@ def replay_start(req: ReplayStartReq):
 
 
 @app.post("/api/replay/{session_id}/step")
-def replay_step(session_id: str, req: ReplayStepReq):
+def replay_step(request: Request, session_id: str, req: ReplayStepReq):
+    _owns(request, req.client_id)
     _client(req.client_id)
     return _replay_result(replay.step(session_id, req.client_id, req.choice))
 
 
 @app.post("/api/replay/{session_id}/apply")
-def replay_apply(session_id: str, req: ApproveReq):
+def replay_apply(request: Request, session_id: str, req: ApproveReq):
+    _owns(request, req.client_id)
     _client(req.client_id)
     return _replay_result(replay.apply(session_id, req.client_id))
 
 
 @app.get("/api/provenance")
-def get_provenance(client_id: str, kind: str, allocation_id: str = "", scenario: str = "", shock_pct: float = Query(0.0, ge=-100, le=100)):
+def get_provenance(request: Request, client_id: str, kind: str, allocation_id: str = "", scenario: str = "", shock_pct: float = Query(0.0, ge=-100, le=100)):
+    _owns(request, client_id)
     _client(client_id)
+    if allocation_id:
+        _al = store.load_allocation(allocation_id)
+        if _al is not None:
+            _owns(request, _al.client_id)
     out = provenance.explain(client_id, kind, allocation_id, scenario, shock_pct)
     if out.get("ok") is False:
         raise HTTPException(404 if "unknown client" in out["error"] else 422 if "unknown" in out["error"] else 409, out["error"])
@@ -598,7 +627,8 @@ def get_provenance(client_id: str, kind: str, allocation_id: str = "", scenario:
 
 
 @app.get("/api/receipt")
-def get_receipt(client_id: str):
+def get_receipt(request: Request, client_id: str):
+    _owns(request, client_id)
     _client(client_id)
     r = receipt.build(client_id)
     if not r:
@@ -619,7 +649,8 @@ def verify_receipt(body: dict = Body(...)):
 
 
 @app.get("/api/counterfactual")
-def counterfactual_route(client_id: str, product_id: str = Query(min_length=2, max_length=20)):
+def counterfactual_route(request: Request, client_id: str, product_id: str = Query(min_length=2, max_length=20)):
+    _owns(request, client_id)
     _client(client_id)
     out = tiers.execute("explain_counterfactual", {"product_id": product_id}, Ctx(client_id))
     if out.get("ok") is False:
@@ -633,7 +664,9 @@ def redteam_run():
 
 
 @app.get("/api/selfinspection")
-def self_inspection(lang: str = "en", client_id: Optional[str] = None):
+def self_inspection(request: Request, lang: str = "en", client_id: Optional[str] = None):
+    if client_id:
+        _owns(request, client_id)
     if lang not in ("en", "zh"):
         raise HTTPException(422, "lang must be en or zh")
     if client_id:
@@ -651,7 +684,8 @@ def products():
 
 
 @app.post("/api/compare")
-def compare(req: CompareReq):
+def compare(request: Request, req: CompareReq):
+    _owns(request, req.client_id)
     if req.client_id:
         _client(req.client_id)
         if store.load_profile(req.client_id):
@@ -660,7 +694,8 @@ def compare(req: CompareReq):
 
 
 @app.post("/api/profile", response_model=ClientProfile)
-def profile(req: ProfileReq):
+def profile(request: Request, req: ProfileReq):
+    _owns(request, req.client_id)
     d = _client(req.client_id)
     for k, v in req.answers.items():
         if k not in profiling.QBY:
@@ -683,7 +718,8 @@ def profile(req: ProfileReq):
 
 
 @app.post("/api/allocation")
-def allocation(req: AllocationReq):
+def allocation(request: Request, req: AllocationReq):
+    _owns(request, req.client_id)
     d = _client(req.client_id)
     if not d.get("profile"):
         raise HTTPException(409, "compute the risk profile first (POST /api/profile)")
@@ -693,10 +729,11 @@ def allocation(req: AllocationReq):
 
 
 @app.post("/api/stress")
-def stress(req: StressReq):
+def stress(request: Request, req: StressReq):
     alloc = store.load_allocation(req.allocation_id)
     if not alloc:
         raise HTTPException(404, "unknown allocation")
+    _owns(request, alloc.client_id)
     ctx = Ctx(alloc.client_id)
     out = tiers.execute("run_stress_test", {"allocation_id": req.allocation_id, "scenario": req.scenario}, ctx)
     if out.get("ok") is False:
@@ -707,7 +744,8 @@ def stress(req: StressReq):
 
 
 @app.post("/api/documents")
-def documents(req: DocumentReq):
+def documents(request: Request, req: DocumentReq):
+    _owns(request, req.client_id)
     _client(req.client_id)
     warnings = guard.warnings_for(req.text, req.filename)
     store.add_document(req.client_id, req.filename, req.text, warnings)
@@ -720,7 +758,8 @@ def documents(req: DocumentReq):
 
 
 @app.post("/api/approve/{ticket_id}")
-def approve(ticket_id: str, req: ApproveReq):
+def approve(request: Request, ticket_id: str, req: ApproveReq):
+    _owns(request, req.client_id)
     try:
         return tiers.approve_ticket(ticket_id, req.client_id)
     except PermissionError as e:
@@ -728,7 +767,8 @@ def approve(ticket_id: str, req: ApproveReq):
 
 
 @app.post("/api/reject/{ticket_id}")
-def reject(ticket_id: str, req: ApproveReq):
+def reject(request: Request, ticket_id: str, req: ApproveReq):
+    _owns(request, req.client_id)
     try:
         return tiers.reject_ticket(ticket_id, req.client_id)
     except PermissionError as e:

@@ -1,4 +1,4 @@
-"""Print the configuration inventory: variable names, whether each is set and valid, what depends on it. Never prints a value. python scripts/check_env.py            table of every variable python scripts/check_env.py."""
+"""Print the configuration inventory: variable names, whether each is set and valid, and what depends on it. Never prints a value."""
 import os
 import re
 import sys
