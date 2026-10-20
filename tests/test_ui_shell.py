@@ -1,4 +1,4 @@
-"""The app shell: sidebar navigation, feature drawer, Claude-style composer, separate voice dock, theme and accessibility hooks."""
+"""The app shell: sidebar navigation, feature drawer, chat composer, separate voice dock, theme and accessibility hooks."""
 import re
 import shutil
 import subprocess

@@ -139,7 +139,15 @@ The CSRC *Suitability Management Measures*, the data sources, historical stress 
 - **Red-team arena**: 54 deterministic attacks plus benign controls against the live defences, no model called.
 - **Self-inspection report**: a report modelled on Article 30 of the CSRC Measures, generated from the audit log, in English or Chinese.
 
-## Deploy to Vercel
+## Deploy
+
+**Live demo:** https://wealthguard-ajmaeenabid.onrender.com (hosted on Render's free plan; the first request after idle can take up to a minute, and data resets when the service restarts). Sign in with a demo account such as `li` / `123`.
+
+### Render (recommended)
+
+`render.yaml` describes a single web service. In Render choose **New -> Blueprint**, connect this repository, and enter `GROQ_API_KEY` and `RECEIPT_KEY` when asked. A single instance keeps sessions valid; add a persistent disk (paid plan) and set `WEALTHGUARD_DB` to a path on it if data must survive restarts.
+
+### Vercel
 
 `api/index.py` serves the FastAPI app and the static UI as one serverless function; `vercel.json` routes every path to it.
 
@@ -150,7 +158,7 @@ vercel            # preview deploy
 vercel --prod     # production deploy
 ```
 
-Set environment variables in the Vercel project settings (never in the repository). With no key the hosted app runs on the deterministic mock. Vercel's disk is read-only except `/tmp`, so SQLite and the audit chain live there per instance and reset on a cold start.
+Set environment variables in the project settings, never in the repository. Vercel runs several instances with temporary storage, so sign-in sessions and data are not reliable there; use it for a quick preview only.
 
 ## Documentation
 

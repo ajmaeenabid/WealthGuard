@@ -71,7 +71,7 @@ retry are visible offline and in tests.
 
 ## API
 
-As in CLAUDE.md, plus `POST /api/translate` (T1, audited), `GET /api/state`, `GET /api/personas`, `GET /api/health`, `POST /api/reject/{ticket_id}`.
+The API also includes `POST /api/translate` (T1, audited), `GET /api/state`, `GET /api/personas`, `GET /api/health`, `POST /api/reject/{ticket_id}`.
 
 ## Language handling
 

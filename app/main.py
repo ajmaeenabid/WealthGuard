@@ -1,4 +1,4 @@
-"""FastAPI app: JSON API (contract in CLAUDE.md) plus the static single-page UI."""
+"""FastAPI app: JSON API (see docs/architecture.md) plus the static single-page UI."""
 import json
 import os
 from contextlib import asynccontextmanager

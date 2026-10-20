@@ -1,4 +1,4 @@
-"""All pydantic models. Agreed on Day 1; additions beyond CLAUDE.md are marked (ext)."""
+"""All pydantic models. Additions beyond the original contract are marked (ext)."""
 from __future__ import annotations
 
 from typing import Annotated, Literal, Optional

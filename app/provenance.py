@@ -102,7 +102,7 @@ def explain(client_id: str, kind: str, allocation_id: str = "", scenario: str = 
         lim = BUCKETS[eff]
         inputs = [{"name": "Tolerance bucket", "value": tb, "source": f"score {prof.risk_tolerance_score:g}; bands <20, <40, <60, <80, else"},
                   {"name": "Capacity bucket", "value": cb, "source": f"score {prof.risk_capacity_score:g}"},
-                  {"name": "Final bucket = the lower of the two", "value": prof.bucket, "source": "CLAUDE rule: real advisors use the lower"},
+                  {"name": "Final bucket = the lower of the two", "value": prof.bucket, "source": "Suitability rule: real advisors use the lower"},
                   {"name": "Effective bucket after R5 (age 65+ or horizon under 2 years cap at Moderate)", "value": eff,
                    "source": f"age {prof.age}, horizon {prof.horizon_years:g} years"},
                   {"name": "Limits", "value": f"max risk {lim['max_risk']}, equity-like {lim['max_equity_pct']}%, single product {lim['max_single_pct']}%",
